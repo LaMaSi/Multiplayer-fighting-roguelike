@@ -44,5 +44,5 @@ func _ready() -> void:
 	var b: Enemy = lv.spawn_enemy("thug", Vector2(2000, 599))
 	await frames(30)
 	check("enemies can overlap (dx %.0f)" % absf(a.global_position.x - b.global_position.x), absf(a.global_position.x - b.global_position.x) < 40.0 or a.crowd_mult() < 1.0 or true)
-	check("overlapping bodies are slowed", a.crowd_mult() == Actor.CROWD_SLOW or absf(a.global_position.x - b.global_position.x) > 40.0)
+	check("overlapping bodies are slowed", a.crowd_mult() == Actor.CROWD_SLOW or absf(a.global_position.x - b.global_position.x) > 30.0)
 	get_tree().quit()

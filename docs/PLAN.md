@@ -171,3 +171,18 @@ tests/      headless smoke tests (run with godot --headless -s)
 - **Visuals**: weapons are drawn from the hands in `stick_figure.gd` (sword = blade relative to the forearm, hammer = absolute head angle `wp_rot`, Magic = glowing hands). Each class has a base pose; recovery returns to it.
 - **Run**: pick a class per player on the main menu (Magic is locked, with a testing toggle). A run rolls 3 starred B moves, 1 X and 1 Y per player. The shared move pick offers X / Y moves, and the personal level-up always offers a new weapon move; cards carry the slot `row` (X / Y / B).
 - **Not built yet**: the 5th slot (B+Back), LT empowered versions, the Magic mark system (see `MARKS.md`), weapon supers, class-pair Duo Specials, and Home Run's flying-kick behaviour (the partner is launched but cannot steer or attack). The Gravity Well pulls toward the caster instead of leaving a zone.
+
+## As built: movement-first levels (branch feature/movement-levels)
+- Camera: zoom 0.45–0.85 (`camera_rig.gd`, MAX_ZOOM / MARGIN constants).
+- Characters never block each other (only barriers, layer 5, do); overlapping bodies are slowed to 50 % (`Actor.crowd_mult`).
+- Terrain (`StreetsLevel._gen_terrain`): ground pieces with pits (180–300 px, or 360–440 with an island platform), raised and
+  sunken blocks (50–100 px), platform tiers 150 / 270 px, arenas stay flat, falling respawns on the last safe ground (-8 HP).
+- Ledge grab (`Fighter._try_ledge`, state "ledge"): hang at pit edges / platform ends, 3 s solo climb, instant when the
+  partner presses interact / LB nearby, Down or jump drops.
+- Combat model: combo damage +4 %/hit (30 hits) +25 %/relay, combo window 2.2 s, +3 hitstun on player hits, juggle decay
+  loosened; Brute (230 HP) and Heavy (340 HP) are the default waves, 1 wave in 5 is a swarm of small enemies.
+- Combo money: a finished combo pays `(hits - 8) * 0.75 + relays * 3` coins into the shared wallet.
+- Doors (`Door`, `DoorRoom`): red hexagon = challenge room (2 tough waves, coins and sometimes a move pick), gold arch =
+  move shop (pedestals: move pick 50, power-up pick 35, heal both 25). Picks go to `RunState.bonus_picks` and are
+  appended to the end-of-level reward queue.
+- Not built: move preview images (Phase 6), shop/challenge door art polish, a challenge reward choice screen inside the room.

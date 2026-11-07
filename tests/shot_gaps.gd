@@ -11,6 +11,17 @@ func _ready() -> void:
 	add_child(lv)
 	for i in 20:
 		await get_tree().process_frame
+	if args.size() > 2 and args[2] == "door" and lv.doors_spec.size() > 0:
+		var dx: float = float(lv.doors_spec[0]["x"])
+		lv.encounters = []
+		lv.fighters[0].global_position = Vector2(dx - 150.0, lv.ground_top(dx) - 1.0)
+		lv.fighters[1].global_position = Vector2(dx - 220.0, lv.ground_top(dx) - 1.0)
+		for i in 80:
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(out)
+		get_tree().quit()
+		return
 	var segs: Array = lv.ground_segs
 	var px := 600.0
 	for i in range(1, segs.size()):
