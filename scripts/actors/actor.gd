@@ -231,7 +231,7 @@ func take_hit(info: HitInfo) -> bool:
 	freeze = info.stop
 	_victim_freeze = true
 	flash_t = 0.12
-	var sq := clampf(dmg / 40.0, 0.2, 0.5)
+	var sq := clampf(dmg / 20.0, 0.4, 0.7)
 	squash = Vector2(1.0 + sq, 1.0 - sq * 0.9)  # squashed by the blow
 	_hit_feedback(info, dmg)
 	Coop.post_hit(info, self, dmg)
@@ -265,7 +265,7 @@ func _start_launch(info: HitInfo, lethal: bool) -> void:
 
 func _hit_feedback(info: HitInfo, dmg: float) -> void:
 	var parent := get_parent()
-	var power := clampf(dmg / 9.0, 0.6, 2.2)
+	var power := clampf(dmg / 6.0, 0.9, 3.0)
 	var dir := info.kb.normalized() if info.kb != Vector2.ZERO else Vector2(facing, -0.3)
 	Fx.impact(parent, info.pos, info.color, power, dir)
 	var pitch := 1.0 + minf(Coop.combo, 24) * 0.025
@@ -284,12 +284,12 @@ func _hit_feedback(info: HitInfo, dmg: float) -> void:
 	Juice.shake(info.shake * (1.4 if info.relay else 1.0))
 	# camera: directional kick toward the blow, zoom punch and a flash of slow motion on heavy hits
 	if not info.friendly:
-		Juice.kick(dir * clampf(dmg * 1.6, 6.0, 34.0))
-		var zp := clampf((dmg - 6.0) / 160.0, 0.0, 0.07)
+		Juice.kick(dir * clampf(dmg * 3.2, 12.0, 68.0))
+		var zp := clampf((dmg - 5.0) / 80.0, 0.0, 0.14)
 		if info.punch > 0.0 or info.relay or zp > 0.0:
 			Juice.zoom_punch(maxf(maxf(info.punch, zp), 0.05 if info.relay else 0.0))
-		if (dmg >= 18.0 or hp <= 0.0 or info.relay) and Engine.time_scale > 0.9:
-			Juice.slowmo(0.3, 0.09 if hp > 0.0 else 0.16)
+		if (dmg >= 12.0 or hp <= 0.0 or info.relay) and Engine.time_scale > 0.9:
+			Juice.slowmo(0.22, 0.12 if hp > 0.0 else 0.22)
 
 
 func apply_direct_damage(amount: float, label := "") -> void:
@@ -541,7 +541,7 @@ func _loco_pose() -> Dictionary:
 
 func _update_visuals(delta: float) -> void:
 	if not attack.active:
-		figure.zeta = 0.45 if (state == "hurt" or state == "launched" or state == "getup") else 1.0
+		figure.zeta = 0.32 if (state == "hurt" or state == "launched" or state == "getup") else 1.0
 	match state:
 		"hurt":
 			figure.set_target(PoseLib.hurt())

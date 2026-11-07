@@ -268,7 +268,7 @@ func _slot_for(b: int) -> String:
 	if d.y > 0:
 		return name + "_DOWN"
 	if d.x != 0:
-		return name + ("_FWD" if d.x * facing > 0 else "_BACK")
+		return name + "_SIDE"
 	return name
 
 
@@ -281,6 +281,10 @@ func _try_slot(slot: String, btn: int) -> bool:
 		return false
 	if m.ground_only and not is_on_floor():
 		return false
+	# left and right share a slot: the move goes the way the stick points
+	if slot.ends_with("_SIDE") and absf(input.dir.x) > 0.2:
+		facing = 1 if input.dir.x > 0.0 else -1
+		_turn_t = 0
 	if m.air_only and is_on_floor():
 		velocity.y = -520.0
 	start_attack(m, btn)

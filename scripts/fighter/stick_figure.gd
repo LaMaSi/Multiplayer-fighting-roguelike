@@ -107,20 +107,45 @@ func _draw() -> void:
 	_draw_trails()
 
 
+## Swoosh ribbons: a filled strip along the recent path of each fast limb tip. The width is 0 at
+## the old end, swells toward the limb and comes to a point at the tip (no blunt line ends).
 func _draw_trails() -> void:
-	if _trail.size() < 2:
-		return
 	var n := _trail.size()
+	if n < 3:
+		return
+	var c := Color(minf(color.r + 0.5, 2.6), minf(color.g + 0.5, 2.6), minf(color.b + 0.5, 2.6))
 	for tip in 4:
+		var pts: Array[Vector2] = []
+		var total := 0.0
+		for i in n:
+			pts.append(to_local(_trail[i][tip]))
+			if i > 0:
+				total += pts[i - 1].distance_to(pts[i])
+		if total < 30.0 or total > 900.0:
+			continue
+		var left: Array[Vector2] = []
+		var right: Array[Vector2] = []
+		for i in n:
+			var dir := pts[mini(i + 1, n - 1)] - pts[maxi(i - 1, 0)]
+			if dir.length() < 0.001:
+				dir = Vector2.RIGHT
+			var nrm := Vector2(-dir.y, dir.x).normalized()
+			var s := float(i) / float(n - 1)
+			var w := 15.0 * pow(maxf(sin(PI * pow(s, 2.4)), 0.0), 0.9)
+			left.append(pts[i] + nrm * w)
+			right.append(pts[i] - nrm * w)
 		for i in range(1, n):
-			var a: Vector2 = to_local(_trail[i - 1][tip])
-			var b: Vector2 = to_local(_trail[i][tip])
-			var d := a.distance_to(b)
-			if d < 7.0 or d > 260.0:
-				continue
-			var t := float(i) / float(n)
-			var c := Color(minf(color.r + 0.4, 2.5), minf(color.g + 0.4, 2.5), minf(color.b + 0.4, 2.5), t * 0.75)
-			draw_line(a, b, c, 2.0 + 9.0 * t, true)
+			var s2 := float(i) / float(n - 1)
+			var col := Color(c.r, c.g, c.b, 0.12 + 0.6 * s2)
+			# two triangles per segment: never self-intersecting, even on sharp bends
+			_tri(left[i - 1], left[i], right[i], col)
+			_tri(left[i - 1], right[i], right[i - 1], col)
+
+
+func _tri(a: Vector2, b: Vector2, c: Vector2, col: Color) -> void:
+	if absf((b - a).cross(c - a)) < 1.0:
+		return
+	draw_colored_polygon(PackedVector2Array([a, b, c]), col)
 
 
 func _render(halo: bool) -> void:

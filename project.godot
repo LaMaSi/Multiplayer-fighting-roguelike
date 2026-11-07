@@ -39,5 +39,5 @@ window/stretch/mode="canvas_items"
 
 [rendering]
 
-environment/defaults/default_clear_color=Color(0.03, 0.02, 0.07, 1)
 viewport/hdr_2d=true
+environment/defaults/default_clear_color=Color(0.03, 0.02, 0.07, 1)

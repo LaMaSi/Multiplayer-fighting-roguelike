@@ -17,8 +17,8 @@ func zoom_punch(amount: float) -> void:
 
 func kick(v: Vector2) -> void:
 	kick_vec += v
-	if kick_vec.length() > 44.0:
-		kick_vec = kick_vec.normalized() * 44.0
+	if kick_vec.length() > 84.0:
+		kick_vec = kick_vec.normalized() * 84.0
 
 
 func slowmo(scale: float, real_seconds: float) -> void:

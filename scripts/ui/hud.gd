@@ -152,22 +152,22 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 	# loadout grid
 	var gx := x0 + 20.0
 	var gy := 52.0
-	var heads := ["-", "UP", "FWD", "DWN", "BCK"]
-	for ci in 5:
-		_text(c, Vector2(gx + ci * 52.0, gy - 3), heads[ci], 9, Color(1, 1, 1, 0.55), 52.0, HORIZONTAL_ALIGNMENT_CENTER)
+	var heads := ["-", "UP", "SIDE", "DOWN"]
+	for ci in 4:
+		_text(c, Vector2(gx + ci * 62.0, gy - 3), heads[ci], 9, Color(1, 1, 1, 0.55), 62.0, HORIZONTAL_ALIGNMENT_CENTER)
 	var names := ["X", "Y", "B"]
-	var sufs := ["", "_UP", "_FWD", "_DOWN", "_BACK"]
+	var sufs := ["", "_UP", "_SIDE", "_DOWN"]
 	for r in 3:
 		_text(c, Vector2(x0 + 6, gy + 15 + r * 23), names[r], 13, col)
-		for ci in 5:
+		for ci in 4:
 			var slot: String = names[r] + sufs[ci]
 			var id: String = f.loadout.get(slot, "")
-			var rect := Rect2(gx + ci * 52.0, gy + r * 23, 50, 21)
+			var rect := Rect2(gx + ci * 62.0, gy + r * 23, 60, 21)
 			var active := f.attack != null and f.attack.active and f.attack.move.id.rstrip("0123456789") == id and id != ""
 			c.draw_rect(rect, Color(col.r, col.g, col.b, 0.55) if active else Color(1, 1, 1, 0.07))
 			if id != "":
 				var mv := MoveDB.get_move(id)
-				_text(c, rect.position + Vector2(0, 14), mv.short, 10, Color(1, 1, 1), 50.0, HORIZONTAL_ALIGNMENT_CENTER)
+				_text(c, rect.position + Vector2(0, 14), mv.short, 10, Color(1, 1, 1), 60.0, HORIZONTAL_ALIGNMENT_CENTER)
 			else:
 				c.draw_rect(rect, Color(1, 1, 1, 0.1), false, 1.0)
 

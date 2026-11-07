@@ -11,10 +11,10 @@ Status: v2, decisions confirmed by the user (see §1). It gets updated at the en
 | Playfield | **Flat 2D side-scroller with platforms** (one-way platforms, drop-through with Down+A, ledges). No depth lanes |
 | Workflow | Claude works directly in this folder, in a local git repo (one commit per milestone, so any milestone can be rolled back). Claude runs the game headless with the Godot 4.5.1 console build to catch script errors and run smoke tests; the user playtests after each milestone and reports back |
 | Art | **Fully procedural, nothing downloaded**: neon stickfigures, backdrops, props, particles AND audio (synthesized in code) (see §3) |
-| Directions | Forward/back **relative to facing**. "Right" slot = forward, "Left" slot = back; Up/Down are absolute |
+| Directions | **Left and right are the same slot ("side")**: pressing a side direction with an attack button also turns the fighter that way. Up/Down are separate slots |
 | Player contact | Players **body-block** each other. Friendly fire is **on by default with damage + knockback**, toggleable in the pause menu (when off, partner hits pass through harmlessly) |
 | Co-op pillars | All four are core: shared combo + juggle relay, team-up moves, Duo Specials, loadout synergy |
-| Moves | 15 slots (X/Y/B x neutral/up/right/down/left), pool of 30 moves, 5 equipped at run start; A = jump |
+| Moves | **12 slots** (X/Y/B x neutral / up / down / side), pool of 30 moves, 4 equipped at run start (X, X+Up, X+Side, X+Down); A = jump |
 | Run | Branching node map, 3 biomes: Streets, Wasteland, Ruins; boss per biome |
 | Rewards | Shared pick: both players on one screen, take turns choosing |
 | Failure | Revive partner; both down means the run ends. Each run earns currency that unlocks moves into the reward pool (persistent meta layer) |
@@ -186,3 +186,7 @@ tests/      headless smoke tests (run with godot --headless -s)
 - **Shapes**: players = round head, thin lines, a P1/P2 marker above the head. Enemies = angular or helmeted heads, filled torsos, and per-type proportions (Thug stocky, Biker big helmet, Thrower thin and hooded, Boss huge).
 - **Animation**: poses follow a damped spring (zeta ~0.5 during attacks) for overshoot and follow-through; MoveDB._exaggerate gives every extended limb a big fist/foot and stretch and every cocked limb a contraction (anticipation); body squash on windup and stretch on strike; swoosh trails on fast limbs; the pose freezes during hit-stop; heavy hits add camera kick toward the blow, zoom punch and a brief slow-mo.
 - Tuning knobs: spring in stick_figure.gd (ollow_speed, zeta), exaggeration values in move_db.gd (_exaggerate), hit feedback in ctor.gd (_hit_feedback).
+### Iteration 2 (controls + animation x2 + tapered swooshes)
+- **Controls changed**: 12 move slots per character instead of 15. Left and right share one slot (X_SIDE etc.), so there is no forward/back distinction and no 4-frame turn trick is needed for attacks. Starter loadout is now jab / uppercut / dash punch / leg sweep. Back Kick remains in the pool of 30 (it hits behind whichever way you face).
+- **Animation intensity doubled**: bigger fist/foot (4.6x / 4.2x) and limb stretch (1.55x / 1.5x), stronger cocking contraction, spring zeta 0.36, body squash/stretch up to 1.6 x 0.66, victims squashed harder, camera kick and zoom punch about 2x, longer hit-stop on heavy hits, slow-mo on any hit of 12+ damage.
+- **Swooshes taper**: limb trails are filled ribbons that start at zero width and end in a point; hook/boost beams use a width curve; impact burst lines are needles. No blunt line ends.

@@ -12,14 +12,16 @@ const POOL: Array[String] = [
 	"ally_toss", "heal_pulse", "rage_taunt", "boost_spark", "pillar_smash",
 ]
 
+## 12 slots per character: X / Y / B  x  neutral, up, down, side (left and right are the same move;
+## pressing a side direction also turns the fighter that way).
 const STARTER := {
-	"X": "jab", "X_UP": "uppercut", "X_FWD": "dash_punch", "X_DOWN": "sweep", "X_BACK": "back_kick",
+	"X": "jab", "X_UP": "uppercut", "X_SIDE": "dash_punch", "X_DOWN": "sweep",
 }
 
 const SLOTS: Array[String] = [
-	"X", "X_UP", "X_FWD", "X_DOWN", "X_BACK",
-	"Y", "Y_UP", "Y_FWD", "Y_DOWN", "Y_BACK",
-	"B", "B_UP", "B_FWD", "B_DOWN", "B_BACK",
+	"X", "X_UP", "X_SIDE", "X_DOWN",
+	"Y", "Y_UP", "Y_SIDE", "Y_DOWN",
+	"B", "B_UP", "B_SIDE", "B_DOWN",
 ]
 
 const ORANGE := Color(2.2, 1.0, 0.3)
@@ -73,17 +75,17 @@ static func _exaggerate(p: Dictionary) -> Dictionary:
 		var ua: float = q.get("ua_" + s, StickFigure.NEUTRAL["ua_" + s])
 		var la: float = q.get("la_" + s, StickFigure.NEUTRAL["la_" + s])
 		if la < 0.55 and (ua > 1.0 or ua < -0.9):
-			q["fist_" + s] = q.get("fist_" + s, 2.6)
-			q["reach_" + s] = q.get("reach_" + s, 1.3)
+			q["fist_" + s] = q.get("fist_" + s, 4.6)
+			q["reach_" + s] = q.get("reach_" + s, 1.55)
 		elif la > 1.6 and ua > 0.3:
-			q["reach_" + s] = q.get("reach_" + s, 0.86)
+			q["reach_" + s] = q.get("reach_" + s, 0.72)
 		var th: float = q.get("th_" + s, StickFigure.NEUTRAL["th_" + s])
 		var kn: float = q.get("kn_" + s, StickFigure.NEUTRAL["kn_" + s])
 		if absf(th) > 1.1 and kn < 0.5:
-			q["foot_" + s] = q.get("foot_" + s, 2.3)
-			q["legr_" + s] = q.get("legr_" + s, 1.25)
+			q["foot_" + s] = q.get("foot_" + s, 4.2)
+			q["legr_" + s] = q.get("legr_" + s, 1.5)
 		elif kn > 1.4:
-			q["legr_" + s] = q.get("legr_" + s, 0.9)
+			q["legr_" + s] = q.get("legr_" + s, 0.78)
 	return q
 
 

@@ -38,9 +38,9 @@ func start(m: MoveData, btn := -1) -> void:
 	_wait_frames = 0
 	_tilt = 0.0
 	_spun = false
-	actor.figure.follow_speed = 46.0
-	actor.figure.zeta = 0.5  # under-damped spring: overshoot + settle
-	actor.squash = Vector2(0.88, 1.12)  # anticipation: coil up before the strike
+	actor.figure.follow_speed = 52.0
+	actor.figure.zeta = 0.36  # under-damped spring: strong overshoot + settle
+	actor.squash = Vector2(0.76, 1.26)  # anticipation: coil up before the strike
 
 
 func can_cancel() -> bool:
@@ -279,8 +279,8 @@ func _hits() -> void:
 			# strike: stretch the body along the attack, ghost on heavy blows
 			_ev_done[1000 + i] = true
 			var heavy := float(h["dmg"]) >= 14.0
-			actor.squash = Vector2(1.3, 0.78) if heavy else Vector2(1.16, 0.9)
-			if float(h["dmg"]) >= 10.0:
+			actor.squash = Vector2(1.6, 0.66) if heavy else Vector2(1.35, 0.78)
+			if float(h["dmg"]) >= 7.0:
 				Fx.afterimage(actor.get_parent(), actor.figure, actor.figure.color)
 		if frame < at or frame >= at + int(h["dur"]):
 			continue
@@ -311,7 +311,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.dmg = float(h["dmg"]) * a.dmg_mult()
 	info.stun = int(h["stun"])
 	info.kind = String(h["kind"])
-	info.stop = int(h["stop"]) + (2 if float(h["dmg"]) >= 18.0 else (1 if float(h["dmg"]) >= 10.0 else 0))
+	info.stop = int(h["stop"]) + (4 if float(h["dmg"]) >= 18.0 else (2 if float(h["dmg"]) >= 9.0 else 1))
 	info.low = bool(h["low"])
 	info.shake = float(h["shake"])
 	info.punch = float(h.get("punch", 0.0))

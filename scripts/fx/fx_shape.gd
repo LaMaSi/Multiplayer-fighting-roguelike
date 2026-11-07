@@ -32,7 +32,12 @@ func _draw() -> void:
 		var r := size * (1.0 - pow(1.0 - t, 3.0))
 		draw_arc(Vector2.ZERO, maxf(r, 1.0), 0.0, TAU, 40, c, 1.5 + 5.0 * a, true)
 	else:
+		# needles: wide at the base, pointed at the outer tip
 		for ang in _angles:
 			var d := Vector2.from_angle(ang)
+			var nrm := Vector2(-d.y, d.x)
 			var e := 1.0 - pow(1.0 - t, 2.0)
-			draw_line(d * size * (0.15 + 0.5 * e), d * size * (0.35 + 0.65 * e), c, 1.0 + 4.0 * a, true)
+			var base := d * size * (0.15 + 0.5 * e)
+			var tip := d * size * (0.45 + 0.75 * e)
+			var hw := 1.5 + 4.5 * a
+			draw_colored_polygon(PackedVector2Array([base + nrm * hw, tip, base - nrm * hw]), c)

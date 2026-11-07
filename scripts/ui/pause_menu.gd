@@ -22,9 +22,9 @@ var _spawn_idx := 1
 var _last_dir: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO]
 const SPAWNABLE := ["thug", "biker", "thrower", "boss_street", "dummy"]
 const SLOT_NAMES := {
-	"X": "X", "X_UP": "X + Up", "X_FWD": "X + Forward", "X_DOWN": "X + Down", "X_BACK": "X + Back",
-	"Y": "Y", "Y_UP": "Y + Up", "Y_FWD": "Y + Forward", "Y_DOWN": "Y + Down", "Y_BACK": "Y + Back",
-	"B": "B", "B_UP": "B + Up", "B_FWD": "B + Forward", "B_DOWN": "B + Down", "B_BACK": "B + Back",
+	"X": "X", "X_UP": "X + Up", "X_SIDE": "X + Left/Right", "X_DOWN": "X + Down",
+	"Y": "Y", "Y_UP": "Y + Up", "Y_SIDE": "Y + Left/Right", "Y_DOWN": "Y + Down",
+	"B": "B", "B_UP": "B + Up", "B_SIDE": "B + Left/Right", "B_DOWN": "B + Down",
 }
 
 
@@ -153,7 +153,7 @@ func _activate() -> void:
 		_sel = 0
 
 
-const PlayerSlots: Array[String] = ["X", "X_UP", "X_FWD", "X_DOWN", "X_BACK", "Y", "Y_UP", "Y_FWD", "Y_DOWN", "Y_BACK", "B", "B_UP", "B_FWD", "B_DOWN", "B_BACK"]
+const PlayerSlots: Array[String] = ["X", "X_UP", "X_SIDE", "X_DOWN", "Y", "Y_UP", "Y_SIDE", "Y_DOWN", "B", "B_UP", "B_SIDE", "B_DOWN"]
 
 
 func _text(c: Control, pos: Vector2, text: String, size: int, col: Color, width := -1.0, align := HORIZONTAL_ALIGNMENT_LEFT) -> void:
@@ -187,7 +187,7 @@ func paint(c: Control) -> void:
 			_text(c, Vector2(300, y), ("> " if sel else "") + String(SLOT_NAMES[slot]), 20, col, 220.0)
 			_text(c, Vector2(540, y), name, 20, col if id != "" else Color(1, 1, 1, 0.35), 360.0)
 		var back_sel := _sel == PlayerSlots.size()
-		_text(c, Vector2(300, 140.0 + 15 * 26.0 + 8.0), ("> " if back_sel else "") + "Back", 20, Color(1, 0.9, 0.4) if back_sel else Color(1, 1, 1, 0.75))
+		_text(c, Vector2(300, 140.0 + 12 * 26.0 + 8.0), ("> " if back_sel else "") + "Back", 20, Color(1, 0.9, 0.4) if back_sel else Color(1, 1, 1, 0.75))
 		if _sel < PlayerSlots.size():
 			var id2: String = f.loadout.get(PlayerSlots[_sel], "")
 			if id2 != "":

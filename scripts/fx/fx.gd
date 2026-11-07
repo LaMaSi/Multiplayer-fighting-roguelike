@@ -62,11 +62,11 @@ static func impact(parent: Node, pos: Vector2, col: Color, power: float = 1.0, d
 	var s := FxShape.new()
 	s.mode = "burst"
 	s.col = col
-	s.size = 34.0 + 34.0 * power
+	s.size = 48.0 + 48.0 * power
 	s.dur = 0.2
 	s.position = pos
 	parent.add_child(s)
-	ring(parent, pos, col, 26.0 + 30.0 * power, 0.22)
+	ring(parent, pos, col, 40.0 + 44.0 * power, 0.26)
 	sparks(parent, pos, col, int(5 + 7 * power), dir)
 
 
@@ -98,16 +98,20 @@ static func beam(parent: Node, from: Vector2, to: Vector2, col: Color, dur: floa
 		return
 	var l := Line2D.new()
 	l.points = PackedVector2Array([from, to])
-	l.width = 6.0
+	l.width = 14.0
 	l.default_color = col
 	l.z_index = 40
-	l.begin_cap_mode = Line2D.LINE_CAP_ROUND
-	l.end_cap_mode = Line2D.LINE_CAP_ROUND
+	# taper: thin at the start, full body near the origin, pointed at the far end (no blunt ends)
+	var cv := Curve.new()
+	cv.add_point(Vector2(0.0, 0.0))
+	cv.add_point(Vector2(0.1, 1.0))
+	cv.add_point(Vector2(1.0, 0.0))
+	l.width_curve = cv
 	parent.add_child(l)
 	var tw := l.create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(l, "modulate:a", 0.0, maxf(dur, 0.05))
-	tw.tween_property(l, "width", 1.0, maxf(dur, 0.05))
+	tw.tween_property(l, "width", 3.0, maxf(dur, 0.05))
 	tw.chain().tween_callback(l.queue_free)
 
 

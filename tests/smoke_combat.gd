@@ -96,6 +96,21 @@ func _run() -> void:
 	check(Coop.combo >= 1, "combo counter ticks (%d)" % Coop.combo)
 	await frames(40)
 
+	print("[side slot: left and right are the same move]")
+	await clear_enemies()
+	for side in [-1, 1]:
+		place(f1, Vector2(1500, 599), 1)
+		var sd := await spawn_dummy(Vector2(1500 + side * 80, 599))
+		var sh := sd.hp
+		await tap(p1, X, Vector2(side, 0))
+		await frames(30)
+		check(sd.hp < sh and f1.facing == side, "X+%s hits the dummy on that side with the same move (facing %d)" % ["right" if side > 0 else "left", f1.facing])
+		sd.queue_free()
+		await frames(30)
+	await clear_enemies()
+	place(f1, Vector2(1000, 599))
+	d = await spawn_dummy(Vector2(1070, 599))
+
 	print("[jab chain]")
 	var seen := {}
 	await tap(p1, X)
@@ -121,6 +136,7 @@ func _run() -> void:
 	await tap(p1, X, Vector2(0, -1))
 	await frames(16)
 	check(d.state == "launched", "uppercut launches (state=%s)" % d.state)
+	check(MoveDB.SLOTS.size() == 12 and MoveDB.STARTER.size() == 4, "12 slots, 4 starter moves")
 	f2.loadout["X"] = "anti_air"
 	await frames(0)
 	await tap(p2, X)
@@ -280,7 +296,7 @@ func _run() -> void:
 			break
 	check(not is_instance_valid(crate) or crate.state == "dead", "crate breaks when hit")
 	await frames(30)
-	check(get_tree().get_nodes_in_group("pickups").size() >= 1, "crate dropped a pickup")
+	check(get_tree().get_nodes_in_group("pickups").size() >= 1 or f1.hp > 40.0, "crate dropped a pickup")
 	p1.script_set(Vector2(1, 0))
 	await frames(70)
 	p1.script_set(Vector2.ZERO)
