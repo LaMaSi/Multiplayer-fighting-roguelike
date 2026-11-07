@@ -12,6 +12,8 @@ var platforms: Array = []  ## Rect2 (top-left, size)
 var props_spec: Array = []  ## [x, kind, (y)]
 var encounters: Array = []  ## {x, waves: [[["thug", 2], ...], ...], boss: bool}
 var enemy_hp_mult := 1.0
+var enemy_dmg_mult := 1.0
+var exit_x := -1.0  ## reaching this x (after all encounters) completes the level; -1 = none
 var level_name := "Level"
 var theme := {
 	"sky_top": Color(0.10, 0.05, 0.28), "sky_bottom": Color(0.85, 0.28, 0.62),
@@ -44,6 +46,7 @@ func _ready() -> void:
 	Coop.reset_run()
 	_setup()
 	Coop.enemy_hp_mult = enemy_hp_mult
+	Coop.enemy_dmg_mult = enemy_dmg_mult
 	Coop.bounds = Rect2(0, -1200, level_w, 2400)
 	_build_environment()
 	_make_scenery()
@@ -58,6 +61,8 @@ func _ready() -> void:
 	menu = PauseMenu.new()
 	menu.level = self
 	add_child(menu)
+	if exit_x > 0.0:
+		hud.set_go(true)
 	Coop.summon_requested.connect(_on_summon)
 	Coop.game_over.connect(_on_game_over)
 	queue_redraw()
@@ -67,10 +72,10 @@ func _build_environment() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CANVAS
 	env.glow_enabled = true
-	env.glow_intensity = 0.4
-	env.glow_strength = 0.75
+	env.glow_intensity = 0.22
+	env.glow_strength = 0.6
 	env.glow_bloom = 0.0
-	env.glow_hdr_threshold = 1.3
+	env.glow_hdr_threshold = 1.7
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	env.set_glow_level(2, 1.0)
 	env.set_glow_level(3, 1.0)
@@ -172,6 +177,16 @@ func alive_enemies() -> int:
 func _physics_process(_delta: float) -> void:
 	if _cleared:
 		return
+	if not _locked and exit_x > 0.0 and _enc_idx >= encounters.size():
+		var sum := 0.0
+		var n := 0
+		for f in fighters:
+			if f.is_alive():
+				sum += f.global_position.x
+				n += 1
+		if n > 0 and sum / n >= exit_x:
+			_complete()
+			return
 	if not _locked:
 		if _enc_idx < encounters.size():
 			var enc: Dictionary = encounters[_enc_idx]
@@ -240,16 +255,31 @@ func _end_encounter(enc: Dictionary) -> void:
 	Coop.bounds = Rect2(0, -1200, level_w, 2400)
 	_enc_idx += 1
 	Sfx.play("pickup", 1.2)
-	if _boss_fight or _enc_idx >= encounters.size():
-		_cleared = true
-		hud.banner("LEVEL CLEAR!", Color(2.0, 1.7, 1.9))
-		hud.show_result("LEVEL CLEAR", true)
-		Coop.level_cleared.emit()
+	if _boss_fight:
+		_complete()
 	else:
 		hud.set_go(true)
-		for f in fighters:
-			if not f.is_alive() and f.state == "downed":
-				pass
+
+
+func _complete() -> void:
+	_cleared = true
+	hud.set_go(false)
+	hud.banner("LEVEL CLEAR!", Color(2.0, 1.8, 0.6))
+	hud.show_result("LEVEL CLEAR", true)
+	Sfx.play("relay")
+	Coop.level_cleared.emit()
+
+
+## Called from the result screen: runs go on to the reward screen, standalone levels return to the menu.
+func finish_level() -> void:
+	if RunState.active:
+		RunState.save_from(fighters)
+		RunState.level_cleared()
+		get_tree().paused = false
+		Engine.time_scale = 1.0
+		get_tree().change_scene_to_file("res://scenes/reward.tscn")
+	else:
+		to_menu()
 
 
 func _on_summon(by: Actor, count: int) -> void:
@@ -318,6 +348,12 @@ func _paint_ground(c: CanvasItem) -> void:
 		c.draw_line(Vector2(-2500, ground_y + dy), Vector2(level_w + 2500, ground_y + dy), Color(ng.r, ng.g, ng.b, 0.10), 1.5)
 	c.draw_line(Vector2(0, -1500), Vector2(0, ground_y), ng, 3.0)
 	c.draw_line(Vector2(level_w, -1500), Vector2(level_w, ground_y), ng, 3.0)
+	if exit_x > 0.0:
+		var door := Rect2(exit_x, ground_y - 190.0, 120.0, 190.0)
+		c.draw_rect(door, Color(0.1, 0.07, 0.02))
+		c.draw_rect(door, Color(2.0, 1.7, 0.5), false, 4.0)
+		c.draw_rect(Rect2(door.position + Vector2(14, 14), door.size - Vector2(28, 14)), Color(1.0, 0.8, 0.2, 0.18))
+		c.draw_string(ThemeDB.fallback_font, door.position + Vector2(0, -12), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, door.size.x, 26, Color(2.0, 1.7, 0.5))
 	var np: Color = theme["neon_plat"]
 	for r: Rect2 in platforms:
 		c.draw_rect(r, Color(0.08, 0.03, 0.14))

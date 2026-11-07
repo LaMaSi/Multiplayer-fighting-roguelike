@@ -22,6 +22,7 @@ Dbg="*res://autoload/dbg.gd"
 Juice="*res://autoload/juice.gd"
 Sfx="*res://autoload/sfx.gd"
 Coop="*res://autoload/coop.gd"
+RunState="*res://autoload/run_state.gd"
 
 [display]
 

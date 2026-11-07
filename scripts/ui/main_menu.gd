@@ -2,7 +2,8 @@ extends Control
 ## Minimal main menu until the run map exists. Navigate with stick / D-pad or WASD, A / Space to select.
 
 const ITEMS := [
-	["Streets (co-op level)", "res://scenes/streets.tscn"],
+	["New Run - Streets", "run"],
+	["Streets (full test level)", "res://scenes/streets.tscn"],
 	["Training Room", "res://scenes/training.tscn"],
 	["Quit", ""],
 ]
@@ -18,9 +19,9 @@ func _ready() -> void:
 	var e := Environment.new()
 	e.background_mode = Environment.BG_CANVAS
 	e.glow_enabled = true
-	e.glow_intensity = 0.4
-	e.glow_strength = 0.75
-	e.glow_hdr_threshold = 1.3
+	e.glow_intensity = 0.22
+	e.glow_strength = 0.6
+	e.glow_hdr_threshold = 1.7
 	env.environment = e
 	add_child(env)
 	Engine.time_scale = 1.0
@@ -39,7 +40,11 @@ func _process(delta: float) -> void:
 			var path: String = ITEMS[_sel][1]
 			if path == "":
 				get_tree().quit()
+			elif path == "run":
+				RunState.start_run()
+				get_tree().change_scene_to_file("res://scenes/run_map.tscn")
 			else:
+				RunState.end_run()
 				get_tree().change_scene_to_file(path)
 			return
 	queue_redraw()

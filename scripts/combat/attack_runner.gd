@@ -18,6 +18,7 @@ var _hold_frames := 0
 var _wait_frames := 0
 var _tilt := 0.0
 var _spun := false
+var _spd_acc := 0.0
 
 
 func _init(a: Actor = null) -> void:
@@ -38,6 +39,7 @@ func start(m: MoveData, btn := -1) -> void:
 	_wait_frames = 0
 	_tilt = 0.0
 	_spun = false
+	_spd_acc = 0.0
 	actor.figure.follow_speed = 52.0
 	actor.figure.zeta = 0.36  # under-damped spring: strong overshoot + settle
 	actor.squash = Vector2(0.76, 1.26)  # anticipation: coil up before the strike
@@ -57,6 +59,17 @@ func can_chain() -> bool:
 func tick() -> void:
 	if not active:
 		return
+	_tick_once()
+	if active:
+		var spd := actor.upgrade_mult(move.id, "spd")
+		if spd > 1.0:
+			_spd_acc += spd - 1.0
+			if _spd_acc >= 1.0:
+				_spd_acc -= 1.0
+				_tick_once()
+
+
+func _tick_once() -> void:
 	_keyframes()
 	_events()
 	_spin_drive()
@@ -308,7 +321,9 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	var info := HitInfo.new()
 	info.attacker = a
 	info.team = a.team
-	info.dmg = float(h["dmg"]) * a.dmg_mult()
+	info.dmg = float(h["dmg"]) * a.dmg_mult() * a.upgrade_mult(move.id, "dmg")
+	if a.team == "enemy":
+		info.dmg *= Coop.enemy_dmg_mult
 	info.stun = int(h["stun"])
 	info.kind = String(h["kind"])
 	info.stop = int(h["stop"]) + (4 if float(h["dmg"]) >= 18.0 else (2 if float(h["dmg"]) >= 9.0 else 1))
@@ -321,7 +336,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.color = h.get("color", a.figure.color)
 	info.friendly = (t is Actor and (t as Actor).team == a.team)
 	info.pos = rect.get_center().clamp(t.get_hurt_rect().position, t.get_hurt_rect().end)
-	var kb: Vector2 = h["kb"]
+	var kb: Vector2 = (h["kb"] as Vector2) * a.upgrade_mult(move.id, "kb")
 	if bool(h["radial"]):
 		var dx: float = t.get_hurt_rect().get_center().x - a.global_position.x
 		var s := signf(dx) if absf(dx) > 4.0 else float(a.facing)

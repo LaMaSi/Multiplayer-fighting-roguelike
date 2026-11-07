@@ -72,10 +72,14 @@ func _process(delta: float) -> void:
 		for p in Inp.players:
 			if p.pressed(PlayerInput.Btn.JUMP):
 				if _result_win:
+					level.finish_level()
+				elif RunState.active:
+					RunState.end_run()
 					level.to_menu()
 				else:
 					level.restart()
-			elif p.pressed(PlayerInput.Btn.B):
+			elif p.pressed(PlayerInput.Btn.B) and not _result_win:
+				RunState.end_run()
 				level.to_menu()
 	_canvas.queue_redraw()
 
@@ -117,8 +121,8 @@ func paint(c: Control) -> void:
 	if _result != "":
 		c.draw_rect(Rect2(0, 0, 1280, 720), Color(0, 0, 0, 0.6))
 		_text(c, Vector2(240, 300), _result, 84, Color(0.6, 1.0, 0.8) if _result_win else Color(1, 0.4, 0.4), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		_text(c, Vector2(240, 370), "Best combo %d" % Coop.best_combo, 26, Color(1, 1, 1), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		var prompt := "A: main menu     B: main menu" if _result_win else "A: try again     B: main menu"
+		_text(c, Vector2(240, 370), "Best combo %d" % maxi(Coop.best_combo, RunState.best_combo), 26, Color(1, 1, 1), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
+		var prompt := "A: continue" if _result_win else ("A: main menu   (run over)" if RunState.active else "A: try again     B: main menu")
 		_text(c, Vector2(240, 430), prompt, 22, Color(1, 1, 1, 0.85), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
 
 

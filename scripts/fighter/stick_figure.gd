@@ -30,6 +30,8 @@ const NEUTRAL := {
 var color := Color(0.3, 1.5, 1.8)
 var style := ""  ## "", "helmet", "crown", "cap", "horns", "hood"
 ## body build (enemies differ from the round-headed, line-only players)
+var arm_scale := 1.0  ## limb lengths (players have longer arms and legs)
+var leg_scale := 1.0
 var limb_scale := 1.0
 var head_scale := 1.0
 var fill_torso := false
@@ -88,7 +90,7 @@ static func _v(angle: float, length: float) -> Vector2:
 
 
 func _draw() -> void:
-	var pivot_y := lerpf(-40.0, -9.0, clampf(float(pose["lie"]), 0.0, 1.0))
+	var pivot_y := lerpf(-40.0 * leg_scale, -9.0, clampf(float(pose["lie"]), 0.0, 1.0))
 	var pivot := Vector2(0, pivot_y)
 	var off := Vector2.ZERO
 	if jitter > 0.0:
@@ -155,10 +157,10 @@ func _render(halo: bool) -> void:
 	var th_b: float = p["th_b"]
 	var lr_f: float = p["legr_f"]
 	var lr_b: float = p["legr_b"]
-	var kn_f_pos := _v(th_f, THIGH * lr_f)
-	var ft_f_off := _v(th_f - float(p["kn_f"]), SHIN * lr_f)
-	var kn_b_pos := _v(th_b, THIGH * lr_b)
-	var ft_b_off := _v(th_b - float(p["kn_b"]), SHIN * lr_b)
+	var kn_f_pos := _v(th_f, THIGH * lr_f * leg_scale)
+	var ft_f_off := _v(th_f - float(p["kn_f"]), SHIN * lr_f * leg_scale)
+	var kn_b_pos := _v(th_b, THIGH * lr_b * leg_scale)
+	var ft_b_off := _v(th_b - float(p["kn_b"]), SHIN * lr_b * leg_scale)
 	var hip := Vector2(p["root_x"], -maxf(kn_f_pos.y + ft_f_off.y, kn_b_pos.y + ft_b_off.y) + float(p["root_y"]))
 
 	var hr := HEAD_R * head_scale
@@ -177,10 +179,10 @@ func _render(halo: bool) -> void:
 	var ua_f: float = p["ua_f"]
 	var rc_f: float = p["reach_f"]
 	var rc_b: float = p["reach_b"]
-	var arm_f_a := _v(ua_f, UARM * rc_f)
-	var arm_f_b := _v(ua_f + float(p["la_f"]), LARM * rc_f)
-	var arm_b_a := _v(ua_b, UARM * rc_b)
-	var arm_b_b := _v(ua_b + float(p["la_b"]), LARM * rc_b)
+	var arm_f_a := _v(ua_f, UARM * rc_f * arm_scale)
+	var arm_f_b := _v(ua_f + float(p["la_f"]), LARM * rc_f * arm_scale)
+	var arm_b_a := _v(ua_b, UARM * rc_b * arm_scale)
+	var arm_b_b := _v(ua_b + float(p["la_b"]), LARM * rc_b * arm_scale)
 	if not halo:
 		head_pos = head_c
 		hand_f_pos = shoulder + arm_f_a + arm_f_b
@@ -202,7 +204,7 @@ func _render(halo: bool) -> void:
 	_limb(hip, kn_f_pos, ft_f_off, 5.5 * ls, col_f, halo, float(p["foot_f"]))
 	# head
 	if halo:
-		draw_circle(head_c, hr + 4.0, Color(col_f.r, col_f.g, col_f.b, 0.05))
+		draw_circle(head_c, hr + 3.5, Color(0.02, 0.01, 0.05, 0.88))
 	else:
 		if square_head:
 			var rx := Vector2(cos(head_ang), sin(head_ang)) * hr
@@ -251,8 +253,8 @@ func _limb(origin: Vector2, a_off: Vector2, b_off: Vector2, w: float, col: Color
 
 func _seg(a: Vector2, b: Vector2, w: float, col: Color, halo: bool) -> void:
 	if halo:
-		var hc := Color(col.r, col.g, col.b, 0.06)
-		w += 6.0
+		var hc := Color(0.02, 0.01, 0.05, 0.88)  # dark outline: separates the figure from busy backgrounds
+		w += 5.0
 		draw_line(a, b, hc, w, true)
 		draw_circle(a, w * 0.5, hc)
 		draw_circle(b, w * 0.5, hc)

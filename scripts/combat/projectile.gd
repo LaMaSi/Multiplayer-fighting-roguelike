@@ -31,7 +31,7 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.owner_actor = a
 	p.team = a.team
 	p.shape = String(e["kind"])
-	p.dmg = float(e["dmg"]) * a.dmg_mult()
+	p.dmg = float(e["dmg"]) * a.dmg_mult() * (a.upgrade_mult(a.attack.move.id, "dmg") if a.attack.move != null else 1.0)
 	p.stun = int(e["stun"])
 	p.kb = e["kb"]
 	p.kind = String(e.get("pkind", "normal"))

@@ -26,6 +26,7 @@ var revives_left := 3
 var is_over := false
 
 var enemy_hp_mult := 1.0
+var enemy_dmg_mult := 1.0
 var tokens_max := 2
 var _tokens: Array = []
 
@@ -44,6 +45,7 @@ func reset_run() -> void:
 	revives_left = 3
 	is_over = false
 	enemy_hp_mult = 1.0
+	enemy_dmg_mult = 1.0
 	_tokens.clear()
 
 

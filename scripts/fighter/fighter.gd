@@ -14,7 +14,7 @@ const JUMP_BUFFER := 0.12
 const DROP_MAX_TIME := 0.6
 const TURN_DELAY := 4
 ## Reserved: cyan and lime appear nowhere else in the game (enemies are red/orange/amber/crimson).
-const PLAYER_COLORS := [Color(0.2, 1.5, 2.3), Color(0.75, 2.2, 0.25)]
+const PLAYER_COLORS := [Color(0.15, 1.0, 1.28), Color(0.55, 1.28, 0.15)]
 
 @export var player_index := 0
 
@@ -48,6 +48,7 @@ var _ghost_tick := 0.0
 
 func _configure() -> void:
 	team = "player"
+	body_h = 100.0
 	max_hp = 100.0
 	hp = max_hp
 	run_speed = RUN_SPEED
@@ -59,9 +60,13 @@ func _ready() -> void:
 	set_collision_layer_value(3, true)
 	set_collision_mask_value(3, true)
 	figure.color = PLAYER_COLORS[player_index % PLAYER_COLORS.size()]
+	figure.arm_scale = 1.22
+	figure.leg_scale = 1.2
 	input = Inp.players[player_index]
 	spawn_point = global_position
 	loadout = MoveDB.STARTER.duplicate()
+	if RunState.active:
+		RunState.apply_to(self)
 	Coop.fighters.append(self)
 	tree_exiting.connect(func(): Coop.fighters.erase(self))
 

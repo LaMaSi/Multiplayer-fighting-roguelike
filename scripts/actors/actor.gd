@@ -35,6 +35,7 @@ var attack: AttackRunner
 var last_hitter: Actor = null
 var juggle_hits := 0
 var buffs: Dictionary = {}
+var upgrades: Dictionary = {}  ## move_id -> {dmg, spd, kb} multipliers earned from rewards
 var squash := Vector2.ONE
 var holder: Node = null
 var thrown_by: Actor = null
@@ -152,6 +153,12 @@ func dmg_mult() -> float:
 
 func take_mult() -> float:
 	return 1.3 if has_buff("rage") else 1.0
+
+
+## Reward upgrades for a move (chain parts jab2/jab3 count as "jab").
+func upgrade_mult(move_id: String, stat: String) -> float:
+	var u: Dictionary = upgrades.get(move_id.rstrip("0123456789"), {})
+	return float(u.get(stat, 1.0))
 
 
 func heal(amount: float) -> void:
@@ -343,7 +350,7 @@ func _physics_process(delta: float) -> void:
 		freeze -= 1
 		figure.frozen = true  # hold the pose on impact
 		figure.jitter = 3.0 if _victim_freeze else 0.0
-		figure.self_modulate = Color(2.6, 2.6, 2.6) if flash_t > 0.0 else Color.WHITE
+		figure.self_modulate = Color(1.9, 1.9, 1.9) if flash_t > 0.0 else Color.WHITE
 		return
 	figure.jitter = 0.0
 	figure.frozen = false

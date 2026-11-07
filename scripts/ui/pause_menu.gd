@@ -61,7 +61,9 @@ func _items() -> Array:
 	var out: Array = [["resume", "Resume"],
 		["ff", "Friendly fire: %s" % ("ON" if Coop.friendly_fire else "OFF")],
 		["ffscale", "Friendly fire damage: %d%%" % int(Coop.ff_scale * 100.0)],
-		["lo0", "Move Lab - Player 1"], ["lo1", "Move Lab - Player 2"]]
+		]
+	if not RunState.active:
+		out.append_array([["lo0", "Move Lab - Player 1"], ["lo1", "Move Lab - Player 2"]])
 	if level is TrainingLevel:
 		out.append_array([["spawn_kind", "Enemy to spawn: %s   (A: spawn)" % SPAWNABLE[_spawn_idx]], ["crate", "Spawn a crate"], ["heal", "Heal both players"]])
 	out.append_array([["restart", "Restart level"], ["menu", "Main menu"]])

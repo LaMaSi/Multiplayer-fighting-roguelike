@@ -123,6 +123,8 @@ static func afterimage(parent: Node, figure: StickFigure, col: Color) -> void:
 	g.color = col
 	g.style = figure.style
 	g.limb_scale = figure.limb_scale
+	g.arm_scale = figure.arm_scale
+	g.leg_scale = figure.leg_scale
 	g.head_scale = figure.head_scale
 	g.fill_torso = figure.fill_torso
 	g.square_head = figure.square_head
