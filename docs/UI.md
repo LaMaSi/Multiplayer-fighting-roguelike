@@ -33,11 +33,17 @@ Look and colour rules: `STYLEGUIDE.md`. All screens share `scripts/ui/ui_kit.gd`
 
 
 ## Start screen (`scripts/ui/main_menu.gd`)
-- Synthwave backdrop (`ScreenBackdrop`), tilted neon title, button list, and the two players standing on screen in the class and weapon they picked (they update live).
-- Main page: NEW RUN, a class selector per player (left/right cycles; the Magic toggle lives in Testing), TRAINING ROOM, OPTIONS, TESTING, QUIT.
+- Synthwave backdrop (`ScreenBackdrop`), tilted neon title, button list, and the two players standing on screen in the classes they last chose.
+- Main page: NEW RUN, TRAINING ROOM, UNLOCKS (placeholder for the meta progression), OPTIONS, TESTING, QUIT. There are no class selectors on this page any more.
 - Options (shared with the pause menu, `scripts/ui/options_list.gd`): fullscreen, friendly fire and its damage, move grid, hit explosion size, screen effect.
 - Testing: full test level, shop preview, Magic class unlock.
 - Stick up/down moves, left/right changes a value, A selects, B goes back; either player can drive it.
+
+## Weapon choice and move reveal (`scripts/ui/run_setup.gd`)
+- NEW RUN opens this screen. Each player picks Brawler, Sword, Hammer, Magic (locked until unlocked) or **Random**: stick up/down, A locks in, B unlocks, B with nobody locked goes back. A live preview figure shows the weapon, with the role, description and speed / health / reach / damage bars.
+- When both are locked in, the run is created (`RunState.start_run()`) and the **reveal** shows what each player rolled: **B, UP + B, SIDE + B, X and Y** (nothing else at the start, in particular no UP + Y). Rows roll in one after another; a random pick is tagged RANDOM and shows the class it became. A skips the roll, then both players press A to start.
+- TRAINING ROOM opens the same screen (`RunSetup.mode = "training"`) and goes straight into the training room with the chosen classes, no reveal.
+- Test: `tests/run_setup_test.tscn`.
 
 ## Pause menu (`scripts/ui/pause_menu.gd`)
 - Start / Esc. Pages: main, options, testing, move lab, loadout. The game HUD is hidden while paused.

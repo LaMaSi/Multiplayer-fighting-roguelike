@@ -73,6 +73,20 @@ func _ready() -> void:
 	check("Y move to an empty Y slot, upgrades stay with the move", lo["Y_SIDE"] == "uppercut" and (RunState.upgrades[0] as Dictionary).has("uppercut"))
 	lv.cursor[0] = s.find("X")
 	check("lifting from an empty slot does nothing", not lv.press(0) and lv.holding[0] == "")
+	# the user's example: B and up+B swap, and rows never mix (also for a legacy no-class fighter)
+	lv.cursor[0] = s.find("B_DOWN")
+	lv.press(0)
+	lv.cursor[0] = s.find("B_UP")
+	check("a B move can move to up+B (same button, new direction)", lv.press(0) and lo["B_UP"] == b_ids[0] and not lo.has("B_DOWN"))
+	var legacy := LoadoutView.new(
+		func(_p: int) -> Dictionary: return {"X": "jab", "Y": "fireball"},
+		func(_p: int, _slot: String, _id: String) -> void: pass,
+		func(_p: int) -> String: return "",
+		func(_p: int) -> Dictionary: return {})
+	legacy.cursor[0] = s.find("X")
+	legacy.press(0)
+	legacy.cursor[0] = s.find("Y")
+	check("even a no-class fighter cannot move X onto Y", not legacy.press(0) and legacy.holding[0] == "X")
 	# the other player is independent
 	lv.cursor[1] = s.find("X")
 	lv.press(1)
@@ -139,8 +153,13 @@ func _ready() -> void:
 	await frames(5)
 	await snap(out + "/ui_pause.png")
 	level.menu._go("loadout", 0)
-	level.menu._lv.cursor[0] = 2
-	level.menu._lv.holding[0] = "X_SIDE" if Coop.fighters[0].loadout.has("X_SIDE") else ""
+	var lifted := ""
+	for sl in ["B", "B_UP", "B_SIDE", "B_DOWN"]:
+		if Coop.fighters[0].loadout.has(sl):
+			lifted = sl
+			break
+	level.menu._lv.holding[0] = lifted
+	level.menu._lv.cursor[0] = LoadoutView.SLOTS.find("B_UP" if lifted != "B_UP" else "B_DOWN")
 	await frames(5)
 	await snap(out + "/ui_pause_loadout.png")
 	print("DONE fails=%d" % fails)

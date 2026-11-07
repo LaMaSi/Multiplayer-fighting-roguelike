@@ -3,7 +3,7 @@ extends Control
 ## players on screen showing the class they picked. Pages: main, options, testing.
 ## Stick up/down moves, left/right changes a value, A selects, B goes back. Either player can drive it.
 
-const CLASS_CYCLE := ["", "brawler", "sword", "hammer", "magic"]
+const CLASS_CYCLE := ["brawler", "sword", "hammer", "magic"]
 
 class View extends Control:
 	var menu: Control
@@ -26,6 +26,9 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Engine.time_scale = 1.0
 	Dbg._hint.visible = false
+	for i in 2:
+		if not (RunState.classes[i] in CLASS_CYCLE):
+			RunState.classes[i] = "brawler"
 	add_child(ScreenBackdrop.new())
 	var figs := Node2D.new()
 	add_child(figs)
@@ -59,7 +62,7 @@ func _items() -> Array:
 				["magic", "MAGIC CLASS", "UNLOCKED" if RunState.magic_unlocked else "LOCKED"], ["back", "BACK", ""]]
 	if _page == "meta":
 		return [["back", "BACK", ""]]
-	return [["run", "NEW RUN", "STREETS"], ["class0", "", ""], ["class1", "", ""], ["training", "TRAINING ROOM", ""],
+	return [["run", "NEW RUN", "STREETS"], ["training", "TRAINING ROOM", ""],
 		["meta", "UNLOCKS", "SOON"], ["options", "OPTIONS", ""], ["testing", "TESTING", ""], ["quit", "QUIT", ""]]
 
 
@@ -92,13 +95,11 @@ func _physics_process(_delta: float) -> void:
 
 ## Row of the main list that opens a sub page (so B returns to it).
 func _main_index(page: String) -> int:
-	return {"meta": 4, "options": 5, "testing": 6}.get(page, 0)
+	return {"meta": 2, "options": 3, "testing": 4}.get(page, 0)
 
 
 func _side(id: String, dx: int) -> void:
-	if id.begins_with("class"):
-		_cycle_class(int(id.substr(5)), dx)
-	elif _page == "options":
+	if _page == "options":
 		OptionsList.adjust(id, dx)
 		Sfx.play("ui")
 	elif id == "magic":
@@ -106,9 +107,6 @@ func _side(id: String, dx: int) -> void:
 
 
 func _activate(id: String) -> void:
-	if id.begins_with("class"):
-		_cycle_class(int(id.substr(5)), 1)
-		return
 	if _page == "options":
 		if id == "back":
 			_go_page("main", _main_index("options"))
@@ -131,12 +129,12 @@ func _activate(id: String) -> void:
 			get_tree().quit()
 		"run":
 			Sfx.play("pickup")
-			RunState.start_run()
-			get_tree().change_scene_to_file("res://scenes/run_map.tscn")
+			RunSetup.mode = "run"  # weapon choice and the move reveal happen on the next screen
+			get_tree().change_scene_to_file("res://scenes/run_setup.tscn")
 		"training":
 			Sfx.play("pickup")
-			RunState.end_run()
-			get_tree().change_scene_to_file("res://scenes/training.tscn")
+			RunSetup.mode = "training"
+			get_tree().change_scene_to_file("res://scenes/run_setup.tscn")
 		"streets":
 			Sfx.play("pickup")
 			RunState.end_run()
@@ -154,17 +152,7 @@ func _toggle_magic() -> void:
 	if not RunState.magic_unlocked:
 		for i in 2:
 			if RunState.classes[i] == "magic":
-				RunState.classes[i] = ""
-	Sfx.play("ui")
-
-
-func _cycle_class(player: int, dx: int) -> void:
-	var i := CLASS_CYCLE.find(RunState.classes[player])
-	for _n in CLASS_CYCLE.size():
-		i = posmod(i + dx, CLASS_CYCLE.size())
-		if CLASS_CYCLE[i] != "magic" or RunState.magic_unlocked:
-			break
-	RunState.classes[player] = CLASS_CYCLE[i]
+				RunState.classes[i] = "brawler"
 	Sfx.play("ui")
 
 
@@ -188,26 +176,6 @@ func _process(delta: float) -> void:
 
 
 # ------------------------------------------------------------------ drawing
-
-func _class_name(player: int) -> String:
-	var cid: String = RunState.classes[player]
-	return "FISTS" if cid == "" else String(ClassData.get_class_data(cid)["name"]).to_upper()
-
-
-func _class_row(c: Control, r: Rect2, player: int, selected: bool) -> void:
-	var pc := UiKit.player_color(player)
-	var p := UiKit.chamfer(r, 12.0)
-	if selected:
-		UiKit.glow_poly(c, p, Color(pc.r, pc.g, pc.b, 1.0) * 1.6, 0.22)
-	c.draw_colored_polygon(p, Color(pc.r * 0.15, pc.g * 0.15, pc.b * 0.15, 0.9))
-	UiKit.poly_line(c, p, UiKit.TEXT if selected else Color(pc.r, pc.g, pc.b, 0.75), 4.0 if selected else 3.0)
-	if selected:
-		var my := r.position.y + r.size.y * 0.5
-		c.draw_colored_polygon(PackedVector2Array([Vector2(r.position.x - 26, my - 12), Vector2(r.position.x - 8, my), Vector2(r.position.x - 26, my + 12)]), UiKit.PINK)
-	UiKit.txt(c, UiKit.head(), r.position + Vector2(22, r.size.y * 0.5 + 7), "P%d" % (player + 1), 17, pc)
-	var name := _class_name(player)
-	UiKit.txt(c, UiKit.head(), r.position + Vector2(0, r.size.y * 0.5 + 7), ("<  %s  >" % name) if selected else name, 17, UiKit.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 20.0)
-
 
 ## Placeholder for the meta progression (docs/ECONOMY.md §1): a greyed preview of what will be
 ## unlockable. Nothing here is wired up yet.
@@ -251,11 +219,6 @@ func paint(c: Control) -> void:
 		var r := Rect2(110, y0 + i * 52.0, 360, 42)
 		var id: String = items[i][0]
 		var sel := i == _sel
-		if _page == "main" and id.begins_with("class"):
-			_class_row(c, r, int(id.substr(5)), sel)
-		else:
-			var adj := _page == "options" and id != "back" and id != "post" or id == "magic"
-			if _page == "options" and id == "post":
-				adj = true
-			UiKit.button(c, r, String(items[i][1]), sel, String(items[i][2]), adj)
+		var adj := (_page == "options" and id != "back") or id == "magic"
+		UiKit.button(c, r, String(items[i][1]), sel, String(items[i][2]), adj)
 	UiKit.txt(c, UiKit.body(), Vector2(900, 700), "V0.1  ·  GODOT 4.5", 16, Color(0.6, 0.6, 0.8), HORIZONTAL_ALIGNMENT_RIGHT, 340.0, 3)

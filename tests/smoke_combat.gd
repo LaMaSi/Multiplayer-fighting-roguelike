@@ -75,6 +75,7 @@ func spawn_dummy(pos: Vector2) -> Enemy:
 
 
 func _ready() -> void:
+	RunState.classes = ["", ""]  # this test is written for the legacy no-class fighter
 	await _run()
 	print("RESULT: ", "ALL PASSED" if fails == 0 else "%d FAILED" % fails)
 	get_tree().quit(fails)
