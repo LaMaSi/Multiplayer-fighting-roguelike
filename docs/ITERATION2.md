@@ -35,7 +35,7 @@ Context: the first playtests ran fine. All 30 moves from `PLAN.md` are implement
 2. **Objective banner**: at the start of a level a short line such as "Break through to the generator" fades in and then remains as a small HUD line.
 3. **Wave locks**: the camera locks at arena points. Enemies spawn in waves (2-3 waves per arena). When cleared, a blinking **GO >>** arrow appears and the camera unlocks. This gives pacing and the feeling of progress.
 4. **Level end rank**: S/A/B/C/D from combo peak, damage taken, time against a par time and containers broken. The rank influences the reward quality (e.g. S offers 4 move cards instead of 3, or an extra upgrade).
-6. **Reward screen rework**: simultaneous picks, rock-paper-scissors on clashes, per `DESIGN.md` §3. Also the loadout swap from `DESIGN.md` §4.
+6. **Reward screen rework** per `DESIGN.md` §3: (a) a shared X/Y move choice (3 cards, simultaneous picks, RPS on clashes), then (b) a personal level-up for each player (3 own cards: new B move, empower, max HP, team card, generic super). Also the loadout swap from `DESIGN.md` §4.
 5. **Urgency without a hard timer**: the waves, the par-time rank bonus and an optional "danger" background track layer at low HP. Do not add a failing timer in this iteration.
 
 ## 3. Phase C: classes (do after A and B are stable)

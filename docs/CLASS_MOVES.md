@@ -4,7 +4,7 @@ Status: proposal for review. The names of the existing moves (✔ = already impl
 
 ## 1. Rules for B moves
 
-- 5 B slots: **B, B+Up, B+Forward, B+Down, B+Back** (forward/back relative to facing). Every class has **8 B moves**, so 3 are spares for rewards.
+- 5 B slots: **B, B+Up, B+Forward, B+Down, B+Back** (forward/back relative to facing). Every class has **8 B moves**, so 5 are unlocked later **through the personal level-up** (`DESIGN.md` §3.2), and B moves are never part of the shared X/Y card choice.
 - B slots accept only moves of the player's own class. The moves are slot-agnostic: any of the 8 can go in any of the 5 slots.
 - **Starter roll** (run start): B, B+Forward and B+Up are filled with random moves from the class marked ★ (starter-safe). Rules for the roll: no two moves with the same role, and at least one move must be usable at mid range.
 - **LT version:** holding LT during the move spends a little Style meter for a stronger/larger version (listed per move).

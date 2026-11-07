@@ -30,10 +30,10 @@ If a feature fails 1-3 it needs a co-op twist or gets cut. If it fails 4 or 5 it
 |---|---|---|
 | Shared combo counter, juggle relay | good | Keep. Make relay bonuses visible and loud |
 | Revive | good | Keep. Add a revive-ring visual and a "carry me" option later |
-| Reward screen (sequential picks) | **fails** | Replace with §3 |
+| Reward screen (sequential picks) | **fails** | Replace with §3 (shared X/Y choice with RPS clash, plus personal level-up) |
 | Random run-start loadout | partial | Players may **swap one move with each other** on the loadout screen (§4) |
 | Class pick | ok | Class gives a *role* (see §6 class synergies) |
-| Level-up: +HP / empower a move | partial | Make it a joint choice: one option for each player or one team upgrade |
+| Level-up: +HP / empower / new B move | partial | Personal choice (§3.2) with simultaneous picks, visible partner cards and a guaranteed team card |
 | Rank at level end | partial | Team rank; add bonus points for relay hits and rescues |
 | RT dash | neutral | Add: dash through the partner to give them a short speed boost? (optional, test) |
 | Super meter | partly decided | Style meter, §5. Open: owner (shared Link vs individual) |
@@ -44,25 +44,49 @@ If a feature fails 1-3 it needs a co-op twist or gets cut. If it fails 4 or 5 it
 - Magic is unlocked through meta progression. Brawler, Sword and Hammer (decide in a later review) are available from the start; Magic locked.
 - **No separate mana bar.** Magic's heavy cost is solved through the super meter session (§5).
 
-## 3. Reward screen (replaces sequential picks)
+## 3. Rewards after a level: two parts
 
-Goal: a short, tense, funny moment that both players share.
+Clearing a level gives **both** of these, one after the other (the shared choice first, then the personal level-up). Each is a short, tense moment.
 
-1. Show **3 random move cards**. Cards are drawn so that each player has at least one card they can use (class restriction is shown on the card).
-2. **Both players pick at the same time** (stick to a card, press A to lock in). Each sees a cursor of the other.
+### 3.1 Shared move choice (X and Y moves only)
+
+Goal: the team decides together what the team can do.
+
+1. Show **3 random move cards**, all **X or Y moves** (never B moves). X moves are universal and Y moves are adaptive, so **every card is usable by both players**. There are no class-locked cards here.
+2. **Both players pick at the same time** (stick to a card, press A to lock in). Each sees the other's cursor.
 3. **Different cards:** both get their pick. The third card is discarded.
 4. **Same card (a clash):** play **Rock-Paper-Scissors** with face buttons: **X = rock, Y = paper, B = scissors**. 3-2-1 countdown, then reveal. Ties repeat.
    - The **winner** keeps the card.
    - The **loser** chooses from the **remaining two** cards.
-5. Edge cases:
-   - A class-locked card cannot be clashed over by a player who can't use it (they can still point at it, but not lock in).
-   - If only one player can use any given card, no clash is possible.
-   - If a player cannot use any remaining card (e.g. only an incompatible one left), offer a heal/upgrade instead.
-   - Players who disconnect/don't press in 15 s auto-pick the leftmost card they can use.
-6. After picking, each player chooses which slot gets the new move (can be done simultaneously).
-7. Juice: cards flip in, clash animation with both hands "slamming" on the card, the RPS countdown with screen shake, and a loser's "ahh" reaction.
+5. After picking, each player chooses which X or Y slot gets the move (simultaneously). If all of that button's slots are full, the card replaces one move.
+6. Players who don't press within 15 s auto-pick the leftmost card.
+7. Juice: cards flip in, both hands "slam" the card in a clash, a screen-shake countdown, the loser's reaction.
 
-Same system for **level-ups and upgrades**: 3 team-upgrade cards (e.g. +max HP for both, empower a move for one, bigger revive window), with the same clash rule.
+### 3.2 Personal level-up (individual choice, B moves live here)
+
+Goal: your build, your character, your decision, but visible to your partner.
+
+1. Each player gets their **own set of 3 level-up cards**, drawn from their own pool. Both choose **at the same time**, and each can see the other's cards and cursor, so they can talk about it.
+2. **Card types:**
+   - **New B move:** one of your class's remaining B moves (a player starts with 3 of 8; 5 can be unlocked). You then choose the B slot it goes into. **All new B moves come only from level-ups.**
+   - **Empower a move:** pick one of your equipped moves and upgrade it (more damage, reach, less recovery, or a better LT version; tiers with a cap).
+   - **Max HP:** more health.
+   - **Style/meter perks:** e.g. faster fill from relay hits.
+   - **Generic super:** choose 1 of the 8 generic supers (proposed way to acquire it).
+   - **For my partner (a team card):** a perk that benefits the **partner** or both of you (e.g. partner +max HP, faster revive, stronger Heal Pulse). At least **one team card** is in every set, so there is always a way to choose the team over yourself.
+3. Cards are weighted so each set has at most one B move card, and shows the move's tier and class tag.
+4. No clash rule here (the sets are different). Both confirm to continue.
+5. **Rank bonus:** a high team rank (S) adds a 4th card to both sets and to the shared choice; a low rank (D) removes one.
+
+### 3.3 Pacing and scarcity (open, default given)
+
+- Slots: X 5 and Y 5 (X starts with 1) plus B 5 (starts with 3). That is 9 X/Y slots and 2 B slots to fill.
+- With about 12-15 levels per run and a shared move card every level, all X/Y slots fill after about 9 levels. Default: after that, shared cards offer **replace** or an **upgrade** choice instead.
+- If you want "not every level gives a move" (from the first idea), the default is to skip the shared choice on a few levels (e.g. after boss nodes get a bigger reward instead). Decide later.
+
+### 3.4 Co-op test for this system
+- Shared choice: pass (communication, clash, shared consequence).
+- Personal level-up: weaker on its own, so it has mitigations: simultaneous picks, visible partner cards, the guaranteed team card, shared rank bonus.
 
 ## 4. Run start
 
