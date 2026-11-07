@@ -6,7 +6,7 @@ Context: the first playtests ran fine. All 30 moves from `PLAN.md` are implement
 
 | Topic | Decision |
 |---|---|
-| X / Y moves | Split: **X = universal** (identical for every class, at least 10 moves), **Y = adaptive** (modified by class, at least 10 moves). Biggest class difference lives in B moves. See `DESIGN.md` for the co-op philosophy that overrides everything here |
+| X / Y moves | Split: **X = universal** (identical for every class, exactly 10 moves), **Y = adaptive** (modified by class, exactly 10 moves). Biggest class difference lives in B moves. See `DESIGN.md` for the co-op philosophy that overrides everything here |
 | Class pick | Player chooses the class. Moves are random |
 | Start loadout | Only X, B, side+B and up+B are filled. No Y moves at start. The other slots are empty and get filled by rewards |
 | B slots | Always weapon-specific. 5 B slots (B, up, side, down, back/other side), 8 moves per class, so 3 are spares/rewards |
@@ -47,8 +47,8 @@ Yes, with three clear tiers, so the player always knows what a move does:
 | Tier | Slots | Behaviour | Marker |
 |---|---|---|---|
 | **Weapon** | B (5 slots) | Class-specific, 8 per class, strongest and defines the playstyle | class colour icon |
-| **Adaptive** | Y (5 slots, empty at start) | Same move for everyone, but a class modifier table changes reach, speed, damage, visual (fist, blade, hammer, glowing hand). At least 10 moves | "adapts" tag |
-| **Universal (off-hand)** | X (5 slots, X neutral filled at start with Off-hand Jab) | Never changes: punches, small projectile, block, grab, heal, co-op moves, Pocket Mine. Name/description says so (e.g. "Off-hand Jab"). At least 10 moves | "off-hand" tag |
+| **Adaptive** | Y (5 slots, empty at start) | Same move for everyone, but a class modifier table changes reach, speed, damage, visual (fist, blade, hammer, glowing hand). 10 moves | "adapts" tag |
+| **Universal (off-hand)** | X (5 slots, X neutral filled at start with Off-hand Jab) | Never changes: punches, small projectile, block, grab, heal, co-op moves, Pocket Mine. Name/description says so (e.g. "Off-hand Jab"). 10 moves | "off-hand" tag |
 
 Why this works: it solves the problem that the Hammer can't hit up close (an off-hand punch is the answer, so the dead zone becomes a choice rather than a handicap) and the Magic user always has a free attack when out of mana. It also keeps the move reward pool large, because most rewards work for everyone.
 
@@ -56,16 +56,15 @@ Risks to watch:
 - **Homogenisation**: if universal moves are as strong as B moves, class choice stops mattering. Rule: universal moves get a lower damage ceiling and little knockback, and B moves must win in DPS. Check this in the Move Lab.
 - **Balance explosion**: do not hand-tune every adaptive move per class. Use one table of multipliers per class (reach, startup, recovery, damage, knockback), plus an optional per-move override only when a combination looks wrong.
 - **Readability**: always show the tier tag on reward cards.
-- **Generic count**: at least 10 universal (X) and at least 10 adaptive (Y), so 20+ in total.
+- **Generic count**: exactly 10 universal (X) and 10 adaptive (Y).
 - Magic: no mana bar. Its B-move cost design is part of the super meter planning session (`DESIGN.md` §5).
 
 ### 3.2 Proposed split of the existing 30 moves
 
 - **Retire**: Dodge Roll Strike (replaced by the RT dash). New: **Pocket Mine** (universal).
-- **Universal, X (12)**: Off-hand Jab (start), Back Kick, Guard Block, Reflect Shield, Grab & Throw, Pull Hook, Ally Toss, Heal Pulse, Rage Taunt, Boost Spark, Pocket Mine, Spark Shot (small projectile, not affected by weapon).
-- **Adaptive, Y (9 existing + at least 1 new)**: Uppercut, Leg Sweep, Spin Kick, Cyclone, Shockwave Stomp, Dive Kick, Anti-air Hook, Pillar Smash, Flurry, plus one new adaptive move to reach 10.
+- **Universal, X (10)** and **Adaptive, Y (10)**: fully specified in `CLASS_MOVES.md` §6 and §7 (class modifier table, co-op hooks, Magic marks).
 - **Class B moves (8 per class):** fully specified in `CLASS_MOVES.md` (Brawler, Sword, Hammer, Magic), including LT versions, co-op hooks, the Magic mark system and the weapon supers.
-- Total pool is 54 moves, 24 of them new (see `CLASS_MOVES.md` §6).
+- Total pool is 52 moves, 25 of them new (see `CLASS_MOVES.md` §8).
 
 ### 3.3 Class definitions
 
@@ -105,6 +104,24 @@ Implementation notes:
 - The crouch (down) is derived per class: Hammer sinks the head low, Sword goes to a low guard, Fist tucks the guard, Magic lowers the floating height.
 - The eyes follow the stick on all classes. Their size and shape stay the same so players recognise their stickfigure.
 - Silhouettes need to be clearly different at gameplay size. Check by shrinking the sprites to the camera size.
+
+### 3.6 Enemy weapon poses
+
+The same base-pose system is used for **enemies**. Every enemy gets a weapon archetype and a base pose, so the **pose tells the player what the enemy will do** (a readability tool, and it also saves art work).
+
+| Archetype (pose) | Reads as | Enemy examples |
+|---|---|---|
+| **Fist** (guard) | fast, close range, combos | Thug, Scrapper |
+| **Sword** (blade angled up) | medium reach, parries/counters | Raider (machete and shield), Warlord (boss) |
+| **Hammer** (low, two-handed) | slow, heavy, huge reach, guard-break | Biker (pipe or wrench), Golem, Big Boss, Ruin Titan |
+| **Magic** (arms spread, floating) | ranged, projectiles, teleports | Bottle Thrower (throwing pose), Sniper (aiming variant), Wraith, Caster |
+
+- Enemies reuse the **class modifier table** for their base reach/speed/damage scale, then each enemy type overrides what it needs. This keeps enemies consistent with what the players feel from the same weapon.
+- Telegraph: the wind-up pose is the weapon archetype's wind-up, held longer for heavy attacks. Heights (high/mid/low) are shown by the arm/weapon position (see Phase A, crouch).
+- Enemy look: warm red/orange (Streets) or biome palette, thicker outline than the players, simple head shape per type, no eyes following a stick (a fixed "stare" at their target instead). Players must be able to tell a player from an enemy at a glance, even on small screens.
+- Co-op readability: the pose also hints at the best counter. Hammer-pose enemies need a guard breaker or a rescue, Magic-pose enemies must be flanked, Sword-pose enemies punish solo mashing.
+- Variants: elites reuse the base type with a different weapon pose (e.g. a Thug with a pipe becomes a Hammer-pose thug), giving variety without new rigs.
+- Later: mirror bosses that copy a player class (a Sword boss who parries) to test teamwork.
 
 ## 4. Suggested order and effort
 
