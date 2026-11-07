@@ -115,4 +115,35 @@ func _ready() -> void:
 	other.input.script_set(Vector2.ZERO, [])
 	await frames(2)
 	check("the flung partner can attack out of the motion", other.state == "attack")
+	# a plain throw (no attacks) travels far enough to clear a pit
+	for b in lv.get_children():
+		if b is StaticBody2D and (b.collision_layer & 2) != 0:
+			b.queue_free()  # no platforms in the way of the measurement
+	other.attack.interrupt()
+	other.input.script_set(Vector2.ZERO)
+	await frames(120)
+	f.state = "idle"
+	f.attack.interrupt()
+	f.facing = 1
+	f.global_position = Vector2(500, 599)
+	f.velocity = Vector2.ZERO
+	other.global_position = Vector2(534, 599)
+	other.velocity = Vector2.ZERO
+	other.state = "idle"
+	await frames(10)
+	f.input.script_set(Vector2.ZERO, [PlayerInput.Btn.LB])
+	await frames(2)
+	f.input.script_set(Vector2.ZERO, [])
+	await frames(40)
+	f.input.script_set(Vector2.ZERO, [PlayerInput.Btn.LB])
+	await frames(2)
+	f.input.script_set(Vector2.ZERO, [])
+	var landed := 0
+	for i in 220:
+		await get_tree().physics_frame
+		if other.is_on_floor() and i > 20:
+			landed += 1
+			if landed > 3:
+				break
+	check("a thrown partner travels far (%.0f px)" % (other.global_position.x - 534.0), other.global_position.x - 534.0 > 550.0)
 	get_tree().quit()

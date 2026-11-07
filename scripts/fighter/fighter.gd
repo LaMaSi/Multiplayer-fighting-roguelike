@@ -61,6 +61,7 @@ var _ghost := false
 var _toss_t := 0.0
 var _toss_hit: Dictionary = {}
 var _flung_t := 0.0  ## thrown by the partner: a fast floaty jump that can still act (attack, dash) and body-checks enemies
+var _fling_grace := 0.0
 var _ghost_tick := 0.0
 
 
@@ -144,6 +145,7 @@ func set_move(slot: String, id: String) -> void:
 func _tick_timers(delta: float) -> void:
 	super._tick_timers(delta)
 	_dash_cd = maxf(0.0, _dash_cd - delta)
+	_fling_grace = maxf(0.0, _fling_grace - delta)
 	if _ghost and state != "dash":
 		# actors never block each other any more; the dash only phases through barriers, solid again once clear
 		var me := get_hurt_rect()
@@ -171,7 +173,7 @@ func _control(delta: float) -> void:
 
 
 func _locomotion(delta: float) -> void:
-	var on_floor := is_on_floor()
+	var on_floor := is_on_floor() and _fling_grace <= 0.0  # right after a fling the stale floor flag must not cancel the launch
 	_ledge_cd = maxf(0.0, _ledge_cd - delta)
 	if not on_floor and _ledge_cd <= 0.0 and velocity.y > -120.0 and held == null and _try_ledge():
 		return
@@ -488,7 +490,20 @@ func throw_dir() -> Vector2:
 
 
 const THROW_SPEED_ENEMY := 1000.0
+const THROW_SPEED_ALLY := 1000.0
 const THROW_SPEED_PROP := 1650.0
+
+
+## Throwing the partner is a high arc (about 40 degrees when neutral) so gaps can be cleared; the stick steepens or
+## flattens it. They are flung in a floaty jump (see _begin_fling), so the arc is longer than for an enemy.
+func ally_throw_dir() -> Vector2:
+	var d := input.dir
+	if d.length() < 0.35:
+		d = Vector2(float(facing), 0.0)
+	else:
+		d = d.normalized()
+	d.y -= 0.85
+	return d.normalized()
 
 
 func _throw_held() -> void:
@@ -668,22 +683,22 @@ func apply_pickup(kind: String) -> void:
 	match kind:
 		"hp_s":
 			heal(20.0)
-			Fx.number(parent, global_position + Vector2(0, -100), "+20", Color(2.0, 1.7, 1.9), 24)
+			Fx.number(parent, global_position + Vector2(0, -100), "+20 HEALTH", Color(2.0, 1.7, 1.9), 22)
 		"hp_m":
 			heal(50.0)
-			Fx.number(parent, global_position + Vector2(0, -100), "+50", Color(2.0, 1.7, 1.9), 28)
+			Fx.number(parent, global_position + Vector2(0, -100), "+50 HEALTH", Color(2.0, 1.7, 1.9), 24)
 		"dmg":
 			add_buff("dmg", 12.0)
-			Fx.number(parent, global_position + Vector2(0, -100), "DAMAGE UP", Color(2.2, 0.8, 0.3), 22)
+			Fx.number(parent, global_position + Vector2(0, -100), "DAMAGE UP 12s", Color(2.2, 0.8, 0.3), 22)
 		"speed":
 			add_buff("speed", 12.0)
-			Fx.number(parent, global_position + Vector2(0, -100), "SPEED UP", Color(1.7, 1.0, 2.2), 22)
+			Fx.number(parent, global_position + Vector2(0, -100), "SPEED UP 12s", Color(1.7, 1.0, 2.2), 22)
 		"shield":
 			shield_hits = 3
-			Fx.number(parent, global_position + Vector2(0, -100), "SHIELD", Color(1.9, 1.9, 2.2), 22)
+			Fx.number(parent, global_position + Vector2(0, -100), "SHIELD: BLOCKS 3 HITS", Color(1.9, 1.9, 2.2), 20)
 		"meter":
 			meter = minf(100.0, meter + 50.0)
-			Fx.number(parent, global_position + Vector2(0, -100), "+METER", Color(2.0, 1.8, 0.5), 22)
+			Fx.number(parent, global_position + Vector2(0, -100), "+50% SUPER", Color(2.0, 1.8, 0.5), 22)
 	Sfx.play("pickup")
 	Fx.ring(parent, global_position + Vector2(0, -45), Color(1.6, 1.8, 2.0), 70.0, 0.3)
 
@@ -871,13 +886,15 @@ func _st_ledge(delta: float) -> void:
 ## Small arrow plus a dotted arc showing where the throw will go (drawn in world-aligned local space).
 func _draw_throw_aim(is_prop: bool) -> void:
 	var col := Color(2.0, 1.6, 0.4)
-	var dir := throw_dir()
-	var speed := THROW_SPEED_PROP if is_prop else THROW_SPEED_ENEMY
+	var ally := attack.active and attack.aiming and attack.grabbed is Fighter
+	var dir := ally_throw_dir() if ally else throw_dir()
+	var speed := THROW_SPEED_PROP if is_prop else (THROW_SPEED_ALLY if ally else THROW_SPEED_ENEMY)
+	var grav := GRAVITY * (0.55 if ally else 1.0)
 	var start := Vector2(0, -body_h - 8.0) if is_prop else Vector2(0, -90.0)
 	# dotted arc: x = v t, y = v t + g t^2 / 2
 	for i in range(1, 6):
 		var t := 0.045 * float(i)
-		var p := start + dir * speed * t + Vector2(0, 0.5 * GRAVITY * t * t)
+		var p := start + dir * speed * t + Vector2(0, 0.5 * grav * t * t)
 		draw_circle(p, 3.2 - 0.3 * float(i), Color(col.r, col.g, col.b, 0.9 - 0.12 * float(i)))
 	var tip := start + dir * 60.0
 	var perp := Vector2(-dir.y, dir.x)
@@ -902,7 +919,8 @@ func _begin_fling(vel: Vector2) -> void:
 	state = "jump"
 	holder = null
 	velocity = vel
-	_flung_t = 0.9
+	_flung_t = 1.6
+	_fling_grace = 0.12
 	_toss_hit.clear()
 	figure.rot = 0.0
 	invuln = maxf(invuln, 0.25)

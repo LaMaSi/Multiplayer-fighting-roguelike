@@ -78,7 +78,7 @@ static func _build() -> void:
 	}
 	_db["magic"] = {
 		"id": "magic", "name": "Magic", "weapon": "magic", "role": "Primer and zoner",
-		"desc": "Glowing hands, ranged. Lowest HP. Locked until unlocked in meta progression.",
+		"desc": "Glowing hands, ranged. Lowest HP.",
 		"speed": 1.0, "hp": 80.0, "jump": 1.05,
 		"mods": {"reach": 1.2, "startup": 1.0, "recovery": 1.0, "dmg": 0.8, "kb": 1.0, "guard_break": false},
 		"b_pool": ["fireball", "spread_shot", "boomerang", "ground_wave", "teleport_strike", "arcane_beam", "gravity_well", "mirror_ward"],
@@ -160,21 +160,15 @@ static func class_of_weapon_move(move_id: String) -> String:
 ## Run-start loadout: 3 random starred B moves (B, B_UP, B_SIDE), 1 random X, 1 random Y. No reroll.
 ## One of the B moves is always usable at mid range (non-projectile / not a pure close-range tool).
 static func roll_loadout(class_id: String, rng: RandomNumberGenerator) -> Dictionary:
+	# Meta progression is off for now: EVERY move of the class is a candidate (no starred subset), plus any X and any Y.
 	var c := get_class_data(class_id)
-	var stars: Array = (c["b_stars"] as Array).duplicate()
-	var rest: Array = (c["b_pool"] as Array).duplicate()
+	var pool: Array = (c["b_pool"] as Array).duplicate()
 	var picks: Array = []
-	while picks.size() < 3 and (not stars.is_empty() or not rest.is_empty()):
-		var src: Array = stars if not stars.is_empty() else rest
-		var i := rng.randi() % src.size()
-		var id: String = src[i]
-		src.remove_at(i)
-		rest.erase(id)
-		if not (id in picks):
-			picks.append(id)
+	while picks.size() < 3 and not pool.is_empty():
+		picks.append(pool.pop_at(rng.randi() % pool.size()))
 	var out := {"B": picks[0], "B_UP": picks[1], "B_SIDE": picks[2]}
-	out["X"] = X_STARS[rng.randi() % X_STARS.size()]
-	out["Y"] = Y_STARS[rng.randi() % Y_STARS.size()]
+	out["X"] = X_POOL[rng.randi() % X_POOL.size()]
+	out["Y"] = Y_POOL[rng.randi() % Y_POOL.size()]
 	return out
 
 

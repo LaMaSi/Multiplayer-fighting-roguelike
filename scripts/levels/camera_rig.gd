@@ -31,8 +31,8 @@ func snap() -> void:
 func _process(delta: float) -> void:
 	_update(delta, false)
 	var t2 := Juice.trauma * Juice.trauma
-	offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * t2 * 26.0 + Juice.kick_vec
-	rotation = randf_range(-1.0, 1.0) * t2 * 0.025
+	offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * t2 * 11.0 + Juice.kick_vec
+	rotation = randf_range(-1.0, 1.0) * t2 * 0.009
 
 
 func _update(delta: float, instant: bool) -> void:

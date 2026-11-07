@@ -8,17 +8,17 @@ var _slow_token := 0
 
 
 func shake(amount: float) -> void:
-	trauma = minf(1.0, trauma + amount)
+	trauma = minf(1.0, trauma + amount * 0.6)  # screen shake was too intense: scaled down globally
 
 
 func zoom_punch(amount: float) -> void:
-	punch = maxf(punch, amount)
+	punch = maxf(punch, amount * 0.7)
 
 
 func kick(v: Vector2) -> void:
 	kick_vec += v
-	if kick_vec.length() > 84.0:
-		kick_vec = kick_vec.normalized() * 84.0
+	if kick_vec.length() > 46.0:
+		kick_vec = kick_vec.normalized() * 46.0
 
 
 func slowmo(scale: float, real_seconds: float) -> void:

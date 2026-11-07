@@ -58,12 +58,11 @@ func _items() -> Array:
 		"options":
 			return OptionsList.items()
 		"testing":
-			return [["streets", "STREETS FULL TEST LEVEL", ""], ["shop", "SHOP PREVIEW", ""],
-				["magic", "MAGIC CLASS", "UNLOCKED" if RunState.magic_unlocked else "LOCKED"], ["back", "BACK", ""]]
+			return [["streets", "STREETS FULL TEST LEVEL", ""], ["shop", "SHOP PREVIEW", ""], ["back", "BACK", ""]]
 	if _page == "meta":
 		return [["back", "BACK", ""]]
 	return [["run", "NEW RUN", "STREETS"], ["training", "TRAINING ROOM", ""],
-		["meta", "UNLOCKS", "SOON"], ["options", "OPTIONS", ""], ["testing", "TESTING", ""], ["quit", "QUIT", ""]]
+		["options", "OPTIONS", ""], ["testing", "TESTING", ""], ["quit", "QUIT", ""]]
 
 
 func _go_page(page: String, sel := 0) -> void:
@@ -95,7 +94,7 @@ func _physics_process(_delta: float) -> void:
 
 ## Row of the main list that opens a sub page (so B returns to it).
 func _main_index(page: String) -> int:
-	return {"meta": 2, "options": 3, "testing": 4}.get(page, 0)
+	return {"options": 2, "testing": 3}.get(page, 0)
 
 
 func _side(id: String, dx: int) -> void:

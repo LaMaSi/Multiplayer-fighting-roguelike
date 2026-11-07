@@ -135,7 +135,7 @@ func _physics_process(delta: float) -> void:
 		back_pressed = back_pressed or p.pressed(PlayerInput.Btn.BACK)
 	if _toggle_cd <= 0.0:
 		if back_pressed:
-			_toggle_cd = 0.3
+			_toggle_cd = 0.2
 			if not open:
 				_toggle()
 				if open:
@@ -147,9 +147,10 @@ func _physics_process(delta: float) -> void:
 			else:
 				_lv.reset()
 				_go("loadout", 0)
-		elif start_pressed and _page != "loadout":
-			_toggle_cd = 0.3
-			_toggle()
+		elif start_pressed:
+			_toggle_cd = 0.2
+			_lv.reset()
+			_toggle()  # Start again closes the menu from any page, the loadout screen included
 	if not open:
 		return
 	if _page == "loadout":

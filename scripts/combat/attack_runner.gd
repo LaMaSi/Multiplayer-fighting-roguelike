@@ -460,6 +460,8 @@ func aim_vector() -> Vector2:
 	var f := actor as Fighter
 	if f == null:
 		return Vector2(float(actor.facing) * 600.0, -300.0)
+	if grabbed is Fighter:
+		return f.ally_throw_dir() * Fighter.THROW_SPEED_ALLY
 	return f.throw_dir() * Fighter.THROW_SPEED_ENEMY
 
 

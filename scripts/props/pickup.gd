@@ -7,6 +7,11 @@ const COLORS := {
 	"speed": Color(1.7, 1.0, 2.2), "shield": Color(1.9, 1.9, 2.2), "meter": Color(2.0, 1.8, 0.5),
 }
 const GLYPH := {"hp_s": "+", "hp_m": "+", "dmg": "!", "speed": ">", "shield": "O", "meter": "*"}
+const NAMES := {"hp_s": "HEAL", "hp_m": "HEAL+", "dmg": "POWER", "speed": "SPEED", "shield": "SHIELD", "meter": "SUPER"}
+const DESCS := {
+	"hp_s": "Restores 20 health", "hp_m": "Restores 50 health", "dmg": "+50% damage for 12 s",
+	"speed": "Move faster for 12 s", "shield": "Blocks the next 3 hits", "meter": "+50% of the super meter",
+}
 
 var kind := "hp_s"
 var life := 18.0
@@ -76,4 +81,13 @@ func _draw() -> void:
 	draw_arc(Vector2(0, -16 + bob), r + 4.0 + 1.5 * pulse, 0.0, TAU, 24, Color(Prop.RIM.r, Prop.RIM.g, Prop.RIM.b, 0.4 + 0.4 * pulse), UiKit.LINE, true)  # interactable rim
 	draw_circle(Vector2(0, -16 + bob), r, Color(0.05, 0.03, 0.1))
 	draw_arc(Vector2(0, -16 + bob), r, 0.0, TAU, 20, c, UiKit.LINE, true)
-	draw_string(ThemeDB.fallback_font, Vector2(-5, -10 + bob), GLYPH[kind], HORIZONTAL_ALIGNMENT_CENTER, 10.0, 16, c)
+	var tc: Color = COLORS.get(kind, c)
+	draw_string(ThemeDB.fallback_font, Vector2(-5, -10 + bob), GLYPH[kind], HORIZONTAL_ALIGNMENT_CENTER, 10.0, 16, tc)
+	var f := ThemeDB.fallback_font
+	draw_string(f, Vector2(-40, 8), String(NAMES[kind]), HORIZONTAL_ALIGNMENT_CENTER, 80.0, 13, tc)
+	var near := false
+	for p in Coop.fighters:
+		if p.is_alive() and absf(p.global_position.x - global_position.x) < 170.0 and absf(p.global_position.y - global_position.y) < 120.0:
+			near = true
+	if near:
+		draw_string(f, Vector2(-80, -48 + bob), String(DESCS[kind]), HORIZONTAL_ALIGNMENT_CENTER, 160.0, 14, Color(1, 1, 1, 0.95))
