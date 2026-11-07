@@ -80,6 +80,15 @@ func _ready() -> void:
 		await frames(60)
 	check("clearing both waves finishes the challenge", lv._room != null and lv._room.cleared)
 	check("challenge pays coins (+%d)" % (RunState.coins - coins0), RunState.coins > coins0)
+	# a move pick may pop up right in the room: both players take whatever the cursors are on
+	for k in 14:
+		if lv._room != null and lv._room._reward_layer != null:
+			f.input.script_set(Vector2.ZERO, [PlayerInput.Btn.JUMP])
+			other.input.script_set(Vector2.ZERO, [PlayerInput.Btn.JUMP])
+			await frames(2)
+			f.input.script_set(Vector2.ZERO, [])
+			other.input.script_set(Vector2.ZERO, [])
+			await frames(3)
 	f.global_position = Vector2(lv._room.exit_x, lv.ground_y - 1.0)
 	f.input.script_set(Vector2.ZERO, [PlayerInput.Btn.INTERACT])
 	await frames(2)
@@ -97,13 +106,20 @@ func _ready() -> void:
 		f.input.script_set(Vector2.ZERO, [])
 		await frames(5)
 		check("shop door opens the shop room", lv.in_room and lv._room.kind == "shop")
-		var picks_before: int = RunState.bonus_picks.size()
+		RunState.classes = ["", ""]
 		var it: Dictionary = lv._room._items[0]
+		var price: int = int(it["price"])
 		f.global_position = Vector2(float(it["x"]), lv.ground_y - 1.0)
 		await frames(3)
 		f.input.script_set(Vector2.ZERO, [PlayerInput.Btn.INTERACT])
 		await frames(2)
 		f.input.script_set(Vector2.ZERO, [])
 		await frames(5)
-		check("buying a move pick costs coins and queues a pick", RunState.coins == 50 and RunState.bonus_picks.size() == picks_before + 1)
+		check("buying a move costs coins (%d -> %d) and opens the button picker at once" % [100, RunState.coins], RunState.coins == 100 - price and lv._room._pickers[0].active)
+		check("the fighters are paused while choosing the button", lv.get_tree().paused)
+		f.input.script_set(Vector2.ZERO, [PlayerInput.Btn.JUMP])
+		await frames(2)
+		f.input.script_set(Vector2.ZERO, [])
+		await frames(5)
+		check("the move is in the loadout right away", String(it["id"]) in (RunState.loadouts[0] as Dictionary).values() and not lv.get_tree().paused)
 	get_tree().quit()

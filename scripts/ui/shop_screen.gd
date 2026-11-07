@@ -1,15 +1,14 @@
 class_name ShopScreen
 extends Node2D
-## In-run shop (map node "shop"). One shared wallet; every purchase is a vote: each player moves a
-## cursor (Left/Right) and presses A on a card, and the item is bought when BOTH players vote for the
-## same card. Also a reroll button (costs coins) and a leave button (both must vote for it).
-## B withdraws your vote. The two player stickfigures stand in a thinking pose, eyes on the cards.
+## In-run shop (map node "shop"). One shared wallet, but every player shops on their own: each moves a cursor
+## (Left/Right) and presses A on a card to buy it FOR THEMSELVES (off-hand and adaptive moves can be bought by both,
+## weapon moves only by that class). A bought move asks right away which button it goes on. Leaving needs both players. The two player stickfigures stand in a thinking pose, eyes on the cards.
 ## Layout and look: see docs/STYLEGUIDE.md and tests/mock_screens.gd.
 
 const SLOT_ORDER := ["X", "X_UP", "X_SIDE", "X_DOWN", "Y", "Y_UP", "Y_SIDE", "Y_DOWN", "B", "B_UP", "B_SIDE", "B_DOWN"]
 const CARD_W := 190.0
 const CARD_H := 270.0
-const CARD_X := 400.0
+const CARD_X := 240.0
 const CARD_Y := 150.0
 const REROLL_BASE := 40
 const LIFE_PRICE := 300
@@ -27,8 +26,10 @@ class View extends Control:
 
 
 var stock: Array = []  ## 4 item dictionaries (see _make_item)
-var cursor: Array[int] = [0, 0]  ## 0..3 cards, 4 reroll, 5 leave
-var vote: Array[int] = [-1, -1]
+var cursor: Array[int] = [0, 0]  ## 0..4 cards, 5 reroll, 6 leave
+var vote: Array[int] = [-1, -1]  ## only used for LEAVE (both must agree)
+var _pickers: Array[SlotPicker] = [SlotPicker.new(), SlotPicker.new()]
+var _refund: Array[int] = [0, 0]  ## price to give back when a button step is cancelled
 var rerolls := 0
 
 var _rng := RandomNumberGenerator.new()
@@ -84,7 +85,7 @@ func _ready() -> void:
 		f.leg_scale = 1.2
 		f.eyes = true
 		f.aim = Vector2(0.95, -0.3)
-		f.position = Vector2(120.0 + i * 160.0, 668)
+		f.position = Vector2(70.0 + i * 100.0, 668)
 		f.scale = Vector2(1.7, 1.7)
 		f.set_target(THINK[i], true)
 		layer.add_child(f)
@@ -115,48 +116,53 @@ func _make_item(kind: String, player := -1, extra := {}) -> Dictionary:
 	return it
 
 
-## Four items: a move for each player (an upgrade if that player's slots are full), an upgrade, and
-## one team item (extra life / +max HP / heal).
+## Five items: an off-hand move and an adaptive move (either player can buy them, each for themselves), a weapon move for
+## each class in play (only that class), and one team item.
 func generate_stock() -> Array:
 	var out: Array = []
-	var taken: Array = []  ## ids already offered, so both players do not get the same move
-	for p in 2:
-		var slot := _first_free_slot(p)
-		var owned: Array = (RunState.loadouts[p] as Dictionary).values()
+	var taken: Array = []
+	for tier_pool in [ClassData.X_POOL, ClassData.Y_POOL]:
 		var pool: Array = []
-		for id in MoveDB.POOL:
-			if not (id in owned) and not (id in taken):
+		for id in tier_pool:
+			var owned_both := true
+			for p in 2:
+				if not (id in (RunState.loadouts[p] as Dictionary).values()):
+					owned_both = false
+			if not owned_both and not (id in taken):
 				pool.append(id)
-		if slot != "" and pool.size() > 0:
-			var id: String = pool[_rng.randi() % pool.size()]
-			taken.append(id)
-			var m := MoveDB.get_move(id)
-			out.append(_make_item("move", p, {"id": id, "slot": slot, "name": m.name, "desc": m.desc, "tag": "NEW MOVE", "price": 110}))
-		else:
-			out.append(_upgrade_item(p))
-	out.append(_upgrade_item(_rng.randi() % 2))
-	var team := _rng.randi() % 3
+		if pool.size() > 0:
+			var sid: String = pool[_rng.randi() % pool.size()]
+			taken.append(sid)
+			out.append(_move_item(sid, ""))
+	for p in 2:
+		var cid: String = RunState.classes[p]
+		if cid == "":
+			continue
+		var owned2: Array = (RunState.loadouts[p] as Dictionary).values()
+		var bp: Array = []
+		for id in (ClassData.get_class_data(cid)["b_pool"] as Array):
+			if not (id in owned2) and not (id in taken):
+				bp.append(id)
+		if bp.size() > 0:
+			var bid: String = bp[_rng.randi() % bp.size()]
+			taken.append(bid)
+			out.append(_move_item(bid, cid))
+	var team := _rng.randi() % 4
 	if team == 0:
 		out.append(_make_item("life", -1, {"name": "EXTRA LIFE", "desc": "+1 shared life for the rest of the run", "tag": "TEAM", "price": LIFE_PRICE}))
 	elif team == 1:
 		out.append(_make_item("hp", -1, {"name": "+20 MAX HP", "desc": "Both players grow and heal 20", "tag": "TEAM", "price": 140}))
-	else:
+	elif team == 2:
 		out.append(_make_item("heal", -1, {"name": "TEAM HEAL", "desc": "Both players restore all health", "tag": "TEAM", "price": 90}))
+	else:
+		out.append(_make_item("power", -1, {"name": "POWER-UP", "desc": "Buyer: +25% damage on a random equipped move", "tag": "EMPOWER", "price": 120}))
 	return out
 
 
-func _upgrade_item(p: int) -> Dictionary:
-	var eq: Array = []
-	for id in (RunState.loadouts[p] as Dictionary).values():
-		if not (id in eq):
-			eq.append(id)
-	if eq.is_empty():
-		return _make_item("hp", -1, {"name": "+20 MAX HP", "desc": "Both players grow and heal 20", "tag": "TEAM", "price": 140})
-	var id: String = eq[_rng.randi() % eq.size()]
-	var stats := ["dmg", "spd", "kb"]
-	var stat: String = stats[_rng.randi() % 3]
+func _move_item(id: String, cid: String) -> Dictionary:
 	var m := MoveDB.get_move(id)
-	return _make_item("up", p, {"id": id, "stat": stat, "name": m.name, "desc": String(RunState.UP_TEXT[stat]), "tag": "EMPOWER", "price": 120})
+	var tag := "FOR BOTH" if cid == "" else "%s MOVE" % cid.to_upper()
+	return _make_item("move", -1, {"id": id, "class": cid, "name": m.name, "desc": m.desc, "tag": tag, "price": 110 if cid == "" else 130, "sold_by": [false, false]})
 
 
 func reroll_cost() -> int:
@@ -169,17 +175,65 @@ func can_afford(it: Dictionary) -> bool:
 	return RunState.coins >= int(it["price"])
 
 
-## Applies an item to the run (no UI). Returns false when it cannot be bought.
-func buy(idx: int) -> bool:
+## Why player p cannot take this item, or "" when they can.
+func _can_take(it: Dictionary, p: int) -> String:
+	if String(it["kind"]) == "move":
+		if String(it["class"]) != "" and String(it["class"]) != String(RunState.classes[p]):
+			return "OTHER CLASS"
+		if bool((it["sold_by"] as Array)[p]):
+			return "YOU BOUGHT IT"
+		if String(it["id"]) in (RunState.loadouts[p] as Dictionary).values():
+			return "ALREADY EQUIPPED"
+		return ""
+	return "SOLD OUT" if bool(it["sold"]) else ""
+
+
+func _is_sold(it: Dictionary) -> bool:
+	if String(it["kind"]) == "move":
+		for p in 2:
+			if _can_take(it, p) == "":
+				return false
+		return true
+	return bool(it["sold"])
+
+
+func _view_player(it: Dictionary) -> int:
+	for p in 2:
+		if String(it.get("class", "")) == String(RunState.classes[p]):
+			return p
+	return 0
+
+
+## Player p buys item idx for themselves. A move asks right away which button it goes on (cancelling refunds it).
+func buy(idx: int, p: int) -> bool:
 	var it: Dictionary = stock[idx]
-	if bool(it["sold"]) or not can_afford(it):
+	var why := _can_take(it, p)
+	if why != "":
+		_say(why, Color(1.0, 0.45, 0.45))
 		return false
-	var p: int = int(it["player"])
+	if not can_afford(it):
+		return false
+	var price := int(it["price"])
 	match String(it["kind"]):
 		"move":
-			(RunState.loadouts[p] as Dictionary)[it["slot"]] = it["id"]
-		"up":
-			RunState.apply_card(p, {"kind": "up", "id": it["id"], "stat": it["stat"]})
+			RunState.coins -= price
+			(it["sold_by"] as Array)[p] = true
+			_pickers[p].start(p, String(it["id"]), func(slot: String) -> void:
+				if slot == "":
+					RunState.coins += price  # cancelled: money back
+					(it["sold_by"] as Array)[p] = false
+					return
+				(RunState.loadouts[p] as Dictionary)[slot] = it["id"]
+				Sfx.play("pickup"))
+			return true
+		"power":
+			var eq: Array = []
+			for id in (RunState.loadouts[p] as Dictionary).values():
+				if String(id) != "" and not (id in eq):
+					eq.append(id)
+			if eq.is_empty():
+				return false
+			RunState.apply_card(p, {"kind": "up", "id": eq[_rng.randi() % eq.size()], "stat": "dmg"})
 		"hp":
 			for i in 2:
 				RunState.apply_card(i, {"kind": "hp"})
@@ -188,22 +242,24 @@ func buy(idx: int) -> bool:
 				RunState.apply_card(i, {"kind": "mend"})
 		"life":
 			RunState.bonus_revives += 1
-	RunState.coins -= int(it["price"])
+	RunState.coins -= price
 	it["sold"] = true
 	return true
 
 
-func _act(v: int) -> void:
-	if v >= 0 and v <= 3:
-		if bool(stock[v]["sold"]):
+func _act(v: int, p: int) -> void:
+	if v >= 0 and v <= 4:
+		if v >= stock.size() or _is_sold(stock[v]):
 			return
-		if buy(v):
+		if buy(v, p):
 			Sfx.play("pickup")
-			_say("BOUGHT  %s" % String(stock[v]["name"]), UiKit.AMBER)
-		else:
+			_say("P%d BOUGHT  %s" % [p + 1, String(stock[v]["name"])], UiKit.player_color(p))
+		elif _can_take(stock[v], p) == "":
 			Sfx.play("ui")
 			_say("NOT ENOUGH COINS", Color(1.0, 0.45, 0.45))
-	elif v == 4:
+		else:
+			Sfx.play("ui", 0.7)
+	elif v == 5:
 		if RunState.coins >= reroll_cost():
 			RunState.coins -= reroll_cost()
 			rerolls += 1
@@ -213,10 +269,9 @@ func _act(v: int) -> void:
 		else:
 			Sfx.play("ui")
 			_say("NOT ENOUGH COINS", Color(1.0, 0.45, 0.45))
-	elif v == 5:
-		leave()
-		return
-	vote = [-1, -1]
+	elif v == 6:
+		vote[p] = -1 if vote[p] == 6 else 6
+		Sfx.play("ui")
 
 
 func leave() -> void:
@@ -242,18 +297,20 @@ var _flash_col := Color.WHITE
 func _physics_process(_delta: float) -> void:
 	for i in 2:
 		var p: PlayerInput = Inp.players[i]
+		if _pickers[i].active:
+			_pickers[i].update(p)
+			continue
 		var d := p.digital_dir()
 		if d != _last[i] and d.x != 0:
-			cursor[i] = clampi(cursor[i] + d.x, 0, 5)
+			cursor[i] = clampi(cursor[i] + d.x, 0, 6)
 			Sfx.play("ui")
 		_last[i] = d
 		if p.pressed(PlayerInput.Btn.JUMP):
-			vote[i] = -1 if vote[i] == cursor[i] else cursor[i]
-			Sfx.play("ui")
+			_act(cursor[i], i)
 		elif p.pressed(PlayerInput.Btn.B):
 			vote[i] = -1
-	if vote[0] >= 0 and vote[0] == vote[1]:
-		_act(vote[0])
+	if vote[0] == 6 and vote[1] == 6 and not _pickers[0].active and not _pickers[1].active:
+		leave()
 
 
 func _process(delta: float) -> void:
@@ -264,7 +321,7 @@ func _process(delta: float) -> void:
 		var pose: Dictionary = (THINK[i] as Dictionary).duplicate()
 		pose["lean"] = float(pose["lean"]) + sin(_t * 1.7 + i) * 0.015
 		_figs[i].set_target(pose)
-		_figs[i].aim = Vector2(0.95, -0.15 - 0.15 * float(cursor[i]) / 5.0 + 0.1 * sin(_t * 0.9 + i))
+		_figs[i].aim = Vector2(0.95, -0.15 - 0.15 * float(cursor[i]) / 6.0 + 0.1 * sin(_t * 0.9 + i))
 	_view.queue_redraw()
 
 
@@ -321,7 +378,7 @@ func paint(c: Control) -> void:
 		UiKit.txt(c, head, Vector2(0, 0), "SHOP", 52, Color(2.0, 0.7, 1.2, 0.16), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 8 + k * 8, Color(2.0, 0.7, 1.2, 0.08))
 	UiKit.txt(c, head, Vector2(0, 0), "SHOP", 52, UiKit.TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 4, Color(0.05, 0.0, 0.1))
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
-	UiKit.txt(c, body, Vector2(44, 100), "EVERYTHING IS BOUGHT TOGETHER", 18, UiKit.PINK)
+	UiKit.txt(c, body, Vector2(44, 100), "EACH PLAYER SHOPS FOR THEMSELVES", 18, UiKit.PINK)
 	UiKit.panel(c, Rect2(980, 30, 260, 64), 12.0, UiKit.AMBER, 3.0, 0.85)
 	UiKit.coin(c, Vector2(1014, 62), 17.0)
 	UiKit.txt(c, body, Vector2(1040, 52), "SHARED WALLET", 14, UiKit.DIM_TEXT)
@@ -329,36 +386,28 @@ func paint(c: Control) -> void:
 	# cards
 	for idx in stock.size():
 		_paint_card(c, idx)
-	# vote strip
-	var vr := Rect2(CARD_X, 458, 808, 40)
+	# info strip
+	var vr := Rect2(CARD_X, 458, 1014, 40)
 	c.draw_colored_polygon(UiKit.chamfer(vr, 10.0), Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.8))
-	var line := "MOVE WITH THE STICK, PRESS A TO VOTE.  BOTH PLAYERS MUST AGREE."
-	var right := ""
-	var rcol := UiKit.DIM_TEXT
-	var v0 := vote[0]
-	var v1 := vote[1]
-	if v0 >= 0 or v1 >= 0:
-		var target := v0 if v0 >= 0 else v1
-		line = _vote_line(target)
-		var waiting := 1 if v0 >= 0 and v1 < 0 else (0 if v1 >= 0 and v0 < 0 else -1)
-		if waiting >= 0:
-			right = "WAITING FOR P%d" % (waiting + 1)
-			rcol = UiKit.player_color(waiting)
-		elif v0 != v1:
-			right = "VOTES DIFFER"
-			rcol = UiKit.PINK
+	var line := "STICK: MOVE    A: BUY FOR YOURSELF    LEAVING NEEDS BOTH PLAYERS"
+	var lcol := UiKit.TEXT
+	if vote[0] == 6 or vote[1] == 6:
+		line = "LEAVE THE SHOP?  WAITING FOR P%d" % (2 if vote[0] == 6 else 1)
+		lcol = UiKit.PINK
 	if _flash_t > 0.0:
 		line = _flash
-		rcol = _flash_col
-		right = ""
-	UiKit.txt(c, body, Vector2(CARD_X + 16, 485), line, 22, rcol if _flash_t > 0.0 else UiKit.TEXT)
-	UiKit.txt(c, body, Vector2(CARD_X, 485), right, 18, rcol, HORIZONTAL_ALIGNMENT_RIGHT, 792.0)
+		lcol = _flash_col
+	UiKit.txt(c, body, Vector2(CARD_X + 16, 485), line, 22, lcol)
 	# buttons
-	_paint_button(c, Rect2(CARD_X, 516, 220, 44), 4, "REROLL STOCK", reroll_cost())
-	_paint_button(c, Rect2(988, 516, 220, 44), 5, "LEAVE SHOP", -1)
+	_paint_button(c, Rect2(CARD_X, 516, 220, 44), 5, "REROLL STOCK", reroll_cost())
+	_paint_button(c, Rect2(CARD_X + 1014.0 - 220.0, 516, 220, 44), 6, "LEAVE SHOP", -1)
+	# the button pickers (a bought move asks right away where it goes)
+	for pp in 2:
+		if _pickers[pp].active:
+			_pickers[pp].paint(c, Rect2(40.0 + pp * 630.0, 440.0, 600.0, 252.0), UiKit.player_color(pp))
 	# thought bubbles
 	for i in 2:
-		var bc := Vector2(150 + i * 160, 372 + i * 6 + sin(_t * 1.6 + i) * 3.0)
+		var bc := Vector2(86 + i * 100, 372 + i * 6 + sin(_t * 1.6 + i) * 3.0)
 		var col := UiKit.player_color(i)
 		c.draw_circle(bc + Vector2(-26, 52), 5.0, Color(col.r, col.g, col.b, 0.8))
 		c.draw_circle(bc + Vector2(-16, 36), 8.0, Color(col.r, col.g, col.b, 0.8))
@@ -398,7 +447,7 @@ func _cursor_tabs(c: Control, idx: int, r: Rect2) -> void:
 func _paint_card(c: Control, idx: int) -> void:
 	var it: Dictionary = stock[idx]
 	var r := Rect2(CARD_X + idx * (CARD_W + 16.0), CARD_Y, CARD_W, CARD_H)
-	var sold := bool(it["sold"])
+	var sold := _is_sold(it)
 	var afford := can_afford(it) and not sold
 	var hot := cursor[0] == idx or cursor[1] == idx
 	var both := vote[0] == idx and vote[1] == idx
@@ -409,12 +458,12 @@ func _paint_card(c: Control, idx: int) -> void:
 	UiKit.poly_line(c, UiKit.chamfer(r, 16.0), outline, 5.0 if hot else 2.5)
 	var ic := UiKit.AMBER if afford else Color(0.5, 0.5, 0.6)
 	if it.has("id") and (String(it["kind"]) == "move" or String(it["kind"]) == "up"):
-		var pl := maxi(int(it["player"]), 0)
+		var pl := _view_player(it)
 		MovePreview.draw(c, String(it["id"]), String(RunState.classes[pl]), pl, Rect2(r.position.x + 14, r.position.y + 8, CARD_W - 28, 106))
 	else:
 		_icon(c, String(it["kind"]), Vector2(r.position.x + CARD_W * 0.5, r.position.y + 72), ic)
-	var tag_col := UiKit.player_color(int(it["player"])) if int(it["player"]) >= 0 else Color(0.85, 0.85, 1.0)
-	var tag_text := String(it["tag"]) + ("  ·  P%d" % (int(it["player"]) + 1) if int(it["player"]) >= 0 else "")
+	var tag_col := Color(0.85, 0.85, 1.0)
+	var tag_text := String(it["tag"])
 	c.draw_rect(Rect2(r.position.x + (CARD_W - 150.0) * 0.5, r.position.y + 118, 150, 20), Color(1, 1, 1, 0.12))
 	UiKit.txt(c, UiKit.head(), Vector2(r.position.x, r.position.y + 133), tag_text, 10, tag_col, HORIZONTAL_ALIGNMENT_CENTER, CARD_W)
 	var name_s := String(it["name"]).to_upper()
@@ -437,6 +486,9 @@ func _paint_card(c: Control, idx: int) -> void:
 		var pulse := 0.5 + 0.5 * sin(_t * 18.0)
 		UiKit.poly_line(c, UiKit.chamfer(r.grow(4.0), 16.0), Color(1.0, 0.8, 0.3, 0.5 + 0.5 * pulse), 4.0)
 	_cursor_tabs(c, idx, r)
+	for bp in 2:
+		if String(it["kind"]) == "move" and bool((it["sold_by"] as Array)[bp]):
+			UiKit.txt(c, UiKit.head(), Vector2(r.position.x + 10.0 + bp * 70.0, r.end.y - 52.0), "P%d OWNS" % (bp + 1), 11, UiKit.player_color(bp))
 
 
 func _paint_button(c: Control, r: Rect2, idx: int, label: String, cost: int) -> void:

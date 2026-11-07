@@ -214,32 +214,31 @@ func _run() -> void:
 	add_child(rs)
 	await frames(5)
 	var p2: PlayerInput = inp.players[1]
-	var maxhp_before: float = RunState.max_hp[1] + RunState.hp[1]
-	p2.script_set(Vector2(1, 0))
-	await frames(3)
-	p2.script_set(Vector2(-1, 0))
-	await frames(3)
+	var p1b: PlayerInput = inp.players[0]
+	check(rs._pool.size() >= 4, "the reward is ONE shared pool (%d cards)" % rs._pool.size())
+	# P2 takes a non-move card (first one that is not a move) and is done; P1 independently takes a move
+	var nm := 0
+	for i in rs._pool.size():
+		if String(rs._pool[i]["kind"]) != "move":
+			nm = i
+			break
+	rs._cursor[1] = nm
 	p2.script_set(Vector2.ZERO, [PlayerInput.Btn.JUMP])
 	await frames(2)
 	p2.script_set(Vector2.ZERO)
 	await frames(3)
-	check(rs._i == 1, "P2's pick is applied, then it is P1's turn")
-	# P1 takes a move card into the slot picker
-	var p1b: PlayerInput = inp.players[0]
+	check(rs._phase[1] == "done", "P2 picks on their own, without waiting for P1")
+	rs._cursor[0] = 0
 	p1b.script_set(Vector2.ZERO, [PlayerInput.Btn.JUMP])
 	await frames(2)
 	p1b.script_set(Vector2.ZERO)
 	await frames(3)
-	check(rs._phase == "slot", "a move card opens the slot picker")
-	p1b.script_set(Vector2(1, 0))
-	await frames(3)
-	p1b.script_set(Vector2.ZERO)
-	await frames(2)
+	check(rs._phase[0] == "slot", "a move card opens the button picker for that player")
 	p1b.script_set(Vector2.ZERO, [PlayerInput.Btn.B])
 	await frames(2)
 	p1b.script_set(Vector2.ZERO)
 	await frames(2)
-	check(rs._phase == "cards", "B goes back from the slot picker")
+	check(rs._phase[0] == "choose", "B goes back from the button picker")
 	rs.queue_free()
 	await frames(2)
 	var rm = load("res://scenes/run_map.tscn").instantiate()

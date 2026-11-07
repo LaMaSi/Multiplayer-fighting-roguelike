@@ -1,25 +1,33 @@
+class_name RewardScreen
 extends Control
-## Reward screen after a cleared level. Both players are on screen; the queue in RunState says
-## who picks next (the first picker alternates every level). Cards: new move (then choose which of
-## the 12 slots it goes into), +max HP, full heal, or empower one of your equipped moves.
-## Left/Right = choose, A = confirm, B = back (slot step).
+## Reward screen after a cleared level. ONE shared pool of cards: both players choose from the same picks at the same
+## time, each with their own cursor (the same card can be taken by both; weapon moves only by the matching class).
+## A move card immediately asks that player which button to put it on. A = confirm, B = cancel the button step.
 
-const SLOT_LABELS := ["-", "UP", "SIDE", "DOWN"]
-const ROWS := ["X", "Y", "B"]
-const SUFFIX := ["", "_UP", "_SIDE", "_DOWN"]
+const CARD_W := 190.0
+const CARD_H := 322.0
+const CARD_Y := 118.0
 
-var _i := 0
-var _cards: Array = []
-var _sel := 0
-var _slot := 0
-var _phase := "cards"  ## cards | slot | end
-var _last := Vector2i.ZERO
+var _pool: Array = []
+var _cursor: Array[int] = [0, 0]
+var _phase: Array[String] = ["choose", "choose"]  ## per player: choose | slot | done
+var _picked: Array = ["", ""]  ## title of what each player took
+var _pickers: Array[SlotPicker] = [SlotPicker.new(), SlotPicker.new()]
+var _last: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO]
 var _t := 0.0
-var _flash := ""
+var _flash := ["", ""]
+var _all_done := false
+var _end := false  ## the run is over (boss cleared): show the end card
+var overlay := false  ## inside a door room: no scene change, closes itself when both players are done
+signal finished
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	if overlay:
+		_pool = _build_pool()
+		return
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
 	e.background_mode = Environment.BG_CANVAS
@@ -30,102 +38,126 @@ func _ready() -> void:
 	env.environment = e
 	add_child(env)
 	Engine.time_scale = 1.0
+	RunState.bonus_picks.clear()
 	if RunState.queue.is_empty():
-		_after_queue()
+		_leave()
 	else:
-		_begin_pick()
+		_pool = _build_pool()
+		RunState.queue.clear()
 
 
-func _player() -> int:
-	return int(RunState.queue[_i]["player"])
-
-
-func _begin_pick() -> void:
-	var item: Dictionary = RunState.queue[_i]
-	_cards = RunState.make_cards(int(item["player"]), String(item["kind"]))
-	if _cards.is_empty():
-		_cards = RunState.make_cards(int(item["player"]), "level")
-	_sel = 0
-	_phase = "cards"
-	_flash = ""
-
-
-func _next_pick() -> void:
-	_i += 1
-	if _i >= RunState.queue.size():
-		_after_queue()
-	else:
-		_begin_pick()
-
-
-func _after_queue() -> void:
+func _leave() -> void:
+	if overlay:
+		finished.emit()
+		queue_free()
+		return
 	RunState.queue.clear()
 	if RunState.finished:
-		_phase = "end"
+		_end = true
 	else:
 		get_tree().change_scene_to_file("res://scenes/run_map.tscn")
 
 
-func _process(delta: float) -> void:
+# ------------------------------------------------------------------ the pool
+
+func _build_pool() -> Array:
+	var pool: Array = []
+	# two shared moves (off-hand and adaptive, same for every class)
+	for c in RunState.make_cards(0, "move"):
+		if pool.size() < 2:
+			pool.append(c)
+	# a new weapon move for each class in play (only that class can take it)
+	for p in 2:
+		var cid: String = RunState.classes[p]
+		for c in RunState.make_cards(p, "level"):
+			if String(c["kind"]) == "move" and not _has_move(pool, String(c["id"])):
+				c["class"] = cid
+				pool.append(c)
+				break
+	# team-useful level-ups both players can take
+	for c in RunState.make_cards(0, "level"):
+		if String(c["kind"]) != "move" and String(c["kind"]) != "up" and pool.size() < 6:
+			pool.append(c)
+	return pool
+
+
+func _has_move(pool: Array, id: String) -> bool:
+	for c in pool:
+		if c.has("id") and String(c["id"]) == id:
+			return true
+	return false
+
+
+## Why player p cannot take card c, or "" when they can.
+func _blocked(p: int, c: Dictionary) -> String:
+	if c.has("class") and String(c["class"]) != String(RunState.classes[p]):
+		return "OTHER CLASS"
+	if String(c["kind"]) == "move" and (String(c["id"]) in (RunState.loadouts[p] as Dictionary).values()):
+		return "OWNED"
+	if String(c["kind"]) == "djump" and bool((RunState.perks[p] as Dictionary).get("double_jump", false)):
+		return "OWNED"
+	return ""
+
+
+# ------------------------------------------------------------------ input (physics step: button edges are per tick)
+
+func _physics_process(delta: float) -> void:
 	_t += delta
-	if _phase == "end":
+	if _end:
 		for p in Inp.players:
 			if p.pressed(PlayerInput.Btn.JUMP):
 				RunState.end_run()
 				get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 				return
-		queue_redraw()
 		return
-	var inp: PlayerInput = Inp.players[_player()]
-	var d := inp.digital_dir()
-	if d != _last and d != Vector2i.ZERO:
-		Sfx.play("ui")
-		if _phase == "cards":
-			_sel = posmod(_sel + d.x, _cards.size())
-		else:
-			var col := _slot % 4
-			var row := _slot / 4
-			col = posmod(col + d.x, 4)
-			row = posmod(row + d.y, 3)
-			if _cards[_sel].has("row"):
-				row = int(_cards[_sel]["row"])  # X / Y / B moves only fit their own row
-			_slot = row * 4 + col
-	_last = d
-	if inp.pressed(PlayerInput.Btn.JUMP):
-		_confirm()
-	elif inp.pressed(PlayerInput.Btn.B) and _phase == "slot":
-		_phase = "cards"
-		Sfx.play("ui", 0.8)
-	queue_redraw()
-
-
-func _confirm() -> void:
-	var card: Dictionary = _cards[_sel]
-	if _phase == "cards":
-		if card["kind"] == "move":
-			_phase = "slot"
-			var row0 := int(card.get("row", 0))
-			_slot = row0 * 4
-			var loadout: Dictionary = RunState.loadouts[_player()]
-			for s in 12:
-				if card.has("row") and s / 4 != row0:
-					continue
-				if not loadout.has(_slot_name(s)):
-					_slot = s
-					break
+	if _pool.is_empty():
+		return
+	for p in 2:
+		var inp: PlayerInput = Inp.players[p]
+		if _phase[p] == "slot":
+			_pickers[p].update(inp)
+			continue
+		if _phase[p] == "done":
+			continue
+		var d := inp.digital_dir()
+		if d != _last[p] and d.x != 0:
+			_cursor[p] = posmod(_cursor[p] + d.x, _pool.size())
 			Sfx.play("ui")
-		else:
-			RunState.apply_card(_player(), card)
-			Sfx.play("buff")
-			_next_pick()
+		_last[p] = d
+		if inp.pressed(PlayerInput.Btn.JUMP):
+			_confirm(p)
+	if not _all_done and _phase[0] == "done" and _phase[1] == "done":
+		_all_done = true
+		get_tree().create_timer(0.7).timeout.connect(_leave)
+
+
+func _confirm(p: int) -> void:
+	var card: Dictionary = _pool[_cursor[p]]
+	var why := _blocked(p, card)
+	if why != "":
+		Sfx.play("ui", 0.7)
+		_flash[p] = why
+		return
+	if String(card["kind"]) == "move":
+		_phase[p] = "slot"
+		_pickers[p].start(p, String(card["id"]), func(slot: String) -> void:
+			if slot == "":
+				_phase[p] = "choose"
+				return
+			RunState.apply_card(p, card, slot)
+			Sfx.play("pickup")
+			_picked[p] = String(card["title"])
+			_phase[p] = "done")
+		Sfx.play("ui")
 	else:
-		RunState.apply_card(_player(), card, _slot_name(_slot))
-		Sfx.play("pickup")
-		_next_pick()
+		RunState.apply_card(p, card)
+		Sfx.play("buff")
+		_picked[p] = String(card["title"])
+		_phase[p] = "done"
 
 
-func _slot_name(s: int) -> String:
-	return ROWS[s / 4] + SUFFIX[s % 4]
+func _process(_delta: float) -> void:
+	queue_redraw()
 
 
 # ------------------------------------------------------------------ drawing
@@ -144,95 +176,76 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 0, 1280, 720), Color(0.04, 0.02, 0.09))
 	for i in 20:
 		draw_rect(Rect2(0, 720.0 * i / 20.0, 1280, 37), Color(0.3, 0.08, 0.25, 0.02 * i))
-	if _phase == "end":
+	if _end:
 		_draw_end()
 		return
-	var pl := _player()
-	var pc := _c(Fighter.PLAYER_COLORS[pl])
-	_txt(Vector2(0, 70), "REWARD", 46, Color(1, 1, 1), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
-	_txt(Vector2(0, 112), "PLAYER %d CHOOSES" % (pl + 1), 28, pc, 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
-	_txt(Vector2(0, 140), "pick %d of %d" % [_i + 1, RunState.queue.size()], 16, Color(1, 1, 1, 0.55), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_panel(0, 14.0, 170.0)
-	_draw_panel(1, 1280.0 - 14.0 - 250.0, 170.0)
-	if _phase == "cards":
-		for i in _cards.size():
-			_draw_card(i)
-	else:
-		_draw_slot_picker(pc)
+	_txt(Vector2(0, 50), "REWARD", 40, Color(1, 1, 1), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
+	_txt(Vector2(0, 80), "Both players choose from the same picks, at the same time", 16, Color(1, 1, 1, 0.6), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
+	for p in 2:
+		var pc := _c(Fighter.PLAYER_COLORS[p])
+		var status := "choosing..."
+		if _phase[p] == "slot":
+			status = "choosing a button..."
+		elif _phase[p] == "done":
+			status = "took  %s" % String(_picked[p]).to_upper()
+		_txt(Vector2(30 if p == 0 else 650, 104), "P%d  %s" % [p + 1, status], 17, pc, 600.0, HORIZONTAL_ALIGNMENT_LEFT if p == 0 else HORIZONTAL_ALIGNMENT_RIGHT)
+	var total := float(_pool.size()) * CARD_W + float(_pool.size() - 1) * 10.0
+	var x0 := (1280.0 - total) * 0.5
+	for i in _pool.size():
+		_draw_card(i, Rect2(x0 + i * (CARD_W + 10.0), CARD_Y + 14.0, CARD_W, CARD_H))
+	# the button pickers, one per player, under the cards
+	for p in 2:
+		var pc2 := _c(Fighter.PLAYER_COLORS[p])
+		var pr := Rect2(30.0 + p * 630.0, 468.0, 590.0, 236.0)
+		if _phase[p] == "slot":
+			_pickers[p].paint(self, pr, pc2)
+		elif _phase[p] == "done":
+			draw_rect(pr, Color(0.05, 0.03, 0.12, 0.7))
+			draw_rect(pr, Color(pc2.r, pc2.g, pc2.b, 0.5), false, 2.0)
+			_txt(pr.position + Vector2(0, 126), "READY", 34, pc2, pr.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+		else:
+			draw_rect(pr, Color(0.05, 0.03, 0.12, 0.45))
+			draw_rect(pr, Color(pc2.r, pc2.g, pc2.b, 0.3), false, 2.0)
+			_txt(pr.position + Vector2(0, 112), "LEFT / RIGHT: choose     A: take", 18, Color(1, 1, 1, 0.75), pr.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+			if String(_flash[p]) != "":
+				_txt(pr.position + Vector2(0, 150), String(_flash[p]), 20, Color(1.0, 0.5, 0.4), pr.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 
 
-func _draw_card(i: int) -> void:
-	var card: Dictionary = _cards[i]
-	var selected := i == _sel
-	var has_pic := card.has("id")
-	var r := Rect2(300 + i * 230, 190 - (14 if selected else 0), 210, 412 if has_pic else 330)
-	var accent := _c(Fighter.PLAYER_COLORS[_player()]) if card["kind"] == "move" else (Color(1.0, 0.7, 0.3) if card["kind"] == "up" else Color(1.0, 0.9, 0.95))
+func _draw_card(i: int, r: Rect2) -> void:
+	var card: Dictionary = _pool[i]
+	var accent := Color(1.0, 0.9, 0.95)
+	if String(card["kind"]) == "move":
+		accent = Color(0.7, 0.9, 1.0)
+	elif String(card["kind"]) == "up":
+		accent = Color(1.0, 0.7, 0.3)
 	draw_rect(r, Color(0.07, 0.04, 0.14))
-	draw_rect(r, Color(accent.r, accent.g, accent.b, 1.0 if selected else 0.35), false, 4.0 if selected else 2.0)
-	_txt(r.position + Vector2(0, 34), String(card["tag"]), 15, accent, r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+	draw_rect(r, Color(accent.r, accent.g, accent.b, 0.3), false, 2.0)
 	var f := ThemeDB.fallback_font
-	draw_multiline_string(f, r.position + Vector2(10, 90), String(card["title"]).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 20.0, 26, 3, Color(1, 1, 1))
-	var desc_y := 190.0
-	if has_pic:
-		MovePreview.draw(self, String(card["id"]), String(RunState.classes[_player()]), _player(), Rect2(r.position.x + 20, r.position.y + 150, r.size.x - 40, 112))
-		desc_y = 294.0
-	draw_multiline_string(f, r.position + Vector2(14, desc_y), String(card["desc"]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 28.0, 17, 5, Color(0.85, 0.85, 0.95))
+	var tag := String(card["tag"])
+	if card.has("class"):
+		tag = "%s MOVE" % String(card["class"]).to_upper()
+	_txt(r.position + Vector2(0, 26), tag, 12, accent, r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+	draw_multiline_string(f, r.position + Vector2(8, 62), String(card["title"]).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 16.0, 22, 2, Color(1, 1, 1))
+	var desc_y := 112.0
+	if card.has("id"):
+		var pl := 0
+		if card.has("class"):
+			pl = 0 if String(RunState.classes[0]) == String(card["class"]) else 1
+		MovePreview.draw(self, String(card["id"]), String(RunState.classes[pl]), pl, Rect2(r.position.x + 12.0, r.position.y + 96.0, r.size.x - 24.0, 100.0))
+		desc_y = 222.0
+	draw_multiline_string(f, r.position + Vector2(10, desc_y), String(card["desc"]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 20.0, 14, 4, Color(0.85, 0.85, 0.95))
 	if String(card["extra"]) != "":
-		_txt(r.position + Vector2(0, r.size.y - 20.0), "[%s]" % card["extra"], 13, Color(1, 1, 1, 0.5), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
-	if card["kind"] == "up":
-		var cur := float((RunState.upgrades[_player()].get(card["id"], {}) as Dictionary).get(card["stat"], 1.0))
-		if cur > 1.0:
-			_txt(r.position + Vector2(0, r.size.y - 42.0), "already x%.2f" % cur, 13, Color(1, 0.8, 0.4), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
-
-
-func _draw_slot_picker(pc: Color) -> void:
-	var card: Dictionary = _cards[_sel]
-	_txt(Vector2(0, 205), "Place  %s  in a slot" % String(card["title"]).to_upper(), 26, Color(1, 1, 1), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
-	_txt(Vector2(0, 232), "Picking an occupied slot replaces that move", 16, Color(1, 1, 1, 0.55), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
-	var loadout: Dictionary = RunState.loadouts[_player()]
-	for ci in 4:
-		_txt(Vector2(380 + ci * 140, 272), SLOT_LABELS[ci], 15, Color(1, 1, 1, 0.6), 130.0, HORIZONTAL_ALIGNMENT_CENTER)
-	for s in 12:
-		var col := s % 4
-		var row := s / 4
-		var r := Rect2(380 + col * 140, 285 + row * 80, 130, 68)
-		var id: String = loadout.get(_slot_name(s), "")
-		var sel := s == _slot
-		draw_rect(r, Color(0.07, 0.04, 0.14))
-		draw_rect(r, pc if sel else Color(1, 1, 1, 0.2), false, 4.0 if sel else 1.5)
-		_txt(r.position + Vector2(8, 20), ROWS[row], 15, pc)
-		if id == "":
-			_txt(r.position + Vector2(0, 46), "(empty)", 16, Color(1, 1, 1, 0.35), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
-		else:
-			_txt(r.position + Vector2(0, 46), MoveDB.get_move(id).name, 15, Color(1, 0.8, 0.5) if sel else Color(1, 1, 1), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
-
-
-func _draw_panel(p: int, x: float, y: float) -> void:
-	var w := 250.0
-	var col := _c(Fighter.PLAYER_COLORS[p])
-	var active := p == _player()
-	draw_rect(Rect2(x, y, w, 250), Color(0, 0, 0, 0.45))
-	draw_rect(Rect2(x, y, w, 250), Color(col.r, col.g, col.b, 1.0 if active else 0.35), false, 3.0 if active else 1.5)
-	_txt(Vector2(x + 10, y + 28), "PLAYER %d" % (p + 1), 20, col)
-	var frac := clampf(float(RunState.hp[p]) / float(RunState.max_hp[p]), 0.0, 1.0)
-	draw_rect(Rect2(x + 10, y + 40, w - 20, 14), Color(0.12, 0.05, 0.08))
-	draw_rect(Rect2(x + 10, y + 40, (w - 20) * frac, 14), Color(1.0, 0.25 + 0.7 * frac, 0.25 + 0.7 * frac))
-	_txt(Vector2(x + 14, y + 52), "%d / %d" % [int(RunState.hp[p]), int(RunState.max_hp[p])], 12, Color(1, 1, 1), 120.0)
-	var loadout: Dictionary = RunState.loadouts[p]
-	for s in 12:
-		var cx := s % 4
-		var cy := s / 4
-		var r := Rect2(x + 10 + cx * 58, y + 74 + cy * 50, 56, 44)
-		var id: String = loadout.get(_slot_name(s), "")
-		draw_rect(r, Color(1, 1, 1, 0.07))
-		if id != "":
-			_txt(r.position + Vector2(0, 17), MoveDB.get_move(id).short, 11, Color(1, 1, 1), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
-			if RunState.upgrades[p].has(id.rstrip("0123456789")):
-				_txt(r.position + Vector2(0, 36), "+ + +", 11, Color(1, 0.75, 0.3), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
-		else:
-			draw_rect(r, Color(1, 1, 1, 0.1), false, 1.0)
-		if cy == 0:
-			_txt(r.position + Vector2(0, -3), SLOT_LABELS[cx], 9, Color(1, 1, 1, 0.45), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+		_txt(r.position + Vector2(0, r.size.y - 10.0), "[%s]" % card["extra"], 11, Color(1, 1, 1, 0.5), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+	# cursors and who can take it
+	for p in 2:
+		var pc := _c(Fighter.PLAYER_COLORS[p])
+		var why := _blocked(p, card)
+		if _cursor[p] == i and _phase[p] != "done":
+			draw_rect(r.grow(2.0 + 4.0 * p), pc, false, 4.0)
+			draw_rect(Rect2(r.position.x + 6.0 + p * 36.0, r.position.y - 20.0, 32.0, 18.0), pc)
+			_txt(Vector2(r.position.x + 6.0 + p * 36.0, r.position.y - 6.0), "P%d" % (p + 1), 13, Color(0.05, 0.03, 0.1), 32.0, HORIZONTAL_ALIGNMENT_CENTER)
+		if why != "":
+			_txt(r.position + Vector2(0, 202.0 + p * 0.0), "P%d: %s" % [p + 1, why] if _cursor[p] == i else "", 12, Color(1.0, 0.5, 0.4), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 
 
 func _draw_end() -> void:
