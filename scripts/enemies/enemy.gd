@@ -34,6 +34,7 @@ var _drop_t := 0.0
 var _air_dir := 0.0  ## horizontal direction carried through a deliberate jump
 var _air_speed := 0.0
 var _air_t := 0.0
+var _jump_vy := 0.0  ## pending jump impulse (applied after the ground-sticking step, which used to cancel every jump)
 var _regen_t := 0.0
 var _summoned: Array[bool] = [false, false]
 var _aggro := false
@@ -237,7 +238,10 @@ func _control(delta: float) -> void:
 	if _air_t <= 0.0:
 		want_x = clampf(want_x, -run_speed, run_speed) * crowd_mult() * chill  # enemies pass each other (and the players), slowed while overlapping
 	velocity.x = move_toward(velocity.x, want_x, 2200.0 * delta)
-	if is_on_floor():
+	if _jump_vy != 0.0:
+		velocity.y = _jump_vy
+		_jump_vy = 0.0
+	elif is_on_floor():
 		velocity.y = 50.0
 	else:
 		velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL)
@@ -340,7 +344,7 @@ func dmg_mult() -> float:
 # ------------------------------------------------------------------ jumping
 
 func _jump(dir: float, speed: float, up: float) -> void:
-	velocity.y = -up
+	_jump_vy = -up
 	_air_dir = dir
 	_air_speed = speed
 	_air_t = 1.1
@@ -375,4 +379,32 @@ func _terrain_jump(dir: float) -> int:
 	if ahead < here - 14.0 and here - ahead <= 130.0:
 		_jump(dir, maxf(run_speed * 1.3, 200.0), 840.0)  # a step or wall in the way
 		return 1
+	# bumpers, spike traps and springs in the way: jump over them instead of walking into them
+	var far := _hazard_ahead(dir)
+	if far > 0.0:
+		_jump(dir, clampf((far + 50.0) / 0.62, 220.0, 560.0), 900.0)
+		return 1
 	return 0
+
+
+## Distance to the far edge of a hazard (bumper, spike trap, spring pad) right in front of us, or -1 when none is close.
+func _hazard_ahead(dir: float) -> float:
+	var best := -1.0
+	var nodes: Array = get_tree().get_nodes_in_group("hazards")
+	for p in get_tree().get_nodes_in_group("props"):
+		if p is Prop and (p as Prop).kind == "spring" and (p as Prop).state == "idle":
+			nodes.append(p)
+	for n in nodes:
+		if not (n is Node2D):
+			continue
+		var half := 36.0
+		if n is SpikeTrap:
+			half = 52.0
+		elif n is Prop:
+			half = 24.0
+		var dx: float = ((n as Node2D).global_position.x - global_position.x) * dir
+		if absf((n as Node2D).global_position.y - global_position.y) > 90.0:
+			continue
+		if dx > -half and dx < 70.0 + half:
+			best = maxf(best, dx + half)
+	return best

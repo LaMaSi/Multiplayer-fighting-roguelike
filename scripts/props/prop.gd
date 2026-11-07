@@ -392,10 +392,13 @@ func _spring_tick(delta: float) -> void:
 		if not a.is_alive() or a.state == "dead" or a.state == "downed" or a.state == "grabbed" or _spring_cd.has(a.get_instance_id()):
 			continue
 		var feet := Rect2(a.global_position.x - 12.0, a.global_position.y - 8.0, 24.0, 12.0)
-		if top.intersects(feet) and a.velocity.y > -60.0:
-			_spring_cd[a.get_instance_id()] = 0.45
+		if top.intersects(feet) and a.velocity.y > 40.0 or (top.intersects(feet) and a.is_on_floor()):
+			_spring_cd[a.get_instance_id()] = 1.6  # long enough to fly away; no bounce loops
 			_squash = 1.0
-			var v := Vector2(a.velocity.x * 0.8, -1250.0)
+			var sx := a.velocity.x * 0.8
+			if absf(sx) < 240.0:
+				sx = (signf(sx) if sx != 0.0 else float(a.facing)) * 300.0  # always carried sideways so it lands beside the spring
+			var v := Vector2(sx, -1250.0)
 			var by: Actor = a
 			if a.team == "enemy" and a.last_hitter != null and is_instance_valid(a.last_hitter):
 				by = a.last_hitter

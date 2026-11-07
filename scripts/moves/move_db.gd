@@ -241,6 +241,7 @@ static func _build() -> void:
 	MoveDBSupers.build()
 	_apply_status()
 	_lengthen_short_hits()
+	_soften_x_moves()
 	# tiers (weapon / adaptive / universal), owning class and the height of the first hit
 	for id in _db:
 		var m: MoveData = _db[id]
@@ -672,3 +673,22 @@ static func _lengthen_short_hits() -> void:
 				continue
 			h["dur"] = 6
 			m.total = maxi(m.total, int(h["at"]) + 6 + 8)
+
+
+## X moves are combo starters: little knockback (and no launching), so the enemy stays in reach for the next move.
+static func _soften_x_moves() -> void:
+	for id in ClassData.X_POOL:
+		var m: MoveData = _db.get(id)
+		if m == null:
+			continue
+		for h in m.hits:
+			if String(h.get("kind", "normal")) == "pull":
+				continue
+			h["kb"] = (h["kb"] as Vector2) * 0.4
+			if String(h.get("kind", "normal")) in ["launch", "spike", "trip"]:
+				h["kind"] = "normal"
+				h["stun"] = maxi(int(h["stun"]), 24)
+			h["prop_power"] = minf(float(h.get("prop_power", 1.0)), 1.0)
+		for e in m.events:
+			if String(e.get("type", "")) == "proj" and e.has("kb"):
+				e["kb"] = (e["kb"] as Vector2) * 0.5

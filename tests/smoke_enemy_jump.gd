@@ -89,4 +89,25 @@ func _ready() -> void:
 		var e3: Enemy = lv2.spawn_enemy("thug", Vector2(wl - 200.0, gy2 - 1.0))
 		await frames(420)
 		check("an enemy does not walk into a pit it cannot cross (x %.0f, pit %.0f..%.0f)" % [e3.global_position.x, wl, wr], is_instance_valid(e3) and e3.state != "dead" and e3.global_position.x < wl + 15.0 and e3.global_position.y < gy2 + 40.0)
+	# hazards in the way: a bumper / spring between the enemy and its target is jumped over
+	var lv3: LevelBase = load("res://scenes/training.tscn").instantiate()
+	add_child(lv3)
+	await frames(30)
+	for n in get_tree().get_nodes_in_group("hazards"):
+		n.queue_free()
+	for n in get_tree().get_nodes_in_group("hurt_enemy"):
+		if n is Enemy:
+			n.queue_free()
+	await frames(3)
+	var bmp := Bumper.new()
+	bmp.position = Vector2(1500, 600)
+	lv3.add_child(bmp)
+	lv3.fighters[0].global_position = Vector2(1900, 599)
+	lv3.fighters[1].global_position = Vector2(1960, 599)
+	var eb: Enemy = lv3.spawn_enemy("thug", Vector2(1300, 599))
+	for i in 420:
+		await get_tree().physics_frame
+		if eb.global_position.x > 1580.0:
+			break
+	check("an enemy gets past a bumper by jumping (x %.0f)" % eb.global_position.x, eb.global_position.x > 1560.0)
 	get_tree().quit()

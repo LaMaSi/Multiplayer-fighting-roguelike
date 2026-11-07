@@ -373,6 +373,9 @@ func _slot_for(b: int) -> String:
 func _try_slot(slot: String, btn: int) -> bool:
 	var id: String = loadout.get(slot, "")
 	if id == "":
+		# nothing on that direction: do the move on the neutral slot of the same button instead of doing nothing
+		id = loadout.get(slot.substr(0, 1), "")
+	if id == "":
 		return false
 	var m := MoveDB.get_move_for(id, class_id)
 	if m == null:
@@ -400,6 +403,14 @@ func _attack_extra(_delta: float) -> void:
 	if attack.aiming:
 		_buf_t = 0.0  # buttons throw the grabbed enemy; they must not also start or buffer a move
 		return
+	# LT held: a pressed attack button cancels the running move at once (empowered, for better combos)
+	if input.is_held(PlayerInput.Btn.EMPOWER) and meter >= 10.0 and attack.move != null and attack.move.tier != "super":
+		for eb in [PlayerInput.Btn.X, PlayerInput.Btn.Y, PlayerInput.Btn.B]:
+			if input.pressed(eb):
+				attack.interrupt()
+				if _try_slot(_slot_for(eb), eb):
+					_buf_t = 0.0
+					return
 	for b in [PlayerInput.Btn.X, PlayerInput.Btn.Y, PlayerInput.Btn.B]:
 		if input.pressed(b):
 			_buf_slot = _slot_for(b)
