@@ -263,8 +263,8 @@ class Mock extends Control:
 	## every 5 hits the number grows and takes a new tilt, with a shock ring on the tier change.
 	func _combo_juicy() -> void:
 		var tier := combo / 5
-		var spring := 1.0 + 0.42 * exp(-9.0 * age) * cos(24.0 * age)
-		var base := 1.0 + 0.08 * minf(float(tier), 7.0)
+		var spring := 1.0 + 0.26 * exp(-9.0 * age) * cos(24.0 * age)
+		var base := 0.92 + 0.045 * minf(float(tier), 4.0)  # capped: the combo must not cover the screen
 		var tilt: float = TILTS[tier % TILTS.size()] + 0.09 * exp(-6.0 * age) * sin(30.0 * age)
 		var shake := Vector2.ZERO
 		if age < 0.25:
@@ -277,7 +277,7 @@ class Mock extends Control:
 		var xf := Transform2D(Vector2(1, 0), Vector2(-0.28, 1), Vector2(640, 152) + shake).rotated_local(tilt).scaled_local(Vector2(s, s))
 		# tier-up shock ring (screen space)
 		if combo % 5 == 0 and age < 0.5:
-			var rr := 60.0 + 260.0 * (age / 0.5)
+			var rr := 50.0 + 150.0 * (age / 0.5)
 			draw_arc(Vector2(640, 134), rr, 0.0, TAU, 48, Color(glow_c.r, glow_c.g, glow_c.b, 0.7 * (1.0 - age / 0.5)), 4.0, true)
 		draw_set_transform_matrix(xf)
 		var slash := PackedVector2Array([Vector2(-96, 12), Vector2(-74, -52), Vector2(96, -52), Vector2(74, 12)])
