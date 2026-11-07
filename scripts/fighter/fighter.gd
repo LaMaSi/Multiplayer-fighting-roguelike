@@ -134,13 +134,22 @@ func _tick_timers(delta: float) -> void:
 	super._tick_timers(delta)
 	_dash_cd = maxf(0.0, _dash_cd - delta)
 	if _ghost and state != "dash":
+		# the dash phases through players, enemies and barriers; solid again only once nothing overlaps
+		var me := get_hurt_rect()
 		var overlap := false
 		for f in Coop.fighters:
-			if f != self and get_hurt_rect().intersects(f.get_hurt_rect()):
+			if f != self and me.intersects(f.get_hurt_rect()):
+				overlap = true
+		for n in get_tree().get_nodes_in_group("hurt_enemy"):
+			if n is Actor and (n as Actor).is_alive() and me.intersects((n as Actor).get_hurt_rect()):
+				overlap = true
+		for n in get_tree().get_nodes_in_group("barriers"):
+			if n.has_method("get_rect") and me.intersects(n.get_rect()):
 				overlap = true
 		if not overlap:
 			_ghost = false
 			set_collision_mask_value(3, true)
+			set_collision_mask_value(4, true)
 
 
 func _control(delta: float) -> void:
@@ -237,12 +246,14 @@ func _locomotion(delta: float) -> void:
 			_start_dash()
 		elif input.pressed(PlayerInput.Btn.INTERACT):
 			_try_pickup()
+		elif input.pressed(PlayerInput.Btn.LB):
+			_try_grab()
 		else:
 			for b in [PlayerInput.Btn.X, PlayerInput.Btn.Y, PlayerInput.Btn.B]:
 				if input.pressed(b):
 					if _try_slot(_slot_for(b), b):
 						break
-	if state == "attack":
+	if state == "attack" or state == "dash":  # a dash just started here: _st_dash drives it from the next frame on
 		return
 
 	var vy_before := velocity.y
@@ -394,7 +405,8 @@ func _start_dash() -> void:
 	velocity = Vector2(dir * 640.0, 0.0)
 	invuln = maxf(invuln, 0.12)  # a few i-frames at the start only
 	_ghost = true
-	set_collision_mask_value(3, false)
+	set_collision_mask_value(3, false)  # phase: players
+	set_collision_mask_value(4, false)  # enemies and barriers
 	Sfx.play("whoosh", 1.2)
 	Fx.dust(get_parent(), global_position, 6)
 	figure.set_target({"lean": 0.9, "th_f": 1.1, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.4, "ua_f": 1.4, "la_f": 0.2, "ua_b": 1.2, "la_b": 0.2})
@@ -413,7 +425,16 @@ func _st_dash(delta: float) -> void:
 		state = "idle"
 
 
-func _try_pickup() -> void:
+## LB: grab. A crate or barrel in reach is picked up, otherwise the grab move reaches for an enemy in front.
+func _try_grab() -> void:
+	if _try_pickup():
+		return
+	var m := MoveDB.get_move_for("grab_throw", class_id)
+	if m != null and is_on_floor():
+		start_attack(m, PlayerInput.Btn.LB)
+
+
+func _try_pickup() -> bool:
 	var best: Node = null
 	var bd := 80.0
 	for p in get_tree().get_nodes_in_group("props"):
@@ -426,6 +447,8 @@ func _try_pickup() -> void:
 		best.grab(self)
 		held = best
 		Sfx.play("pickup", 0.8)
+		return true
+	return false
 
 
 func _throw_held() -> void:
