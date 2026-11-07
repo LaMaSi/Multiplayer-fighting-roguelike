@@ -41,6 +41,7 @@ var _buf_t := 0.0
 var _dash_t := 0.0
 var _dash_cd := 0.0
 var _air_dash_used := false  ## one dash per air time; reset on landing
+var _crouch := 0.0  ## 0..1, eases in over ~7 frames while holding down on the ground
 var _ghost := false
 var _toss_t := 0.0
 var _toss_hit: Dictionary = {}
@@ -127,6 +128,11 @@ func _locomotion(delta: float) -> void:
 	var on_floor := is_on_floor()
 	var mx := input.dir.x
 	if absf(mx) < 0.2:
+		mx = 0.0
+	# crouch: hold down (stick mostly vertical) on the ground; stationary, no crouch-walking
+	var want_crouch := on_floor and held == null and state != "attack" and input.dir.y > 0.6 and absf(input.dir.x) < 0.5
+	_crouch = move_toward(_crouch, 1.0 if want_crouch else 0.0, delta / 0.115)
+	if _crouch > 0.3 and want_crouch:
 		mx = 0.0
 	move_input_x = mx
 	if mx != 0.0:
@@ -576,7 +582,26 @@ func apply_pickup(kind: String) -> void:
 
 # ------------------------------------------------------------------ visuals
 
+## Crouching under a HIGH attack or projectile avoids it. MID and LOW still hit.
+func is_crouched() -> bool:
+	return _crouch >= 0.6 and is_on_floor()
+
+
+func _dodges(info: HitInfo) -> bool:
+	if info.height == "high" and info.attacker != self and is_crouched() and not info.friendly:
+		Fx.number(get_parent(), global_position + Vector2(0, -body_h - 8.0), "DUCK", Color(1, 1, 1, 0.8), 16)
+		return true
+	return false
+
+
 func _loco_pose() -> Dictionary:
+	var p := _loco_pose_base()
+	if _crouch > 0.01 and not p.is_empty():
+		p = PoseLib.blend(p, PoseLib.crouch(), _crouch)
+	return p
+
+
+func _loco_pose_base() -> Dictionary:
 	var p: Dictionary
 	match state:
 		"land":

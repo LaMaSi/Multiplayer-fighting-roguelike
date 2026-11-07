@@ -18,6 +18,7 @@ var ground := false
 var gravity := 0.0
 var returns := 0.0
 var reflected := false
+var height := "mid"
 
 var _age := 0.0
 var _done: Dictionary = {}
@@ -41,6 +42,7 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.pierce = bool(e.get("pierce", false))
 	p.ground = bool(e.get("ground", false))
 	p.returns = float(e.get("returns", 0.0))
+	p.height = String(e.get("height", "low" if p.ground else ("high" if p.shape == "bottle" else "mid")))
 	var off: Vector2 = e["pos"]
 	p.global_position = a.global_position + Vector2(off.x * a.facing, off.y)
 	if bool(e.get("aim", false)):
@@ -193,6 +195,7 @@ func _check_hits() -> void:
 			info.dmg = dmg
 			info.stun = stun
 			info.kind = kind
+			info.height = height
 			info.kb = Vector2(kb.x * signf(vel.x if vel.x != 0.0 else 1.0), kb.y)
 			info.stop = 3
 			info.source = "proj"

@@ -328,12 +328,15 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.kind = String(h["kind"])
 	info.stop = int(h["stop"]) + (4 if float(h["dmg"]) >= 18.0 else (2 if float(h["dmg"]) >= 9.0 else 1))
 	info.low = bool(h["low"])
+	info.height = String(h.get("height", "low" if info.low else "mid"))
 	info.shake = float(h["shake"])
 	info.punch = float(h.get("punch", 0.0))
 	info.prop_power = float(h.get("prop_power", 1.0))
 	info.wallbounce = bool(h.get("wallbounce", false))
 	info.heal_self = float(h.get("heal_self", 0.0))
 	info.color = h.get("color", a.figure.color)
+	if a.team == "enemy" and info.height == "high":
+		info.color = Color(2.4, 2.0, 0.3)  # high attacks spark amber
 	info.friendly = (t is Actor and (t as Actor).team == a.team)
 	info.pos = rect.get_center().clamp(t.get_hurt_rect().position, t.get_hurt_rect().end)
 	var kb: Vector2 = (h["kb"] as Vector2) * a.upgrade_mult(move.id, "kb")

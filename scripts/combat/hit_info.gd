@@ -12,6 +12,7 @@ var stop := 3  ## hit-stop frames
 var pos := Vector2.ZERO
 var source := "melee"  ## melee, proj, thrown, prop, pinball
 var low := false
+var height := "mid"  ## "high" (ducked by crouching), "mid", "low"
 var relay := false
 var alley_oop := false
 var wallbounce := false

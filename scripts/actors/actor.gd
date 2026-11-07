@@ -194,8 +194,15 @@ func _on_defeated() -> void:
 
 # ------------------------------------------------------------------ taking hits
 
+## Override: true if this actor avoids the hit entirely (e.g. a crouching player vs a HIGH attack).
+func _dodges(_info: HitInfo) -> bool:
+	return false
+
+
 func take_hit(info: HitInfo) -> bool:
 	if not is_targetable() or invuln > 0.0:
+		return false
+	if _dodges(info):
 		return false
 	if _filter_hit(info):
 		return true

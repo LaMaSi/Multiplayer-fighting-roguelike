@@ -101,6 +101,23 @@ static func getup() -> Dictionary:
 	}
 
 
+## Crouch: deep knees (the hip drops by itself), torso forward, guard up.
+static func crouch() -> Dictionary:
+	return {
+		"lean": 0.42, "head": -0.1,
+		"th_f": 1.25, "kn_f": 2.3, "th_b": -0.55, "kn_b": 1.75,
+		"ua_f": 1.2, "la_f": 1.8, "ua_b": 0.9, "la_b": 2.0,
+	}
+
+
+## Blend two poses (missing keys in `a` use `b`'s value).
+static func blend(a: Dictionary, b: Dictionary, t: float) -> Dictionary:
+	var out := a.duplicate()
+	for k in b:
+		out[k] = lerpf(float(a.get(k, b[k])), float(b[k]), t)
+	return out
+
+
 static func guard() -> Dictionary:
 	return {
 		"lean": 0.22, "head": 0.05,

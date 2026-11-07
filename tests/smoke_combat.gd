@@ -164,6 +164,35 @@ func _run() -> void:
 	Coop.friendly_fire = true
 	await frames(60)
 
+	print("[crouch avoids HIGH attacks only]")
+	await clear_enemies()
+	place(f1, Vector2(1000, 599), 1)
+	f1.invuln = 0.0
+	p1.script_set(Vector2(0, 1), [])
+	await frames(14)
+	check(f1.is_crouched(), "holding down crouches (crouch=%.2f)" % f1._crouch)
+	var hi := HitInfo.new()
+	hi.team = "enemy"
+	hi.height = "high"
+	hi.dmg = 5.0
+	var hp_c := f1.hp
+	check(not f1.take_hit(hi) and f1.hp == hp_c, "crouching avoids a HIGH hit")
+	var mid := HitInfo.new()
+	mid.team = "enemy"
+	mid.height = "mid"
+	mid.dmg = 5.0
+	check(f1.take_hit(mid) and f1.hp < hp_c, "crouching does not avoid a MID hit")
+	await frames(80)
+	p1.script_set(Vector2.ZERO, [])
+	await frames(14)
+	f1.invuln = 0.0
+	var hi2 := HitInfo.new()
+	hi2.team = "enemy"
+	hi2.height = "high"
+	hi2.dmg = 5.0
+	check(f1.take_hit(hi2), "standing takes a HIGH hit")
+	await frames(60)
+
 	print("[all 30 moves execute]")
 	await clear_enemies()
 	var dist := {"fireball": 220, "boomerang": 220, "spread_shot": 220, "ground_wave": 220, "pull_hook": 250,

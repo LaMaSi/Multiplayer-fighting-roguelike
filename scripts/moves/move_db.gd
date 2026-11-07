@@ -422,14 +422,14 @@ static func _build_enemy() -> void:
 			[16, {"lean": 0.5, "ua_f": 1.55, "la_f": 0.0, "th_f": 0.8, "kn_f": 0.3, "th_b": -0.7}],
 			[28, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 15, "type": "vel", "vx": 120.0}],
-		"hits": [_hit(16, 4, Rect2(8, -82, 58, 32), 8, 16, Vector2(180, 0), {"stop": 3})]})
+		"hits": [_hit(16, 4, Rect2(8, -82, 58, 32), 8, 16, Vector2(180, 0), {"stop": 3, "height": "high"})]})
 	_mk({"id": "e_double", "name": "Double Punch", "enemy": true, "tele": true, "total": 56, "color": RED,
 		"kf": [[0, {"lean": -0.2, "ua_f": -0.5, "la_f": 1.4}],
 			[14, {"lean": 0.5, "ua_f": 1.55, "la_f": 0.0, "th_f": 0.8, "kn_f": 0.3, "th_b": -0.7}],
 			[24, {"lean": 0.5, "ua_b": 1.55, "la_b": 0.0, "ua_f": 0.3, "la_f": 1.8}],
 			[40, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 13, "type": "vel", "vx": 100.0}, {"at": 23, "type": "vel", "vx": 100.0}],
-		"hits": [_hit(14, 3, Rect2(8, -82, 58, 32), 6, 14, Vector2(100, 0), {"stop": 3}),
+		"hits": [_hit(14, 3, Rect2(8, -82, 58, 32), 6, 14, Vector2(100, 0), {"stop": 3, "height": "high"}),
 			_hit(24, 4, Rect2(8, -82, 62, 32), 8, 22, Vector2(300, -220), {"kind": "launch", "stop": 4})]})
 	# biker: charge
 	_mk({"id": "e_charge", "name": "Charge", "enemy": true, "tele": true, "total": 74, "color": RED,
@@ -452,12 +452,12 @@ static func _build_enemy() -> void:
 			[42, {"lean": 0.9, "ua_f": 0.8, "la_f": 0.1, "ua_b": 0.8, "th_f": 0.9, "kn_f": 0.5, "th_b": -0.8, "kn_b": 0.6}],
 			[70, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 42, "type": "ring", "radius": 230.0, "sfx": "boom", "shake": 0.7}],
-		"hits": [_hit(42, 3, Rect2(-170, -50, 340, 52), 16, 30, Vector2(320, -520), {"radial": true, "kind": "launch", "stop": 8, "shake": 0.5})]})
+		"hits": [_hit(42, 3, Rect2(-170, -50, 340, 52), 16, 30, Vector2(320, -520), {"radial": true, "kind": "launch", "stop": 8, "shake": 0.5, "height": "low"})]})
 	_mk({"id": "boss_swing", "name": "Wide Swing", "enemy": true, "tele": true, "total": 70, "color": RED,
 		"kf": [[0, {"lean": -0.5, "ua_f": -1.2, "la_f": 0.4}],
 			[26, {"lean": 0.7, "ua_f": 1.57, "la_f": 0.0, "th_f": 0.9, "kn_f": 0.3, "th_b": -0.8}], [50, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 25, "type": "vel", "vx": 220.0}],
-		"hits": [_hit(26, 5, Rect2(10, -115, 120, 70), 13, 28, Vector2(480, -140), {"kind": "launch", "stop": 6, "shake": 0.35})]})
+		"hits": [_hit(26, 5, Rect2(10, -115, 120, 70), 13, 28, Vector2(480, -140), {"kind": "launch", "stop": 6, "shake": 0.35, "height": "high"})]})
 	_mk({"id": "boss_charge", "name": "Bull Rush", "enemy": true, "tele": true, "total": 110, "color": RED,
 		"kf": [[0, {"lean": 0.5, "th_f": 0.8, "kn_f": 1.5, "th_b": -0.6, "kn_b": 1.5}],
 			[34, {"lean": 1.0, "th_f": 1.0, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.3, "ua_f": 1.4, "la_f": 0.2, "ua_b": 1.2}],
