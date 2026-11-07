@@ -90,6 +90,25 @@ Magic is locked behind meta progression. Brawler is available from the start; Sw
 - Stickfigure weapon rendering: sword (line with glow), hammer (thick line with block head), glowing hands for Magic. Keep it code-drawn.
 - Add a save-data version field now so older saves don't break when classes arrive.
 
+### 3.5 Class base poses (from your sketch: `docs/concepts/class_base_poses.png`)
+
+Each class has its own **idle/base pose**, and the walk, crouch, dash and hit-reaction poses are built as offsets from it, so all of a class's animations share one silhouette. The sketch is a rough reference, not exact.
+
+| Class | Base pose (from the sketch) | Weapon anchor | Idle motion |
+|---|---|---|---|
+| **Fist (Brawler)** | Compact boxer guard: one fist raised near the head with a bent elbow, the other hand lower in front, legs apart, knees slightly bent. | none (fists, small glow on the knuckles) | bounce on the toes, small head bob |
+| **Sword** | Upright, slightly leaning forward. The sword arm extended out front, **blade angled up and forward**; the back arm relaxed. Legs apart in a lunge-ready stance. | blade attached to the front hand, about 1.5x the arm length | the blade tip drifts and flicks slowly, small breathing |
+| **Hammer** | Wide, low, heavy stance, shoulders hunched. A long shaft held across the body with **both hands**, the big **rectangular head resting low at the back/side**, the head line pulling the body down. | hammer shaft on both hands, a block head at the end | slow sway, the head sinks at the end of the breath |
+| **Magic** | Upright and floating, arms **spread wide at both sides** with open raised palms, legs close together. A glow around both hands. | no weapon, glow at the hands | the hands orbit and bob, the figure hovers about 2-4 px |
+
+Implementation notes:
+- A `BasePose` resource per class (angles for all joints and root offset). The pose player blends from the base pose into move poses and back to it, so recovery always returns to the class silhouette.
+- Weapons are separate nodes parented to the hand joints, so a move can rotate the weapon independently of the arm, which gives the Hammer and Sword their sweeping arcs.
+- The Hammer pose is two-handed, so both hand joints must hold the shaft during all Hammer moves. Add one IK helper for "two hands on one shaft".
+- The crouch (down) is derived per class: Hammer sinks the head low, Sword goes to a low guard, Fist tucks the guard, Magic lowers the floating height.
+- The eyes follow the stick on all classes. Their size and shape stay the same so players recognise their stickfigure.
+- Silhouettes need to be clearly different at gameplay size. Check by shrinking the sprites to the camera size.
+
 ## 4. Suggested order and effort
 
 | Phase | Content | Estimated effort |
