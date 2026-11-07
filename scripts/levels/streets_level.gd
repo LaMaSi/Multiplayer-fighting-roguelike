@@ -21,6 +21,7 @@ func _setup() -> void:
 
 
 func _full() -> void:
+	objective = "Clear the street and take down the boss"
 	level_w = 6800.0
 	platforms = [
 		Rect2(500, 470, 280, PLAT_H), Rect2(1000, 380, 240, PLAT_H),
@@ -54,6 +55,8 @@ func _generated(node: Dictionary, depth: int) -> void:
 	enemy_dmg_mult = 1.0 + 0.06 * depth
 	if t != "boss":
 		exit_x = level_w - 260.0
+	objective = {"fight": "Break through to the exit", "elite": "Defeat the elite guard, then reach the exit",
+		"treasure": "Smash the loot, then reach the exit", "boss": "Take down the boss"}.get(t, "Reach the exit")
 
 	# platforms
 	var n_plat := int(level_w / 720.0)

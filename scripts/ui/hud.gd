@@ -11,7 +11,11 @@ class Canvas extends Control:
 			hud.paint(self)
 
 
+## Permanent move list under each health bar. Off by default; toggled in Testing Options.
+static var show_moves := false
+
 var level: LevelBase
+var objective := ""  ## one-line goal shown under the revive hearts
 
 var _canvas: Canvas
 var _trail: Array[float] = [100.0, 100.0]
@@ -103,6 +107,8 @@ func paint(c: Control) -> void:
 	for h in 3:
 		var col := Color(1.0, 0.3, 0.45) if h < Coop.revives_left else Color(0.25, 0.25, 0.3)
 		c.draw_circle(Vector2(600 + h * 20, 34), 6.0, col)
+	if objective != "":
+		_text(c, Vector2(240, 62), objective, 16, Color(1, 1, 1, 0.75), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
 	# boss bar
 	for b in get_tree().get_nodes_in_group("boss"):
 		if b is Enemy and is_instance_valid(b):
@@ -130,8 +136,9 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 	var w := 292.0
 	var x0 := 14.0 if i == 0 else 1280.0 - 14.0 - w
 	var col := _c(f.figure.color)
-	c.draw_rect(Rect2(x0, 8, w, 124), Color(0, 0, 0, 0.5))
-	c.draw_rect(Rect2(x0, 8, w, 124), Color(col.r, col.g, col.b, 0.7), false, 2.0)
+	var panel_h := 124.0 if show_moves else 60.0
+	c.draw_rect(Rect2(x0, 8, w, panel_h), Color(0, 0, 0, 0.5))
+	c.draw_rect(Rect2(x0, 8, w, panel_h), Color(col.r, col.g, col.b, 0.7), false, 2.0)
 	_text(c, Vector2(x0 + 8, 28), "P%d" % (i + 1), 20, col)
 	# hp
 	var bar := Rect2(x0 + 42, 14, 236, 14)
@@ -148,12 +155,15 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 	c.draw_line(m.position + Vector2(m.size.x * 0.5, -1), m.position + Vector2(m.size.x * 0.5, 8), Color(1, 1, 1, 0.6), 1.0)
 	# buffs
 	var bx := x0 + 8.0
+	var by := 128.0 if show_moves else 56.0
 	for b in f.buffs:
-		_text(c, Vector2(bx, 128), String(b).to_upper(), 10, Color(1, 0.9, 0.5))
+		_text(c, Vector2(bx, by), String(b).to_upper(), 10, Color(1, 0.9, 0.5))
 		bx += 46.0
 	if f.shield_hits > 0:
-		_text(c, Vector2(bx, 128), "SHIELD %d" % f.shield_hits, 10, Color(0.6, 0.9, 1.0))
-	# loadout grid
+		_text(c, Vector2(bx, by), "SHIELD %d" % f.shield_hits, 10, Color(0.6, 0.9, 1.0))
+	if not show_moves:
+		return
+	# loadout grid (Testing Options toggle)
 	var gx := x0 + 20.0
 	var gy := 52.0
 	var heads := ["-", "UP", "SIDE", "DOWN"]
