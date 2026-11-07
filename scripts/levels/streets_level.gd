@@ -7,9 +7,11 @@ func _setup() -> void:
 	level_name = "Streets"
 	level_w = 6800.0
 	enemy_hp_mult = 1.0
-	theme["sky_bottom"] = Color(0.30, 0.08, 0.24)
+	theme["sky_top"] = Color(0.12, 0.04, 0.26)
+	theme["sky_bottom"] = Color(1.0, 0.36, 0.30)
 	theme["neon_ground"] = Color(2.0, 0.7, 1.2)
 	theme["neon_plat"] = Color(2.0, 1.2, 0.4)
+	theme["bld_far"] = Color(0.45, 0.15, 0.40)
 	theme["edge_mid"] = Color(2.0, 0.6, 0.3)
 	theme["edge_near"] = Color(2.0, 0.4, 1.2)
 	platforms = [

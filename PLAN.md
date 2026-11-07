@@ -153,10 +153,10 @@ tests/      headless smoke tests (run with godot --headless -s)
 
 0. **Before M0**: **Git is not installed on this PC** (checked). The user wants a local repo with a commit per milestone, so first install Git for Windows (https://git-scm.com/download/win, or `winget install Git.Git`), then `git init` and commit this plan. Godot 4.5.1 console already verified to run headless on this project (it only reports "no main scene", as expected for an empty project).
 1. **M0 Skeleton** *(DONE, awaiting playtest)*: project setup, input abstraction (2 pads + keyboard), one stickfigure per player with walk/jump on a test level with floor and one-way platforms, player-player body blocking, debug overlay.
-2. **M1 Combat core**: skeleton poses, `MoveData`, the 5 starter moves, hit/hurt boxes, hit-stop/shake/flash, dummy enemy, first procedural SFX. **Stop and tune feel with the user before moving on**: this milestone decides if the game feels juicy.
-3. **M2 Co-op core**: shared camera, shared combo counter, juggle relay, revive, friendly-fire (damage + toggle), first team-up moves (Ally Toss, alley-oop spike) and the loadout-synergy hooks (buff-the-partner moves).
-4. **M3 Enemies and Streets**: 4 enemy types + boss, token AI, containers + pickups, a full Streets level with parallax.
-5. **M4 Moves**: implement the remaining 25 moves in batches of ~6 (projectiles, defensives, slams, utility, co-op moves).
+2. **M1 Combat core** *(DONE)*: skeleton poses, `MoveData`, the 5 starter moves, hit/hurt boxes, hit-stop/shake/flash, dummy enemy, first procedural SFX. **Stop and tune feel with the user before moving on**: this milestone decides if the game feels juicy.
+3. **M2 Co-op core** *(DONE; Duo Specials deferred to M7)*: shared camera, shared combo counter, juggle relay, revive, friendly-fire (damage + toggle), first team-up moves (Ally Toss, alley-oop spike) and the loadout-synergy hooks (buff-the-partner moves).
+4. **M3 Enemies and Streets** *(DONE: thug, biker, bottle thrower, Big Boss, crates, pickups, 5 arena-lock encounters)*: 4 enemy types + boss, token AI, containers + pickups, a full Streets level with parallax.
+5. **M4 Moves** *(DONE: all 30 implemented; Move Lab in the pause menu to try them)*: implement the remaining 25 moves in batches of ~6 (projectiles, defensives, slams, utility, co-op moves).
 6. **M5 Run loop**: node map, rewards (shared pick), level-ups, move upgrades.
 7. **M6 Biomes**: Wasteland and Ruins enemies, bosses and backdrops.
 8. **M7 Duo specials, meta unlocks, menus, save/load**.
@@ -171,3 +171,13 @@ tests/      headless smoke tests (run with godot --headless -s)
 - **Pose animation looks stiff**: use eased pose tweens and springs for secondary motion; tune in M1 before building 25 more moves.
 - **Moves balance**: tune using the data files, not scripts.
 - **Scope**: the milestones are ordered so the game is fun and complete after M3 even if later milestones take long.
+
+## 11. Implementation notes (as built, after M4)
+
+- **Moves are GDScript data** (scripts/moves/move_db.gd), not .tres files: each move is keyframes + hit boxes + events (el, proj, guard, parry, eflect, 	p, 	hrow, 	oss ...). Enemy attacks use the same format and the same AttackRunner.
+- **Hit detection is rectangle based** (no Area2D): each active hit box is tested against get_hurt_rect() of every target in the opposing group. Hit-stop is per actor (attacker + victim freeze), not global.
+- **Co-op code lives in the Coop autoload**: combo counter and multiplier, relay / alley-oop detection (victim is launched and last hit by the *other* player), friendly fire (default on, 50% damage, never lethal), revive budget (3 per level), enemy attack tokens.
+- **Controls as built**: A jump, X/Y/B + stick direction = 15 slots (Right = forward, Left = back), LT dash (brief i-frames, passes through partner), RT pick up / throw crates and hold near a downed partner to revive, Start/Esc pause. Facing turns after 4 frames of stick input so Back+attack works.
+- **Pause menu**: friendly fire on/off and damage %, Move Lab (assign any move to any slot for either player), training tools (spawn enemy / crate, heal), restart.
+- **Tests**: 	ests/smoke_m0.tscn (movement) and 	ests/smoke_combat.tscn (every move, enemies, relay, friendly fire, revive, ally toss, crates, game over, Streets encounters + boss). Run headless with --fixed-fps 60. 	ests/shot.tscn renders screenshots with the real renderer.
+- **Not built yet**: super meter use / Duo Specials, reward screens and node map (M5), Wasteland and Ruins (M6), meta unlocks and save (M7), music and audio polish (M8). Moves 1-30 are untuned first drafts: expect balance feedback.

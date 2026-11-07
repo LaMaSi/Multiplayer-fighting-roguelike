@@ -60,7 +60,8 @@ func is_targetable() -> bool:
 
 
 func get_hurt_rect() -> Rect2:
-	return Rect2(global_position.x - w * 0.5, global_position.y - h, w, h)
+	# generous: head-height punches must reach low containers
+	return Rect2(global_position.x - w * 0.5 - 4.0, global_position.y - h - 34.0, w + 8.0, h + 34.0)
 
 
 func can_be_grabbed() -> bool:
@@ -116,7 +117,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if state == "dead":
 		return
-	velocity.y = minf(velocity.y + GRAVITY * delta, 1700.0) if not is_on_floor() else 50.0
+	if state == "flying" or not is_on_floor():
+		velocity.y = minf(velocity.y + GRAVITY * delta, 1700.0)
+	else:
+		velocity.y = 50.0
 	if state == "idle":
 		velocity.x = move_toward(velocity.x, 0.0, 1500.0 * delta)
 	var vx := velocity.x

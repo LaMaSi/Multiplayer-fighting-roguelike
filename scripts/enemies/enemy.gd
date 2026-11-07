@@ -50,7 +50,8 @@ func _ready() -> void:
 	figure.color = def["color"]
 	figure.style = String(def["style"])
 	figure.set_target(PoseLib.idle_enemy(0.0), true)
-	invuln = 0.5
+	if def["ai"] != "dummy":
+		invuln = 0.5
 	if bool(def.get("boss", false)):
 		add_to_group("boss")
 
@@ -76,7 +77,7 @@ func _draw() -> void:
 
 
 func telegraph() -> void:
-	figure.modulate = Color(2.4, 0.9, 0.9, figure.modulate.a)
+	figure.modulate = Color(1.5, 0.75, 0.75, figure.modulate.a)
 	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 14.0), "!", Color(2.5, 0.5, 0.4), 34)
 	Sfx.play("ui", 0.6)
 

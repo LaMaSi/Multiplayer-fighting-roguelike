@@ -14,11 +14,11 @@ var encounters: Array = []  ## {x, waves: [[["thug", 2], ...], ...], boss: bool}
 var enemy_hp_mult := 1.0
 var level_name := "Level"
 var theme := {
-	"sky_top": Color(0.02, 0.01, 0.06), "sky_bottom": Color(0.22, 0.05, 0.26),
+	"sky_top": Color(0.10, 0.05, 0.28), "sky_bottom": Color(0.85, 0.28, 0.62),
 	"ground": Color(0.05, 0.03, 0.10), "neon_ground": Color(0.5, 1.4, 2.0), "neon_plat": Color(2.0, 0.6, 1.3),
-	"bld_far": Color(0.07, 0.03, 0.14), "edge_far": Color(0.45, 0.15, 0.7),
-	"bld_mid": Color(0.06, 0.03, 0.12), "edge_mid": Color(0.7, 0.2, 0.9),
-	"bld_near": Color(0.05, 0.02, 0.10), "edge_near": Color(1.0, 0.3, 1.0), "window": Color(1.6, 1.0, 0.4), "seed": 3,
+	"bld_far": Color(0.34, 0.14, 0.50), "edge_far": Color(0.9, 0.35, 1.2),
+	"bld_mid": Color(0.17, 0.07, 0.30), "edge_mid": Color(1.4, 0.5, 1.5),
+	"bld_near": Color(0.08, 0.03, 0.16), "edge_near": Color(1.6, 0.5, 1.4), "window": Color(1.8, 1.3, 0.5), "seed": 3,
 }
 
 var fighters: Array[Fighter] = []
@@ -46,6 +46,7 @@ func _ready() -> void:
 	Coop.enemy_hp_mult = enemy_hp_mult
 	Coop.bounds = Rect2(0, -1200, level_w, 2400)
 	_build_environment()
+	_make_scenery()
 	_add_backdrop()
 	_build_world()
 	_spawn_players()
@@ -277,30 +278,48 @@ func to_menu() -> void:
 
 # ------------------------------------------------------------------ drawing
 
-func _draw() -> void:
+func _make_scenery() -> void:
+	var sky := Node2D.new()
+	sky.z_index = -100
+	sky.draw.connect(_paint_sky.bind(sky))
+	add_child(sky)
+	var gr := Node2D.new()
+	gr.z_index = -10
+	gr.draw.connect(_paint_ground.bind(gr))
+	add_child(gr)
+	sky.queue_redraw()
+	gr.queue_redraw()
+
+
+func _paint_sky(c: CanvasItem) -> void:
 	var top: Color = theme["sky_top"]
 	var horizon: Color = theme["sky_bottom"]
-	var y0 := -1500.0
-	var bands := 48
+	var y0 := -300.0
+	c.draw_rect(Rect2(-2500, -1800, level_w + 5000, 1800 + y0 + 2), top)
+	var bands := 40
 	var h := (ground_y - y0) / bands
 	for i in bands:
 		var t := float(i) / float(bands - 1)
-		draw_rect(Rect2(-2500, y0 + h * i, level_w + 5000, h + 1.0), top.lerp(horizon, pow(t, 2.2)))
+		c.draw_rect(Rect2(-2500, y0 + h * i, level_w + 5000, h + 1.0), top.lerp(horizon, t * t))
+	# outside the level
+	c.draw_rect(Rect2(-2500, -1800, 2500, 3200), Color(0.01, 0.0, 0.03))
+	c.draw_rect(Rect2(level_w, -1800, 2500, 3200), Color(0.01, 0.0, 0.03))
+
+
+func _paint_ground(c: CanvasItem) -> void:
 	var ng: Color = theme["neon_ground"]
-	draw_rect(Rect2(-2500, ground_y, level_w + 5000, 700), theme["ground"])
-	draw_line(Vector2(-2500, ground_y), Vector2(level_w + 2500, ground_y), ng, 3.0, true)
+	c.draw_rect(Rect2(-2500, ground_y, level_w + 5000, 700), theme["ground"])
+	c.draw_line(Vector2(-2500, ground_y), Vector2(level_w + 2500, ground_y), ng, 3.0, true)
 	var gx := -2500.0
 	while gx < level_w + 2500.0:
-		draw_line(Vector2(gx, ground_y), Vector2(gx - 40, ground_y + 200), Color(ng.r, ng.g, ng.b, 0.12), 1.5)
+		c.draw_line(Vector2(gx, ground_y), Vector2(gx - 40, ground_y + 200), Color(ng.r, ng.g, ng.b, 0.12), 1.5)
 		gx += 80.0
 	for dy in [28.0, 70.0, 130.0]:
-		draw_line(Vector2(-2500, ground_y + dy), Vector2(level_w + 2500, ground_y + dy), Color(ng.r, ng.g, ng.b, 0.10), 1.5)
-	draw_rect(Rect2(-2500, -1500, 2500, 3000), Color(0.01, 0.0, 0.03))
-	draw_rect(Rect2(level_w, -1500, 2500, 3000), Color(0.01, 0.0, 0.03))
-	draw_line(Vector2(0, -1500), Vector2(0, ground_y), ng, 3.0)
-	draw_line(Vector2(level_w, -1500), Vector2(level_w, ground_y), ng, 3.0)
+		c.draw_line(Vector2(-2500, ground_y + dy), Vector2(level_w + 2500, ground_y + dy), Color(ng.r, ng.g, ng.b, 0.10), 1.5)
+	c.draw_line(Vector2(0, -1500), Vector2(0, ground_y), ng, 3.0)
+	c.draw_line(Vector2(level_w, -1500), Vector2(level_w, ground_y), ng, 3.0)
 	var np: Color = theme["neon_plat"]
 	for r: Rect2 in platforms:
-		draw_rect(r, Color(0.08, 0.03, 0.14))
-		draw_line(r.position, Vector2(r.end.x, r.position.y), np, 3.5, true)
-		draw_line(Vector2(r.position.x, r.end.y), r.end, Color(np.r, np.g, np.b, 0.3), 2.0, true)
+		c.draw_rect(r, Color(0.08, 0.03, 0.14))
+		c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, 3.5, true)
+		c.draw_line(Vector2(r.position.x, r.end.y), r.end, Color(np.r, np.g, np.b, 0.3), 2.0, true)

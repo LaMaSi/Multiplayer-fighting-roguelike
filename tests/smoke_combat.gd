@@ -121,8 +121,11 @@ func _run() -> void:
 	await tap(p1, X, Vector2(0, -1))
 	await frames(16)
 	check(d.state == "launched", "uppercut launches (state=%s)" % d.state)
+	f2.loadout["X"] = "anti_air"
+	await frames(0)
 	await tap(p2, X)
-	await frames(10)
+	await frames(14)
+	f2.loadout = MoveDB.STARTER.duplicate()
 	check(Coop.relay >= 1, "partner hit on airborne enemy = relay (relay=%d, combo=%d)" % [Coop.relay, Coop.combo])
 	await frames(90)
 
@@ -252,9 +255,13 @@ func _run() -> void:
 	var vic := level.spawn_enemy("thug", Vector2(1070, 599))
 	await frames(40)
 	vic.invuln = 0.0
-	vic.hp = 5.0
-	await tap(p1, X)
-	for i in 120:
+	var lethal := HitInfo.new()
+	lethal.attacker = f1
+	lethal.team = "player"
+	lethal.dmg = 9999.0
+	lethal.kb = Vector2(200, -300)
+	vic.take_hit(lethal)
+	for i in 150:
 		await frames(1)
 		if not is_instance_valid(vic):
 			break

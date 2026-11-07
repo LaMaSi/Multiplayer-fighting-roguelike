@@ -86,7 +86,7 @@ func _physics_process(delta: float) -> void:
 			global_position.y = (r["position"] as Vector2).y - radius * 0.6
 	elif gravity > 0.0 or shape == "bottle":
 		var space2 := get_world_2d().direct_space_state
-		var q2 := PhysicsRayQueryParameters2D.create(old, global_position, 3)
+		var q2 := PhysicsRayQueryParameters2D.create(old, global_position, 1)
 		var r2 := space2.intersect_ray(q2)
 		if not r2.is_empty():
 			_shatter()
