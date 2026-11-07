@@ -64,11 +64,8 @@ Risks to watch:
 - **Retire**: Dodge Roll Strike (replaced by the RT dash). New: **Pocket Mine** (universal).
 - **Universal, X (12)**: Off-hand Jab (start), Back Kick, Guard Block, Reflect Shield, Grab & Throw, Pull Hook, Ally Toss, Heal Pulse, Rage Taunt, Boost Spark, Pocket Mine, Spark Shot (small projectile, not affected by weapon).
 - **Adaptive, Y (9 existing + at least 1 new)**: Uppercut, Leg Sweep, Spin Kick, Cyclone, Shockwave Stomp, Dive Kick, Anti-air Hook, Pillar Smash, Flurry, plus one new adaptive move to reach 10.
-- **Brawler B moves (8)**: Jab Chain, Dash Punch, Rising Dragon, Heavy Haymaker, Wall-bounce Elbow, plus 3 new.
-- **Magic B moves (8)**: Fireball, Spread Shot, Boomerang Disc, Ground Wave, Teleport Strike, plus 3 new.
-- **Sword B moves (8)**: Parry Counter, plus 7 new (many parries, long reach, medium-slow).
-- **Hammer B moves (8)**: all new (cannot hit very close, very slow, long reach, very strong).
-- Total pool is about 50 moves, with about 21 new moves to design. The rest is reuse.
+- **Class B moves (8 per class):** fully specified in `CLASS_MOVES.md` (Brawler, Sword, Hammer, Magic), including LT versions, co-op hooks, the Magic mark system and the weapon supers.
+- Total pool is 54 moves, 24 of them new (see `CLASS_MOVES.md` §6).
 
 ### 3.3 Class definitions
 
