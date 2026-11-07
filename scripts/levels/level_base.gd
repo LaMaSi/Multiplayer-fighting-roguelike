@@ -351,9 +351,9 @@ func _paint_ground(c: CanvasItem) -> void:
 	if exit_x > 0.0:
 		var door := Rect2(exit_x, ground_y - 190.0, 120.0, 190.0)
 		c.draw_rect(door, Color(0.1, 0.07, 0.02))
-		c.draw_rect(door, Color(2.0, 1.7, 0.5), false, 4.0)
+		c.draw_rect(door, Pal.interact(), false, 4.0)
 		c.draw_rect(Rect2(door.position + Vector2(14, 14), door.size - Vector2(28, 14)), Color(1.0, 0.8, 0.2, 0.18))
-		c.draw_string(ThemeDB.fallback_font, door.position + Vector2(0, -12), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, door.size.x, 26, Color(2.0, 1.7, 0.5))
+		c.draw_string(ThemeDB.fallback_font, door.position + Vector2(0, -12), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, door.size.x, 26, Pal.interact())
 	var np: Color = theme["neon_plat"]
 	for r: Rect2 in platforms:
 		if Backdrop.variant == 0:

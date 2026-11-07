@@ -68,7 +68,7 @@ func _physics_process(delta: float) -> void:
 func _draw() -> void:
 	if life < 4.0 and int(life * 6.0) % 2 == 0:
 		return
-	var c: Color = COLORS[kind]
+	var c: Color = Pal.interact()  # one hue for everything you can grab; the glyph tells the type
 	var bob := sin(_t * 5.0) * 3.0
 	var r := 13.0 if kind == "hp_m" else 10.0
 	draw_circle(Vector2(0, -16 + bob), r + 6.0, Color(c.r, c.g, c.b, 0.15))

@@ -10,7 +10,7 @@ var hp := 24.0
 var state := "idle"  ## idle, held, flying, dead
 var thrown_by: Actor = null
 var guaranteed := ""  ## force a specific drop
-var col := Color(2.0, 1.2, 0.4)
+var col := Pal.interact()
 var w := 46.0
 var h := 46.0
 
@@ -25,17 +25,17 @@ func setup(k: String) -> Prop:
 	match k:
 		"barrel":
 			hp = 34.0
-			col = Color(1.9, 0.5, 0.4)
+			col = Pal.interact()
 			w = 40.0
 			h = 54.0
 		"vase":
 			hp = 12.0
-			col = Color(0.6, 1.6, 2.0)
+			col = Pal.interact()
 			w = 34.0
 			h = 50.0
 		_:
 			hp = 24.0
-			col = Color(2.0, 1.2, 0.4)
+			col = Pal.interact()
 	return self
 
 
