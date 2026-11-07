@@ -42,6 +42,15 @@ func _ready() -> void:
 	await frames(14)
 	check("LB starts the grab move", f.attack.move != null and f.attack.move.id == "grab_throw")
 	check("enemy is grabbed", d.state == "grabbed")
+	await frames(25)
+	check("the grab holds until you throw (aiming)", f.attack.active and f.attack.aiming and d.state == "grabbed")
+	f.input.script_set(Vector2(0, -1))
+	await frames(3)
+	f.input.script_set(Vector2(0, -1), [PlayerInput.Btn.X])
+	await frames(2)
+	f.input.script_set(Vector2.ZERO, [])
+	await frames(3)
+	check("pressing a button throws in the aimed direction (up: vy %.0f)" % d.velocity.y, d.state == "launched" and d.velocity.y < -300.0)
 
 	# a KO'd player is not an obstacle
 	other._on_defeated()

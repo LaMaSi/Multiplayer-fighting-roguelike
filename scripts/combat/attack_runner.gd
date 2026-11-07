@@ -9,6 +9,8 @@ var frame := 0
 var active := false
 var hit_connected := false
 var grabbed: Node = null
+var aiming := false  ## holding a grabbed enemy: steer with the stick, press a button to throw that way
+var _aim_t := 0
 var held_btn := -1
 
 var _hit_done: Dictionary = {}
@@ -29,8 +31,11 @@ func start(m: MoveData, btn := -1) -> void:
 	move = m
 	frame = 0
 	active = true
-	hit_connected = false
+	if grabbed != null and is_instance_valid(grabbed) and grabbed.has_method("release"):
+		grabbed.release()  # never leave a grabbed enemy stuck when a new move starts
 	grabbed = null
+	aiming = false
+	hit_connected = false
 	held_btn = btn
 	_hit_done.clear()
 	_ev_done.clear()
@@ -74,6 +79,15 @@ func _tick_once() -> void:
 	_events()
 	_spin_drive()
 	_hits()
+	if aiming:
+		_aim_t += 1
+		if grabbed == null or not is_instance_valid(grabbed):
+			aiming = false
+		elif _aim_pressed() or _aim_t > 150:
+			_throw_aimed()
+			aiming = false
+		else:
+			return  # hold the grab until the throw button is pressed
 	# advance (or hold)
 	if move.hold and frame == move.hold_frame and held_btn >= 0 and actor.is_btn_held(held_btn) and _hold_frames < move.hold_max:
 		_hold_frames += 1
@@ -102,6 +116,7 @@ func interrupt() -> void:
 
 
 func _cleanup() -> void:
+	aiming = false
 	actor.figure.rot = 0.0
 	actor.figure.modulate = Color.WHITE
 	actor.figure.follow_speed = 28.0
@@ -212,9 +227,13 @@ func _do_event(e: Dictionary) -> void:
 				frame = int(e["to"]) - 1
 		"throw":
 			if grabbed != null and is_instance_valid(grabbed) and grabbed.has_method("thrown"):
-				grabbed.thrown(Vector2(float(e["vx"]) * a.facing, float(e["vy"])), a)
-				Sfx.play("throw")
-				grabbed = null
+				if a is Fighter:
+					aiming = true  # players choose the direction, then press the button again
+					_aim_t = 0
+				else:
+					grabbed.thrown(Vector2(float(e["vx"]) * a.facing, float(e["vy"])), a)
+					Sfx.play("throw")
+					grabbed = null
 		"toss_grab":
 			var p := Coop.partner_of(a)
 			if p != null and p.can_be_grabbed() and absf(p.global_position.x - a.global_position.x) < 130.0 and absf(p.global_position.y - a.global_position.y) < 60.0:
@@ -421,3 +440,38 @@ func _contact_rects() -> Array:
 			out.append(r.grow_individual(0.0, maxf(0.0, 11.0 - r.size.y * 0.5), 0.0, maxf(0.0, 11.0 - r.size.y * 0.5)))
 	out.append_array(f.swoosh_rects())
 	return out
+
+
+## Any fresh button press throws the grabbed enemy (the stick picked the direction).
+func _aim_pressed() -> bool:
+	var f := actor as Fighter
+	if f == null:
+		return true
+	for b in [PlayerInput.Btn.X, PlayerInput.Btn.Y, PlayerInput.Btn.B, PlayerInput.Btn.LB, PlayerInput.Btn.INTERACT]:
+		if f.input.pressed(b):
+			return true
+	return false
+
+
+## Direction chosen with the stick: forward (default), back, up (launcher for juggles) or down (slam).
+func aim_vector() -> Vector2:
+	var f := actor as Fighter
+	var fx := float(actor.facing)
+	var d := f.input.digital_dir() if f != null else Vector2i.ZERO
+	if d.y < 0:
+		return Vector2(120.0 * fx, -940.0)
+	if d.y > 0:
+		return Vector2(160.0 * fx, 560.0)
+	if d.x != 0:
+		return Vector2(600.0 * float(d.x), -300.0)
+	return Vector2(600.0 * fx, -300.0)
+
+
+func _throw_aimed() -> void:
+	if grabbed == null or not is_instance_valid(grabbed) or not grabbed.has_method("thrown"):
+		return
+	var v := aim_vector()
+	grabbed.thrown(v, actor)
+	Sfx.play("throw")
+	Fx.dust(actor.get_parent(), actor.global_position + Vector2(actor.facing * 30.0, -40.0), 6)
+	grabbed = null

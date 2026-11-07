@@ -375,6 +375,9 @@ func _try_slot(slot: String, btn: int) -> bool:
 
 
 func _attack_extra(_delta: float) -> void:
+	if attack.aiming:
+		_buf_t = 0.0  # buttons throw the grabbed enemy; they must not also start or buffer a move
+		return
 	for b in [PlayerInput.Btn.X, PlayerInput.Btn.Y, PlayerInput.Btn.B]:
 		if input.pressed(b):
 			_buf_slot = _slot_for(b)
@@ -760,6 +763,13 @@ func _draw() -> void:
 			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * revive_progress, 32, Color(2.0, 1.7, 1.9), 5.0, true)
 		if state == "ledge" and _ledge_climb <= 0.0:
 			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(_ledge_t / LEDGE_SOLO_TIME, 0.0, 1.0), 32, Color(2.0, 1.5, 0.4), 5.0, true)
+		if attack.active and attack.aiming:
+			var av := attack.aim_vector().normalized()
+			var base := Vector2(0, -70)
+			draw_line(base, base + av * 78.0, Color(2.0, 1.6, 0.4), 5.0, true)
+			var perp := Vector2(-av.y, av.x)
+			draw_colored_polygon(PackedVector2Array([base + av * 96.0, base + av * 70.0 + perp * 12.0, base + av * 70.0 - perp * 12.0]), Color(2.0, 1.6, 0.4))
+			draw_string(ThemeDB.fallback_font, Vector2(-60, -150), "AIM + BUTTON TO THROW", HORIZONTAL_ALIGNMENT_CENTER, 120.0, 14, Color(2.0, 1.6, 0.4))
 		var f := ThemeDB.fallback_font
 		var txt := "HOLD RB" if Coop.revives_left > 0 else "NO REVIVES"
 		draw_string(f, Vector2(-34, -92), txt, HORIZONTAL_ALIGNMENT_CENTER, 70.0, 13, Color(1, 1, 1, 0.8))

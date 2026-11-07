@@ -239,6 +239,7 @@ static func _build() -> void:
 	_build_enemy()
 	MoveDBWeapons.build()
 	_apply_status()
+	_lengthen_short_hits()
 	# tiers (weapon / adaptive / universal), owning class and the height of the first hit
 	for id in _db:
 		var m: MoveData = _db[id]
@@ -488,7 +489,7 @@ static func _build_player() -> void:
 		"kf": fl_kf, "hits": fl_hits})
 
 	# --- 23 Grab & throw ------------------------------------------------
-	_mk({"id": "grab_throw", "name": "Grab & Throw", "short": "GRAB", "desc": "Throw an enemy (or crate) into others.",
+	_mk({"id": "grab_throw", "name": "Grab & Throw", "short": "GRAB", "desc": "Grab an enemy. Aim with the stick (forward, back, up, down), then press a button again to throw.",
 		"total": 56, "tags": ["grab"], "ground_only": true,
 		"kf": [[0, {"lean": 0.3, "ua_f": 1.5, "la_f": 0.1, "ua_b": 1.5, "la_b": 0.1, "th_f": 0.5, "kn_f": 0.6}],
 			[10, {"lean": -0.1, "ua_f": 3.0, "la_f": 0.1, "ua_b": 2.9, "la_b": 0.1}],
@@ -635,3 +636,17 @@ static func _apply_status() -> void:
 				e["ignite"] = float(IGNITE[id])
 		if not m.desc.contains("Ignites"):
 			m.desc += " Ignites."
+
+
+## Clarity pass: a hit window under 6 frames (about a tenth of a second) is too short to see or read. Stretch every
+## melee hit window to at least 6 frames (each target is still hit once) and make sure the move outlasts it.
+static func _lengthen_short_hits() -> void:
+	for id in _db:
+		var m: MoveData = _db[id]
+		if m.enemy:
+			continue
+		for h in m.hits:
+			if bool(h.get("grab", false)) or int(h["dur"]) >= 6 or m.hits.size() > 3:
+				continue
+			h["dur"] = 6
+			m.total = maxi(m.total, int(h["at"]) + 6 + 8)

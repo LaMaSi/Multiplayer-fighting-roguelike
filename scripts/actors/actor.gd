@@ -37,6 +37,9 @@ var figure: StickFigure
 var attack: AttackRunner
 var last_hitter: Actor = null
 var juggle_hits := 0
+var hit_chain := 0  ## hits taken back to back without getting to act (enemies): feeds the combo breaker
+var _chain_t := 0.0
+const CHAIN_BREAK := 14  # after this many hits in a row the enemy breaks out (short invulnerability + shove)
 var buffs: Dictionary = {}
 var upgrades: Dictionary = {}  ## move_id -> {dmg, spd, kb} multipliers earned from rewards
 var squash := Vector2.ONE
@@ -210,6 +213,14 @@ func take_hit(info: HitInfo) -> bool:
 		return false
 	if _filter_hit(info):
 		return true
+	if team == "enemy" and not info.friendly:
+		if _chain_t <= 0.0:
+			hit_chain = 0
+		if hit_chain >= CHAIN_BREAK and hp > 0.0:
+			_combo_break(info)
+			return false
+		hit_chain += 1
+		_chain_t = 0.7
 	Coop.pre_hit(info, self)
 	var atk := info.attacker as Actor
 	var dmg := info.dmg * take_mult()
@@ -243,13 +254,13 @@ func take_hit(info: HitInfo) -> bool:
 		velocity.x += info.kb.x * 0.08
 	elif info.kind == "pull" and atk != null:
 		state = "hurt"
-		stun_frames = info.stun
+		stun_frames = _prorated_stun(info.stun)
 		velocity = Vector2(clampf((atk.global_position.x - global_position.x) * 5.0, -info.pull_speed, info.pull_speed), 0)
 	elif launch:
 		_start_launch(info, lethal)
 	else:
 		state = "hurt"
-		stun_frames = info.stun
+		stun_frames = _prorated_stun(info.stun)
 		velocity = Vector2(info.kb.x, 0)
 	_wallbounce = info.wallbounce if launch else _wallbounce
 
@@ -392,6 +403,7 @@ func _tick_timers(delta: float) -> void:
 	invuln = maxf(0.0, invuln - delta)
 	armor_t = maxf(0.0, armor_t - delta)
 	flash_t = maxf(0.0, flash_t - delta)
+	_chain_t = maxf(0.0, _chain_t - delta)
 	_tick_burn(delta)
 	if guard_t > 0 and guard_t < 99999:
 		guard_t -= 1
@@ -412,9 +424,16 @@ func _fell_out() -> void:
 	state = "dead"
 
 
+var _last_label_ms := 0
+
+
 func start_attack(m: MoveData, btn := -1) -> void:
 	state = "attack"
 	attack.start(m, btn)
+	if team == "player" and m.id != "guard" and Time.get_ticks_msec() - _last_label_ms > 350:
+		_last_label_ms = Time.get_ticks_msec()
+		var c := figure.color
+		Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 34.0), m.name.to_upper(), Color(minf(c.r + 0.3, 1.6), minf(c.g + 0.3, 1.6), minf(c.b + 0.3, 1.6)), 15)
 
 
 func _st_attack(delta: float) -> void:
@@ -626,3 +645,28 @@ func crowd_mult() -> float:
 		if me.intersects(a.get_hurt_rect().grow(-6.0)):
 			return CROWD_SLOW
 	return 1.0
+
+
+## Hitstun shrinks along a long chain (35 % floor), so no single enemy can be stunlocked forever.
+func _prorated_stun(frames: int) -> int:
+	if team != "enemy":
+		return frames
+	return maxi(3, int(round(float(frames) * maxf(0.35, 1.0 - 0.05 * float(hit_chain)))))
+
+
+## Combo breaker: after CHAIN_BREAK hits in a row the enemy shrugs the next hit off, is shoved away and is briefly
+## untouchable, so a combo can end instead of looping forever.
+func _combo_break(info: HitInfo) -> void:
+	hit_chain = 0
+	_chain_t = 0.0
+	invuln = 0.7
+	var atk := info.attacker as Node2D
+	var away := signf(global_position.x - atk.global_position.x) if atk != null else float(-facing)
+	if away == 0.0:
+		away = float(-facing)
+	velocity = Vector2(away * 420.0, -160.0)
+	state = "idle"
+	stun_frames = 0
+	Fx.ring(get_parent(), global_position + Vector2(0, -50), Color(2.0, 1.7, 1.9), 70.0, 0.3)
+	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 20.0), "BREAK!", Color(2.0, 1.7, 1.9), 22)
+	Sfx.play("parry", 0.9)

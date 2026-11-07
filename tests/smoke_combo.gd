@@ -61,4 +61,33 @@ func _ready() -> void:
 	await frames(5)
 	check("brute is much tankier than a thug (%.0f vs %.0f)" % [b.max_hp, th.max_hp], b.max_hp > th.max_hp * 3.5)
 	check("brute hits harder", b.dmg_mult() > 1.2)
+	# no infinite combos: the enemy breaks out after a long unbroken chain, and stun shrinks along the way
+	var t: Enemy = lv.spawn_enemy("thug", Vector2(900, 599))
+	await frames(90)
+	t.max_hp = 99999.0
+	t.hp = 99999.0
+	t.invuln = 0.0
+	var landed := 0
+	var broke_at := -1
+	var stun_first := 0
+	var stun_late := 0
+	for i in 40:
+		var h := HitInfo.new()
+		h.team = "player"
+		h.dmg = 1.0
+		h.stun = 20
+		h.kb = Vector2(10, 0)
+		if t.take_hit(h):
+			landed += 1
+			if landed == 1:
+				stun_first = t.stun_frames
+			if landed == 12:
+				stun_late = t.stun_frames
+		elif broke_at < 0:
+			broke_at = i
+			break
+		await frames(6)
+	check("the enemy breaks out of a 14-hit chain (hit %d)" % broke_at, broke_at == 14)
+	check("hitstun shrinks along the chain (%d -> %d frames)" % [stun_first, stun_late], stun_late < stun_first)
+	check("the breaker leaves it briefly invulnerable", t.invuln > 0.3)
 	get_tree().quit()

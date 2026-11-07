@@ -207,6 +207,13 @@ func _control(delta: float) -> void:
 				global_position.y += 2.0
 	if state == "attack":
 		return
+	# do not stack: bodies overlap freely, but two enemies sitting in the same spot nudge apart (instance id breaks ties)
+	for o in get_tree().get_nodes_in_group("hurt_enemy"):
+		if o != self and o is Enemy and (o as Enemy).state != "dead" and absf(o.global_position.x - global_position.x) < 30.0 and absf(o.global_position.y - global_position.y) < 40.0:
+			var s := signf(global_position.x - o.global_position.x)
+			if s == 0.0:
+				s = 1.0 if get_instance_id() > o.get_instance_id() else -1.0
+			want_x += s * run_speed * 0.8
 	want_x = clampf(want_x, -run_speed, run_speed) * crowd_mult()  # enemies pass each other (and the players), slowed while overlapping
 	velocity.x = move_toward(velocity.x, want_x, 2200.0 * delta)
 	if is_on_floor():

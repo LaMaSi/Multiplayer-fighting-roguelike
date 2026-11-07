@@ -17,6 +17,7 @@ func _ready() -> void:
 	var lv: LevelBase = load("res://scenes/streets.tscn").instantiate()
 	add_child(lv)
 	await frames(30)
+	lv.encounters = []  # no arena fights while the test teleports around
 	var segs: Array = lv.ground_segs
 	var edge := Vector2.ZERO
 	for i in range(1, segs.size()):
