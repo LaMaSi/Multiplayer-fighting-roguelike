@@ -170,7 +170,7 @@ tests/      headless smoke tests (run with godot --headless -s)
 - **Tiers**: X = universal (10), Y = adaptive (10, reshaped per class by `MoveDB.get_move_for`: reach, startup, recovery, damage, knockback; Hammer also gets a dead zone and guard break), B = weapon (8 per class). The new moves are in `scripts/moves/move_db_weapons.gd`.
 - **Visuals**: weapons are drawn from the hands in `stick_figure.gd` (sword = blade relative to the forearm, hammer = absolute head angle `wp_rot`, Magic = glowing hands). Each class has a base pose; recovery returns to it.
 - **Run**: pick a class per player on the main menu (Magic is locked, with a testing toggle). A run rolls 3 starred B moves, 1 X and 1 Y per player. The shared move pick offers X / Y moves, and the personal level-up always offers a new weapon move; cards carry the slot `row` (X / Y / B).
-- **Not built yet**: the 5th slot (B+Back), LT empowered versions, the Magic mark system (see `MARKS.md`), weapon supers, class-pair Duo Specials, and Home Run's flying-kick behaviour (the partner is launched but cannot steer or attack). The Gravity Well pulls toward the caster instead of leaving a zone.
+- **Not built yet**: LT empowered versions, the Magic mark system (see `MARKS.md`), weapon supers, class-pair Duo Specials, and Home Run's flying-kick behaviour (the partner is launched but cannot steer or attack). The Gravity Well pulls toward the caster instead of leaving a zone.
 
 ## As built: movement-first levels (branch feature/movement-levels)
 - Camera: zoom 0.45–0.85 (`camera_rig.gd`, MAX_ZOOM / MARGIN constants).
@@ -197,6 +197,13 @@ tests/      headless smoke tests (run with godot --headless -s)
 - Gravity Well is now a lasting zone (`GravityZone`): 4 s, drags enemies toward its centre.
 - Elements: fire / shock / frost on Magic, basic and weapon moves; Infusion level-up card (see `Actor` statuses).
 - Hazards: spike traps, bumpers, throwable springs; explosive crates.
-- Still open: Duo Specials (the planned LB trigger now grabs, needs a new trigger), the 5th B slot (planned B+Back,
-  Back now opens the loadout), Magic marks (needs a MARKS.md planning session), Home Run partner steering,
+- Still open: Duo Specials (the planned LB trigger now grabs, needs a new trigger),
+  Magic marks (needs a MARKS.md planning session), Home Run partner steering,
   move preview images.
+- Move previews (`MovePreview`): a small picture of the move mid-strike (pose at its first hit, the first hit area and any
+  projectile) in the reward cards, shop cards and the loadout detail panel. Rendered once per (move, class, player)
+  into a hidden SubViewport and cached.
+- Enemies jump: `Enemy._terrain_jump` clears pits up to ~390 px (440 px/s jump) and steps up to 130 px, waits at pits
+  it cannot cross, and still hops up to platforms the target stands on.
+- NOTE: docs/CLASS_MOVES.md, DESIGN.md and ITERATION2.md still mention "5 B slots" (written by an earlier session);
+  the game has the slots B, B+Up, B+Side, B+Down only. Those lines are outdated.

@@ -164,20 +164,25 @@ func _draw() -> void:
 func _draw_card(i: int) -> void:
 	var card: Dictionary = _cards[i]
 	var selected := i == _sel
-	var r := Rect2(300 + i * 230, 215 - (14 if selected else 0), 210, 330)
+	var has_pic := card.has("id")
+	var r := Rect2(300 + i * 230, 190 - (14 if selected else 0), 210, 412 if has_pic else 330)
 	var accent := _c(Fighter.PLAYER_COLORS[_player()]) if card["kind"] == "move" else (Color(1.0, 0.7, 0.3) if card["kind"] == "up" else Color(1.0, 0.9, 0.95))
 	draw_rect(r, Color(0.07, 0.04, 0.14))
 	draw_rect(r, Color(accent.r, accent.g, accent.b, 1.0 if selected else 0.35), false, 4.0 if selected else 2.0)
 	_txt(r.position + Vector2(0, 34), String(card["tag"]), 15, accent, r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 	var f := ThemeDB.fallback_font
 	draw_multiline_string(f, r.position + Vector2(10, 90), String(card["title"]).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 20.0, 26, 3, Color(1, 1, 1))
-	draw_multiline_string(f, r.position + Vector2(14, 190), String(card["desc"]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 28.0, 17, 5, Color(0.85, 0.85, 0.95))
+	var desc_y := 190.0
+	if has_pic:
+		MovePreview.draw(self, String(card["id"]), String(RunState.classes[_player()]), _player(), Rect2(r.position.x + 20, r.position.y + 150, r.size.x - 40, 112))
+		desc_y = 294.0
+	draw_multiline_string(f, r.position + Vector2(14, desc_y), String(card["desc"]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 28.0, 17, 5, Color(0.85, 0.85, 0.95))
 	if String(card["extra"]) != "":
-		_txt(r.position + Vector2(0, 310), "[%s]" % card["extra"], 13, Color(1, 1, 1, 0.5), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+		_txt(r.position + Vector2(0, r.size.y - 20.0), "[%s]" % card["extra"], 13, Color(1, 1, 1, 0.5), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 	if card["kind"] == "up":
 		var cur := float((RunState.upgrades[_player()].get(card["id"], {}) as Dictionary).get(card["stat"], 1.0))
 		if cur > 1.0:
-			_txt(r.position + Vector2(0, 290), "already x%.2f" % cur, 13, Color(1, 0.8, 0.4), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+			_txt(r.position + Vector2(0, r.size.y - 42.0), "already x%.2f" % cur, 13, Color(1, 0.8, 0.4), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 
 
 func _draw_slot_picker(pc: Color) -> void:

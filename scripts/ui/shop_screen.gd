@@ -408,7 +408,11 @@ func _paint_card(c: Control, idx: int) -> void:
 	c.draw_colored_polygon(UiKit.chamfer(r, 16.0), Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.88 if afford else 0.7))
 	UiKit.poly_line(c, UiKit.chamfer(r, 16.0), outline, 5.0 if hot else 2.5)
 	var ic := UiKit.AMBER if afford else Color(0.5, 0.5, 0.6)
-	_icon(c, String(it["kind"]), Vector2(r.position.x + CARD_W * 0.5, r.position.y + 72), ic)
+	if it.has("id") and (String(it["kind"]) == "move" or String(it["kind"]) == "up"):
+		var pl := maxi(int(it["player"]), 0)
+		MovePreview.draw(c, String(it["id"]), String(RunState.classes[pl]), pl, Rect2(r.position.x + 14, r.position.y + 8, CARD_W - 28, 106))
+	else:
+		_icon(c, String(it["kind"]), Vector2(r.position.x + CARD_W * 0.5, r.position.y + 72), ic)
 	var tag_col := UiKit.player_color(int(it["player"])) if int(it["player"]) >= 0 else Color(0.85, 0.85, 1.0)
 	var tag_text := String(it["tag"]) + ("  ·  P%d" % (int(it["player"]) + 1) if int(it["player"]) >= 0 else "")
 	c.draw_rect(Rect2(r.position.x + (CARD_W - 150.0) * 0.5, r.position.y + 118, 150, 20), Color(1, 1, 1, 0.12))

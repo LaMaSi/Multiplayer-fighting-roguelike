@@ -248,6 +248,7 @@ func paint_player(c: Control, p: int, r: Rect2) -> void:
 		tx += w + 6.0
 		if tx > dr.end.x - 150.0:
 			break
+	MovePreview.draw(c, shown, String(RunState.classes[p]), p, Rect2(dr.end.x - 156.0, dr.position.y + 4.0, 156.0, 108.0))
 	var lines := _wrap(UiKit.body(), m.desc, 17, dr.size.x - 170.0)
 	for li in mini(lines.size(), 3):
 		UiKit.txt(c, UiKit.body(), dr.position + Vector2(0, 84 + li * 20), lines[li], 17, Color(0.85, 0.85, 1.0))
@@ -255,11 +256,11 @@ func paint_player(c: Control, p: int, r: Rect2) -> void:
 	var ups: Dictionary = get_upgrades.call(p)
 	if ups.has(shown):
 		var yy := 0.0
-		UiKit.txt(c, UiKit.body(), dr.position + Vector2(dr.size.x - 140, 22), "UPGRADES", 13, UiKit.DIM_TEXT)
+		UiKit.txt(c, UiKit.body(), dr.position + Vector2(dr.size.x - 140, 130), "UPGRADES", 13, UiKit.DIM_TEXT)
 		for stat in ["dmg", "spd", "kb"]:
 			var v: float = float((ups[shown] as Dictionary).get(stat, 1.0))
 			if v > 1.001:
-				var rr := Rect2(dr.end.x - 140, dr.position.y + 30 + yy, 140, 24)
+				var rr := Rect2(dr.end.x - 140, dr.position.y + 138 + yy, 140, 24)
 				UiKit.panel(c, rr, 6.0, UiKit.AMBER, 3.0, 0.85)
 				UiKit.txt(c, UiKit.body(), rr.position + Vector2(0, 18), "+%d%% %s" % [int(round((v - 1.0) * 100.0)), STAT_LABEL[stat]], 14, UiKit.AMBER, HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 				yy += 28.0

@@ -31,6 +31,9 @@ var _has_token := false
 var _strafe := 1.0
 var _strafe_t := 0.0
 var _drop_t := 0.0
+var _air_dir := 0.0  ## horizontal direction carried through a deliberate jump
+var _air_speed := 0.0
+var _air_t := 0.0
 var _regen_t := 0.0
 var _summoned: Array[bool] = [false, false]
 var _aggro := false
@@ -207,12 +210,21 @@ func _control(delta: float) -> void:
 			"boss": want_x = _ai_boss(dir, adx, dy)
 		# vertical: jump up to platforms / drop down
 		if is_on_floor() and state != "attack":
-			if dy < -90.0 and adx < 170.0 and randf() < 0.03:
-				velocity.y = -880.0
+			var terrain := _terrain_jump(dir) if absf(want_x) > 1.0 else 0
+			if terrain == 2:
+				want_x = 0.0  # a pit it cannot cross: wait at the edge instead of walking in
+			elif terrain == 0 and dy < -90.0 and adx < 230.0 and randf() < 0.05:
+				_jump(dir, run_speed * 1.2, 880.0)  # up to a platform the target stands on
 			elif dy > 110.0 and adx < 220.0 and _drop_t <= 0.0:
 				_drop_t = 0.4
 				set_collision_mask_value(2, false)
 				global_position.y += 2.0
+	if _air_t > 0.0:
+		_air_t -= delta
+		if is_on_floor() and _air_t < 0.9:
+			_air_t = 0.0
+		else:
+			want_x = _air_dir * _air_speed  # a deliberate jump keeps its speed through the air
 	if state == "attack":
 		return
 	# do not stack: bodies overlap freely, but two enemies sitting in the same spot nudge apart (instance id breaks ties)
@@ -222,7 +234,8 @@ func _control(delta: float) -> void:
 			if s == 0.0:
 				s = 1.0 if get_instance_id() > o.get_instance_id() else -1.0
 			want_x += s * run_speed * 0.8
-	want_x = clampf(want_x, -run_speed, run_speed) * crowd_mult() * chill  # enemies pass each other (and the players), slowed while overlapping
+	if _air_t <= 0.0:
+		want_x = clampf(want_x, -run_speed, run_speed) * crowd_mult() * chill  # enemies pass each other (and the players), slowed while overlapping
 	velocity.x = move_toward(velocity.x, want_x, 2200.0 * delta)
 	if is_on_floor():
 		velocity.y = 50.0
@@ -322,3 +335,44 @@ func _ai_boss(dir: float, adx: float, _dy: float) -> float:
 
 func dmg_mult() -> float:
 	return super.dmg_mult() * float(def.get("dmg", 1.0))
+
+
+# ------------------------------------------------------------------ jumping
+
+func _jump(dir: float, speed: float, up: float) -> void:
+	velocity.y = -up
+	_air_dir = dir
+	_air_speed = speed
+	_air_t = 1.1
+	squash = Vector2(0.8, 1.25)
+	Fx.dust(get_parent(), global_position, 4)
+
+
+## Terrain-aware jumping while walking toward the target. Returns 0 = nothing to do, 1 = jumped (a pit it can cross, or a
+## step / wall up to ~130 px), 2 = a pit it cannot cross (the caller makes it wait at the edge).
+func _terrain_jump(dir: float) -> int:
+	var lvl := get_parent()
+	if lvl == null or not lvl.has_method("ground_at") or not is_on_floor() or _air_t > 0.0 or dir == 0.0:
+		return 0
+	var here: float = lvl.ground_at(global_position.x)
+	if here == INF:
+		return 0
+	var ahead: float = lvl.ground_at(global_position.x + dir * 46.0)
+	if ahead == INF:
+		# a pit: find where the ground resumes
+		var x := global_position.x + dir * 46.0
+		var gap := -1.0
+		for i in 22:
+			x += dir * 20.0
+			var g: float = lvl.ground_at(x)
+			if g != INF and absf(g - here) < 120.0:
+				gap = absf(x - global_position.x)
+				break
+		if gap > 0.0 and gap < 390.0:
+			_jump(dir, 440.0, 900.0)
+			return 1
+		return 2
+	if ahead < here - 14.0 and here - ahead <= 130.0:
+		_jump(dir, maxf(run_speed * 1.3, 200.0), 840.0)  # a step or wall in the way
+		return 1
+	return 0
