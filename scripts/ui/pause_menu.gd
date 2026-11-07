@@ -197,7 +197,7 @@ func paint(c: Control) -> void:
 			var sel := i == _sel
 			var col := Color(1, 0.9, 0.4) if sel else Color(1, 1, 1, 0.75)
 			_text(c, Vector2(240, 190 + i * 38), ("> " if sel else "") + String(items[i][1]), 26, col, 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		_text(c, Vector2(240, 660), "Stick / D-pad: move and change      A: select      B or Start: back", 16, Color(1, 1, 1, 0.55), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
+		_text(c, Vector2(240, 660), "Stick / D-pad or mouse: move and change      A or click: select      B or Start: back", 16, Color(1, 1, 1, 0.55), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
 	else:
 		var f := Coop.fighters[_lo_player]
 		var pc := Color(minf(f.figure.color.r, 1.0), minf(f.figure.color.g, 1.0), minf(f.figure.color.b, 1.0))
@@ -225,3 +225,47 @@ func paint(c: Control) -> void:
 				elif mv.air_only:
 					extra = "   (air only)"
 				_text(c, Vector2(240, 664), "%s  -  %s   [%s]%s" % [mv.name, mv.desc, tags, extra], 18, Color(0.8, 1, 0.9), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
+
+
+## Mouse: hover selects a row, left click activates it (in the Move Lab it picks the next move), right click goes
+## the other way, mouse wheel cycles the value of the hovered row.
+func _row_rect(i: int) -> Rect2:
+	if _page != "lab":
+		return Rect2(340, 190 + i * 38 - 28, 600, 36)
+	if i == PlayerSlots.size():
+		return Rect2(300, 140.0 + 12 * 26.0 + 8.0 - 20.0, 600, 26)
+	return Rect2(300, 140.0 + i * 26.0 - 20.0, 600, 26)
+
+
+func _row_at(pos: Vector2) -> int:
+	for i in _count():
+		if _row_rect(i).has_point(pos):
+			return i
+	return -1
+
+
+func _input(event: InputEvent) -> void:
+	if not open or _canvas == null:
+		return
+	if event is InputEventMouseMotion:
+		var i := _row_at(_canvas.get_local_mouse_position())
+		if i >= 0 and i != _sel:
+			_sel = i
+			Sfx.play("ui", 1.2)
+	elif event is InputEventMouseButton and event.pressed:
+		var i2 := _row_at(_canvas.get_local_mouse_position())
+		if i2 < 0:
+			return
+		_sel = i2
+		match event.button_index:
+			MOUSE_BUTTON_LEFT:
+				Sfx.play("ui")
+				if _page == "lab" and i2 < PlayerSlots.size():
+					_side(1)
+				else:
+					_activate()
+			MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_WHEEL_DOWN:
+				_side(-1)
+			MOUSE_BUTTON_WHEEL_UP:
+				_side(1)
+		get_viewport().set_input_as_handled()

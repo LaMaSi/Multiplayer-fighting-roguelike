@@ -162,3 +162,19 @@ static func carry() -> Dictionary:
 		"lean": -0.05, "th_f": 0.3, "kn_f": 0.4, "th_b": -0.3, "kn_b": 0.4,
 		"ua_f": 3.0, "la_f": 0.1, "ua_b": 2.9, "la_b": 0.1,
 	}
+
+
+## Two-bone IK for a firm stance: both feet planted level at x = front_x / back_x (relative to the hip) and
+## `drop` below the hip. Knees always bend forward. Returns th_/kn_ keys for both legs.
+static func stance(front_x: float, back_x: float, drop: float) -> Dictionary:
+	const T := StickFigure.THIGH
+	const S := StickFigure.SHIN
+	var out := {}
+	for leg in [["f", front_x], ["b", back_x]]:
+		var x: float = leg[1]
+		var d := minf(sqrt(x * x + drop * drop), T + S - 0.5)
+		var phi := atan2(x, drop)  # direction hip -> foot, 0 = straight down
+		var alpha := acos(clampf(d / (T + S), 0.0, 1.0))  # equal bones: the knee sits this far off the line
+		out["th_" + leg[0]] = phi + alpha
+		out["kn_" + leg[0]] = 2.0 * alpha
+	return out
