@@ -167,7 +167,7 @@ func _run() -> void:
 	print("[all 30 moves execute]")
 	await clear_enemies()
 	var dist := {"fireball": 220, "boomerang": 220, "spread_shot": 220, "ground_wave": 220, "pull_hook": 250,
-		"teleport_strike": 300, "dodge_roll": 120, "grab_throw": 60, "dive_kick": 130, "cyclone": 40, "back_kick": -70}
+		"teleport_strike": 300, "pocket_mine": 40, "grab_throw": 60, "dive_kick": 130, "cyclone": 40, "back_kick": -70}
 	var no_damage := ["guard", "parry", "reflect", "rage_taunt", "boost_spark", "ally_toss", "grab_throw", "pull_hook", "dive_kick"]
 	for id in MoveDB.POOL:
 		await clear_enemies()
@@ -197,6 +197,8 @@ func _run() -> void:
 			if not f1.attack.active and f1.state in ["idle", "walk", "land", "jump", "fall"]:
 				longest = i
 				break
+		if id == "pocket_mine":
+			await frames(45)  # the mine arms after ~0.45 s
 		var damaged := dm.hp < h0 or absf(dm.global_position.x - x0) > 12.0 or dm.state != "idle"
 		var ok := longest > 0 or id == "dive_kick"
 		check(ok, "%s: starts and finishes (%d frames)" % [id, longest])

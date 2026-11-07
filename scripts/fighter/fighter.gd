@@ -40,6 +40,7 @@ var _buf_btn := -1
 var _buf_t := 0.0
 var _dash_t := 0.0
 var _dash_cd := 0.0
+var _air_dash_used := false  ## one dash per air time; reset on landing
 var _ghost := false
 var _toss_t := 0.0
 var _toss_hit: Dictionary = {}
@@ -149,6 +150,7 @@ func _locomotion(delta: float) -> void:
 	if on_floor:
 		_coyote = COYOTE
 		_jumping = false
+		_air_dash_used = false
 		velocity.y = 50.0
 	else:
 		_coyote -= delta
@@ -185,7 +187,7 @@ func _locomotion(delta: float) -> void:
 		if input.pressed(PlayerInput.Btn.INTERACT) or input.pressed(PlayerInput.Btn.X) or input.pressed(PlayerInput.Btn.Y) or input.pressed(PlayerInput.Btn.B):
 			_throw_held()
 	else:
-		if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0:
+		if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0 and (on_floor or not _air_dash_used):
 			_start_dash()
 		elif input.pressed(PlayerInput.Btn.INTERACT):
 			_try_pickup()
@@ -317,7 +319,7 @@ func _attack_extra(_delta: float) -> void:
 				_buf_t = 0.0
 				return
 	# dash cancel on hit
-	if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0 and attack.can_cancel():
+	if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0 and attack.can_cancel() and (is_on_floor() or not _air_dash_used):
 		attack.interrupt()
 		_start_dash()
 
@@ -340,9 +342,11 @@ func _start_dash() -> void:
 	var dir := signf(input.dir.x) if absf(input.dir.x) > 0.3 else float(facing)
 	state = "dash"
 	_dash_t = 0.17
-	_dash_cd = 0.5
+	_dash_cd = 0.7
+	if not is_on_floor():
+		_air_dash_used = true
 	velocity = Vector2(dir * 640.0, 0.0)
-	invuln = maxf(invuln, 0.22)
+	invuln = maxf(invuln, 0.12)  # a few i-frames at the start only
 	_ghost = true
 	set_collision_mask_value(3, false)
 	Sfx.play("whoosh", 1.2)
@@ -636,7 +640,7 @@ func _draw() -> void:
 		if revive_progress > 0.0:
 			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * revive_progress, 32, Color(2.0, 1.7, 1.9), 5.0, true)
 		var f := ThemeDB.fallback_font
-		var txt := "HOLD RT" if Coop.revives_left > 0 else "NO REVIVES"
+		var txt := "HOLD RB" if Coop.revives_left > 0 else "NO REVIVES"
 		draw_string(f, Vector2(-34, -92), txt, HORIZONTAL_ALIGNMENT_CENTER, 70.0, 13, Color(1, 1, 1, 0.8))
 	if Dbg.enabled:
 		draw_rect(Rect2(-body_w * 0.5, -body_h, body_w, body_h), Color(1, 1, 0, 0.8), false, 1.0)

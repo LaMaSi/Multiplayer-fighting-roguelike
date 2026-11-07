@@ -98,9 +98,51 @@ func _physics_process(delta: float) -> void:
 			Fx.impact(get_parent(), global_position, col, 0.5)
 			queue_free()
 			return
+	if shape == "mine":
+		_mine_tick()
+		queue_redraw()
+		return
 	_check_reflect()
 	_check_hits()
 	queue_redraw()
+
+
+## Pocket Mine: sits on the ground, arms after a short delay, blows up when an enemy steps near.
+func _mine_tick() -> void:
+	if _age < 0.45:
+		return
+	var group := "hurt_enemy" if team == "player" else "hurt_player"
+	var trigger := Rect2(global_position.x - 50.0, global_position.y - 70.0, 100.0, 90.0)
+	for t in get_tree().get_nodes_in_group(group):
+		if t.is_targetable() and trigger.intersects(t.get_hurt_rect()):
+			_explode(group)
+			return
+
+
+func _explode(group: String) -> void:
+	var blast := Rect2(global_position.x - 110.0, global_position.y - 130.0, 220.0, 170.0)
+	for t in get_tree().get_nodes_in_group(group):
+		if not t.is_targetable() or not blast.intersects(t.get_hurt_rect()):
+			continue
+		var info := HitInfo.new()
+		info.attacker = owner_actor
+		info.team = team
+		info.dmg = dmg
+		info.stun = stun
+		info.kind = "launch"
+		var away := signf(t.global_position.x - global_position.x)
+		info.kb = Vector2((away if away != 0.0 else 1.0) * absf(kb.x), kb.y)
+		info.stop = 6
+		info.source = "proj"
+		info.color = col
+		info.pos = global_position
+		info.shake = 0.3
+		if t.take_hit(info) and is_instance_valid(owner_actor) and owner_actor is Actor and team == "player":
+			owner_actor.on_hit_landed(info, t)
+	Fx.ring(get_parent(), global_position, col, 130.0, 0.3)
+	Fx.impact(get_parent(), global_position, col, 1.2)
+	Sfx.play("boom")
+	queue_free()
 
 
 func _shatter() -> void:
@@ -167,6 +209,12 @@ func _check_hits() -> void:
 
 func _draw() -> void:
 	match shape:
+		"mine":
+			var armed := _age >= 0.45
+			var blink := 0.5 + 0.5 * sin(_age * (10.0 if armed else 3.0))
+			draw_rect(Rect2(-radius, -5, radius * 2.0, 8), Color(0.15, 0.1, 0.1))
+			draw_rect(Rect2(-radius, -5, radius * 2.0, 8), col, false, 2.0)
+			draw_circle(Vector2(0, -7), 4.0, Color(col.r, col.g, col.b, 0.3 + 0.7 * blink) if armed else Color(0.5, 0.5, 0.5))
 		"disc":
 			draw_circle(Vector2.ZERO, radius + 5.0, Color(col.r, col.g, col.b, 0.15))
 			for i in 3:

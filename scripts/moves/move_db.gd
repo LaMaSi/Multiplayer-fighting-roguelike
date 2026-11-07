@@ -6,7 +6,7 @@ extends RefCounted
 const POOL: Array[String] = [
 	"jab", "uppercut", "dash_punch", "sweep", "back_kick",
 	"fireball", "boomerang", "spread_shot", "ground_wave", "guard",
-	"parry", "reflect", "dodge_roll", "spin_kick", "cyclone",
+	"parry", "reflect", "pocket_mine", "spin_kick", "cyclone",
 	"stomp", "dive_kick", "rising_dragon", "anti_air", "haymaker",
 	"wall_elbow", "flurry", "grab_throw", "pull_hook", "teleport_strike",
 	"ally_toss", "heal_pulse", "rage_taunt", "boost_spark", "pillar_smash",
@@ -229,15 +229,14 @@ static func _build_player() -> void:
 			[34, {"lean": -0.1, "ua_f": 1.57, "la_f": 0.0, "ua_b": 1.57, "la_b": 0.0}], [46, _idle()]],
 		"events": [{"at": 4, "type": "reflect", "dur": 30}, {"at": 4, "type": "sfx", "name": "buff"}]})
 
-	# --- 13 Dodge roll strike -------------------------------------------
-	_mk({"id": "dodge_roll", "name": "Dodge Roll Strike", "short": "ROLL", "desc": "I-frames, then a kick.",
-		"total": 40, "spin": {"at": 1, "dur": 14, "turns": 1.0}, "cancel_from": 20,
-		"kf": [[0, {"lean": 1.0, "th_f": 1.5, "kn_f": 2.2, "th_b": 1.2, "kn_b": 2.2, "ua_f": 1.0, "la_f": 2.0, "ua_b": 1.0, "la_b": 2.0}],
-			[15, {"lean": 0.2, "th_f": 1.55, "kn_f": 0.1, "th_b": -0.4, "kn_b": 0.5, "ua_f": 0.4, "la_f": 1.2}],
-			[28, _idle()]],
-		"events": [{"at": 0, "type": "invuln", "dur": 17}, {"at": 1, "type": "vel", "vx": 680.0}, {"at": 1, "type": "sfx", "name": "whoosh"},
-			{"at": 3, "type": "ghost"}, {"at": 6, "type": "ghost"}, {"at": 9, "type": "ghost"}],
-		"hits": [_hit(15, 4, Rect2(0, -64, 78, 42), 9, 20, Vector2(280, -160), {"kind": "push", "stop": 4})]})
+	# --- 13 Pocket Mine (replaces Dodge Roll Strike, which the RT dash now covers) ---
+	_mk({"id": "pocket_mine", "name": "Pocket Mine", "short": "MINE", "desc": "Drops a mine. Launches the first enemy to step on it.",
+		"total": 30, "tags": ["projectile"],
+		"kf": [[0, {"lean": 0.5, "th_f": 0.9, "kn_f": 1.6, "th_b": -0.5, "kn_b": 1.4, "ua_f": 0.6, "la_f": 0.4, "ua_b": 0.3, "la_b": 0.3}],
+			[8, {"lean": 0.7, "th_f": 1.0, "kn_f": 1.7, "th_b": -0.5, "kn_b": 1.5, "ua_f": 0.4, "la_f": 0.1}],
+			[22, _idle()]],
+		"events": [_proj(8, {"kind": "mine", "pos": Vector2(34, -6), "vel": Vector2.ZERO, "dmg": 12.0, "stun": 30,
+			"kb": Vector2(180, -640), "life": 10.0, "radius": 14.0, "color": ORANGE, "pkind": "launch", "ground": true, "sfx": "pickup"})]})
 
 	# --- 14 Spin kick ---------------------------------------------------
 	var spin_hits: Array = []
