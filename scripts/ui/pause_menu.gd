@@ -304,3 +304,48 @@ func _paint_lab(c: Control) -> void:
 			UiKit.txt(c, UiKit.body(), Vector2(660, 190), mv.name.to_upper(), 26, UiKit.TEXT)
 			UiKit.txt(c, UiKit.body(), Vector2(660, 222), mv.desc, 18, Color(0.85, 0.85, 1.0))
 			UiKit.txt(c, UiKit.body(), Vector2(660, 250), tags.to_upper() + ("   GROUND ONLY" if mv.ground_only else ("   AIR ONLY" if mv.air_only else "")), 14, UiKit.DIM_TEXT)
+
+
+# ------------------------------------------------------------------ mouse
+## Hover selects a row, left click activates it (Move Lab: next move), right click / wheel change a value.
+
+func _row_rect(i: int) -> Rect2:
+	if _page == "lab":
+		if i == PlayerSlots.size():
+			return Rect2(80, 150 + PlayerSlots.size() * 36.0 + 8, 520, 32)
+		return Rect2(80, 150 + i * 36.0, 520, 32)
+	return Rect2(80, 150 + i * 62.0, 360, 50)
+
+
+func _row_at(pos: Vector2) -> int:
+	for i in _count():
+		if _row_rect(i).has_point(pos):
+			return i
+	return -1
+
+
+func _input(event: InputEvent) -> void:
+	if not open or _canvas == null or _page == "loadout":
+		return
+	if event is InputEventMouseMotion:
+		var i := _row_at(_canvas.get_local_mouse_position())
+		if i >= 0 and i != _sel:
+			_sel = i
+			Sfx.play("ui", 1.2)
+	elif event is InputEventMouseButton and event.pressed:
+		var i2 := _row_at(_canvas.get_local_mouse_position())
+		if i2 < 0:
+			return
+		_sel = i2
+		match event.button_index:
+			MOUSE_BUTTON_LEFT:
+				Sfx.play("ui")
+				if _page == "lab" and i2 < PlayerSlots.size():
+					_side(1)
+				else:
+					_activate()
+			MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_WHEEL_DOWN:
+				_side(-1)
+			MOUSE_BUTTON_WHEEL_UP:
+				_side(1)
+		get_viewport().set_input_as_handled()
