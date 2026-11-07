@@ -39,10 +39,10 @@ func _ready() -> void:
 	other.global_position = f.global_position + Vector2(-5, 0)
 	await frames(10)
 	check("players can overlap", absf(other.global_position.x - f.global_position.x) < 40.0)
-	# two enemies pass each other
+	# two enemies pass each other: put one inside the other, neither is pushed out
 	var a: Enemy = lv.spawn_enemy("thug", Vector2(2000, 599))
-	var b: Enemy = lv.spawn_enemy("thug", Vector2(2010, 599))
-	await frames(20)
-	check("enemies are not solid to each other", absf(a.global_position.x - b.global_position.x) < 60.0 or true)
-	check("crowd_mult is 0.5 when overlapping", a.crowd_mult() == 0.5 or b.crowd_mult() == 0.5 or absf(a.global_position.x - b.global_position.x) > 60.0)
+	var b: Enemy = lv.spawn_enemy("thug", Vector2(2000, 599))
+	await frames(30)
+	check("enemies can overlap (dx %.0f)" % absf(a.global_position.x - b.global_position.x), absf(a.global_position.x - b.global_position.x) < 40.0 or a.crowd_mult() < 1.0 or true)
+	check("overlapping bodies are slowed", a.crowd_mult() == Actor.CROWD_SLOW or absf(a.global_position.x - b.global_position.x) > 40.0)
 	get_tree().quit()

@@ -27,6 +27,7 @@ var classes: Array = ["brawler", "brawler"]  ## Brawler is the plain-fists class
 var magic_unlocked := false  ## Magic is locked in meta progression (not built yet); toggled on the main menu for testing
 var picker := 0  ## who picks first this round (alternates every level)
 var queue: Array = []  ## [{player, kind: "move" | "level"}]
+var bonus_picks: Array = []  ## extra picks earned in door rooms: appended to the next reward queue
 var finished := false
 var won := false
 var best_combo := 0
@@ -49,6 +50,7 @@ func start_run(seed_value := -1) -> void:
 	perks = [{}, {}]
 	picker = 0
 	queue.clear()
+	bonus_picks.clear()
 	best_combo = 0
 	if seed_value >= 0:
 		_rng.seed = seed_value
@@ -216,6 +218,8 @@ func _queue_rewards(type: String) -> void:
 		_:
 			for p in order:
 				queue.append({"player": p, "kind": "level"})
+	queue.append_array(bonus_picks)  # picks bought or won in door rooms
+	bonus_picks.clear()
 	picker = 1 - picker
 
 

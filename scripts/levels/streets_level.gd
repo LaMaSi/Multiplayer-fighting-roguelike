@@ -199,6 +199,27 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			var hw := rng.randf_range(200.0, 260.0)
 			platforms.append(Rect2(low.end.x + 70.0, g.position.y - 270.0, hw, PLAT_H))
 
+	# doors: one or two per fight / elite level on solid ground between the arenas (challenge room or move shop)
+	doors_spec = []
+	if t == "fight" or t == "elite":
+		var cands: Array = []
+		for g2: Rect2 in ground_segs:
+			var cx := g2.position.x + g2.size.x * 0.5
+			var in_flat := false
+			for z: Vector2 in flats:
+				if cx >= z.x and cx <= z.y:
+					in_flat = true
+			if g2.size.x >= 300.0 and not in_flat:
+				cands.append(cx)
+		if cands.is_empty():
+			cands.append(level_w - 540.0)  # always at least one door: in the flat stretch before the exit
+		var kinds: Array = ["challenge", "shop"] if rng.randf() < 0.5 else ["shop", "challenge"]
+		var n_doors := 1 + (1 if rng.randf() < 0.4 else 0)
+		for i in mini(n_doors, cands.size()):
+			var ci := rng.randi() % cands.size()
+			doors_spec.append({"x": cands[ci], "kind": kinds[i % 2]})
+			cands.remove_at(ci)
+
 	# containers: on solid ground or on a platform, never over a pit
 	var n_props: int = {"fight": 10, "elite": 12, "treasure": 22, "boss": 5}.get(t, 10)
 	for i in n_props:

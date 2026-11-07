@@ -10,6 +10,10 @@ var level_w := 3200.0
 var ground_y := 600.0
 var platforms: Array = []  ## Rect2 (top-left, size)
 var ground_segs: Array = []  ## Rect2 (x, top_y, width, depth) pieces of ground; empty = one flat ground. Gaps between pieces are pits.
+var doors_spec: Array = []  ## {x, kind: "challenge" | "shop"}
+var in_room := false  ## the players are inside a door room (the level itself is paused in place)
+var _room: DoorRoom = null
+var _room_door: Door = null
 var props_spec: Array = []  ## [x, kind, (y)]
 var encounters: Array = []  ## {x, waves: [[["thug", 2], ...], ...], boss: bool}
 var enemy_hp_mult := 1.0
@@ -60,6 +64,7 @@ func _ready() -> void:
 	_spawn_players()
 	_build_camera()
 	_spawn_props()
+	_spawn_doors()
 	hud = Hud.new()
 	hud.level = self
 	hud.objective = objective
@@ -220,6 +225,8 @@ func _physics_process(delta: float) -> void:
 	if _cleared:
 		return
 	Coop.stat_time += delta
+	if in_room:
+		return  # encounters and the exit wait while the players are in a door room
 	if not _locked and exit_x > 0.0 and _enc_idx >= encounters.size():
 		var sum := 0.0
 		var n := 0
@@ -464,3 +471,45 @@ func ledge_points() -> Array:
 		_ledges.append({"p": r.position, "dir": 1})
 		_ledges.append({"p": Vector2(r.end.x, r.position.y), "dir": -1})
 	return _ledges
+
+
+# ------------------------------------------------------------------ doors and rooms
+
+func _spawn_doors() -> void:
+	for d in doors_spec:
+		var door := Door.new()
+		door.kind = String(d["kind"])
+		door.level = self
+		var x := float(d["x"])
+		door.position = Vector2(x, ground_top(x))
+		add_child(door)
+
+
+func enter_room(door: Door) -> void:
+	if in_room or _locked or _cleared:
+		return
+	in_room = true
+	_room_door = door
+	_room = DoorRoom.new().setup(self, door.kind)
+	_room.enter()
+
+
+func leave_room() -> void:
+	if not in_room:
+		return
+	in_room = false
+	var door := _room_door
+	door.used = true
+	if _room != null:
+		_room.leave()
+		_room = null
+	cam.set_bounds(0.0, level_w)
+	cam.min_zoom = 0.45
+	Coop.bounds = Rect2(0, -1200, level_w, 2400)
+	var i := 0
+	for f in fighters:
+		f.global_position = door.global_position + Vector2(-70.0 + i * 70.0, -1.0)
+		f.velocity = Vector2.ZERO
+		f.last_safe = f.global_position
+		i += 1
+	cam.snap()
