@@ -189,6 +189,8 @@ func _locomotion(delta: float) -> void:
 	else:
 		_turn_t = 0
 		velocity.x = move_toward(velocity.x, 0.0, (FRICTION if on_floor else AIR_FRICTION) * delta)
+	if not is_instance_valid(_floor_collider):
+		_floor_collider = null  # the thing we stood on was freed (a crate broke, an enemy died)
 	if on_floor and _floor_collider is Fighter:
 		var away := signf(global_position.x - (_floor_collider as Fighter).global_position.x)
 		velocity.x = (away if away != 0.0 else float(facing)) * 160.0
@@ -286,14 +288,14 @@ func _locomotion(delta: float) -> void:
 
 
 func _on_platform() -> bool:
-	if _floor_collider is CollisionObject2D:
+	if is_instance_valid(_floor_collider) and _floor_collider is CollisionObject2D:
 		return ((_floor_collider as CollisionObject2D).collision_layer & 2) != 0
 	return false
 
 
 func _start_drop() -> void:
 	var bottom: float = global_position.y + 20.0
-	if _floor_collider is Node:
+	if is_instance_valid(_floor_collider) and _floor_collider is Node:
 		bottom = (_floor_collider as Node).get_meta("bottom_y", bottom)
 	_drop_clear_y = bottom
 	_drop_t = DROP_MAX_TIME

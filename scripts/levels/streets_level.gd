@@ -24,17 +24,17 @@ func _full() -> void:
 	objective = "Clear the street and take down the boss"
 	level_w = 6800.0
 	platforms = [
-		Rect2(500, 510, 280, PLAT_H), Rect2(1000, 450, 240, PLAT_H),
-		Rect2(1900, 510, 300, PLAT_H), Rect2(2300, 450, 260, PLAT_H),
-		Rect2(3100, 510, 320, PLAT_H), Rect2(3550, 450, 260, PLAT_H),
-		Rect2(4300, 510, 300, PLAT_H), Rect2(4700, 450, 300, PLAT_H),
-		Rect2(5500, 505, 300, PLAT_H),
+		Rect2(500, 450, 280, PLAT_H), Rect2(1000, 450, 240, PLAT_H),
+		Rect2(1900, 450, 300, PLAT_H), Rect2(2300, 450, 260, PLAT_H),
+		Rect2(3100, 450, 320, PLAT_H), Rect2(3550, 450, 260, PLAT_H),
+		Rect2(4300, 450, 300, PLAT_H), Rect2(4700, 450, 300, PLAT_H),
+		Rect2(5500, 450, 300, PLAT_H),
 	]
 	props_spec = [
-		[420, "crate"], [510, "crate"], [620, "barrel", 510], [1100, "vase", 450], [1500, "barrel"], [1560, "crate"],
-		[2000, "crate", 510], [2400, "barrel", 450], [2750, "vase"], [2800, "crate"],
-		[3200, "barrel", 510], [3650, "crate", 450], [3950, "barrel"], [4000, "vase"],
-		[4400, "crate", 510], [4800, "barrel", 450], [5200, "crate"], [5250, "vase"], [5600, "barrel", 505], [5900, "crate"],
+		[420, "crate"], [510, "crate"], [620, "barrel", 450], [1100, "vase", 450], [1500, "barrel"], [1560, "crate"],
+		[2000, "crate", 450], [2400, "barrel", 450], [2750, "vase"], [2800, "crate"],
+		[3200, "barrel", 450], [3650, "crate", 450], [3950, "barrel"], [4000, "vase"],
+		[4400, "crate", 450], [4800, "barrel", 450], [5200, "crate"], [5250, "vase"], [5600, "barrel", 450], [5900, "crate"],
 	]
 	encounters = [
 		{"x": 1300.0, "waves": [[["thug", 2]], [["thug", 1], ["thrower", 1]]]},
@@ -62,7 +62,7 @@ func _generated(node: Dictionary, depth: int) -> void:
 	var n_plat := int(level_w / 720.0)
 	for i in n_plat:
 		var x := 420.0 + i * 720.0 + rng.randf_range(-70.0, 70.0)
-		var y := 510.0 if rng.randf() < 0.55 else 450.0  # jump apex is ~168px: top platforms must stay within reach
+		var y := 450.0  # one tier: the underside (y=466) must clear the tallest walker (boss, ~129px) and the top stays within the ~168px jump apex
 		platforms.append(Rect2(x, y, rng.randf_range(250.0, 320.0), PLAT_H))
 
 	# containers

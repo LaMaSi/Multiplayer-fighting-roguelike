@@ -100,7 +100,7 @@ func _ready() -> void:
 	await frames(60)
 	p1.script_set(Vector2.ZERO)
 	await frames(30)
-	check(f1.is_on_floor() and absf(f1.global_position.y - 510.0) < 3.0, "lands on platform top (y=%.1f)" % f1.global_position.y)
+	check(f1.is_on_floor() and absf(f1.global_position.y - 450.0) < 3.0, "lands on platform top (y=%.1f)" % f1.global_position.y)
 
 	print("[platform: drop through]")
 	p1.script_set(Vector2(0, 1), [A])
@@ -150,6 +150,10 @@ func _ready() -> void:
 		for r: Rect2 in lv.platforms:
 			w2 = maxf(w2, 600.0 - r.position.y)
 		check(w2 <= rise - 8.0, "%s: highest platform %.0f px up" % [sc, w2])
+		var low := 999.0
+		for r: Rect2 in lv.platforms:
+			low = minf(low, 600.0 - r.end.y)
+		check(low >= 132.0, "%s: walkers fit under every platform (gap %.0f px, boss is ~129)" % [sc, low])
 		lv.free()
 
 	print("[double jump]")

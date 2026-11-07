@@ -7,7 +7,7 @@ func _setup() -> void:
 	level_name = "Training Room"
 	level_w = 3200.0
 	platforms = [
-		Rect2(400, 510, 260, PLAT_H), Rect2(800, 450, 260, PLAT_H), Rect2(1250, 510, 300, PLAT_H),
+		Rect2(400, 450, 260, PLAT_H), Rect2(800, 450, 260, PLAT_H), Rect2(1250, 450, 300, PLAT_H),
 		Rect2(1700, 450, 300, PLAT_H), Rect2(2100, 450, 320, PLAT_H), Rect2(2600, 450, 260, PLAT_H),
 	]
 	props_spec = [[700, "crate"], [760, "barrel"], [1500, "vase"], [1560, "crate"], [2300, "barrel"], [1800, "crate", 450]]
