@@ -56,7 +56,7 @@ func _draw() -> void:
 	var r := Rect2(-w * 0.5, -hh, w, hh)
 	draw_rect(r, Color(0.07, 0.05, 0.12, 0.9 * fade))
 	var c := Color(1.9, 1.9, 2.2, fade)
-	draw_rect(r, c, false, 3.0)
+	draw_rect(r, c, false, UiKit.LINE)
 	for i in 4:
 		var y := -hh + (i + 1) * hh / 5.0
-		draw_line(Vector2(-w * 0.5, y), Vector2(w * 0.5, y), Color(c.r, c.g, c.b, 0.35 * fade), 2.0)
+		draw_line(Vector2(-w * 0.5, y), Vector2(w * 0.5, y), Color(c.r, c.g, c.b, 0.55 * fade), UiKit.LINE)

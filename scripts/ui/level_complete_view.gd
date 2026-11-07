@@ -42,7 +42,7 @@ static func paint(c: Control, s: Dictionary, t: float) -> void:
 	var chip_text := "RANK %s" % rank
 	if RunState.active and absf(mult - 1.0) > 0.01:
 		chip_text += "  ·  %s%d%% COINS" % ["+" if mult > 1.0 else "-", int(round(absf(mult - 1.0) * 100.0))]
-	UiKit.panel(c, Rect2(180, 428, 300, 34), 8.0, UiKit.AMBER, 2.5, 0.85)
+	UiKit.panel(c, Rect2(180, 428, 300, 34), 8.0, UiKit.AMBER, 3.0, 0.85)
 	UiKit.txt(c, body, Vector2(180, 453), chip_text, 18, UiKit.AMBER, HORIZONTAL_ALIGNMENT_CENTER, 300.0)
 	# stat rows
 	var y := 168.0
@@ -73,11 +73,11 @@ static func paint(c: Control, s: Dictionary, t: float) -> void:
 	# rewards (only inside a run)
 	if RunState.active and t > 1.4:
 		var by := 566.0
-		UiKit.panel(c, Rect2(660, by, 270, 56), 10.0, Color(0.8, 0.8, 1.0, 0.55), 2.0, 0.8)
+		UiKit.panel(c, Rect2(660, by, 270, 56), 10.0, Color(0.8, 0.8, 1.0, 0.55), 3.0, 0.8)
 		UiKit.coin(c, Vector2(690, by + 28), 14.0)
 		UiKit.txt(c, head, Vector2(714, by + 26), "+%d" % int(s["coins"]), 22, UiKit.AMBER)
 		UiKit.txt(c, body, Vector2(714, by + 47), "COINS  (WALLET %d)" % RunState.coins, 15, UiKit.DIM_TEXT)
-		UiKit.panel(c, Rect2(950, by, 270, 56), 10.0, Color(0.8, 0.8, 1.0, 0.55), 2.0, 0.8)
+		UiKit.panel(c, Rect2(950, by, 270, 56), 10.0, Color(0.8, 0.8, 1.0, 0.55), 3.0, 0.8)
 		var heal := int(round(float(RunState.max_hp[0]) * 0.25 + float(s["heal_bonus"])))
 		UiKit.txt(c, head, Vector2(974, by + 26), "+%d HP" % heal, 22, UiKit.P1)
 		UiKit.txt(c, body, Vector2(974, by + 47), "HEART LINK REFILL", 15, UiKit.DIM_TEXT)

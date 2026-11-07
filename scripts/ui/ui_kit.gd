@@ -12,6 +12,8 @@ const TEXT := Color(0.95, 0.95, 1.0)
 const DIM_TEXT := Color(0.8, 0.8, 0.95)
 const GLOW_PINK := Color(2.0, 0.7, 1.2)
 const HEART := Color(1.0, 0.25, 0.48)
+## One line weight for every outline and detail line in the world and the UI (selection states may be thicker).
+const LINE := 3.0
 
 static var _head: Font
 static var _body: Font
@@ -57,7 +59,7 @@ static func chamfer(r: Rect2, cut: float) -> PackedVector2Array:
 
 
 ## Chamfered panel: dark fill plus a solid outline.
-static func panel(c: CanvasItem, r: Rect2, cut: float, outline: Color, width := 2.5, fill_a := 0.85) -> void:
+static func panel(c: CanvasItem, r: Rect2, cut: float, outline: Color, width := 3.0, fill_a := 0.85) -> void:
 	var p := chamfer(r, cut)
 	c.draw_colored_polygon(p, Color(INK.r, INK.g, INK.b, fill_a))
 	poly_line(c, p, outline, width)
