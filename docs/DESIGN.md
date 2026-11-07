@@ -176,3 +176,25 @@ Alternative if you prefer a more individual fantasy: Magic as pure glass-cannon 
 2. How much should solo play be supported (one controller)? Default: not at all, same as in the plan.
 3. Super meter design (§5).
 4. Which §6 elements go in the first Streets levels? Default: protect/operate terminal, charge-up B moves, two-lever door, shielded enemy.
+
+## 8. Proposal: default Grab and Throw for every character (needs your OK)
+
+Today throwing only exists as the X moves **Grab & Throw** and **Ally Toss** (and the Hammer's Home Run), so a player only has it if the reward cards happened to give it. Proposal: make **grab and throw a built-in verb for everyone**, since it is the core co-op action (crossing gaps, rescuing, launching enemies, carrying things).
+
+- **Button: RB** (unused). One context-sensitive grab:
+  - **Partner nearby:** pick them up. Hold RB to carry, aim with the stick, **release RB to throw**. The thrown partner has some air control, can attack in flight (a flying kick = a relay hit) and takes no damage from it (with friendly fire off).
+  - **Enemy nearby:** pick it up and throw it as a projectile that bowls into other enemies. Armoured enemies, elites and bosses cannot be grabbed unless **stunned** (for example by the Hammer's Guard Breaker), which gives that move a partner.
+  - **Container nearby:** pick it up and throw it (matches the destructible containers in the plan).
+- **Rules to avoid frustration:**
+  - The partner can **mash to break free** or be flagged as "not ready" (a partner who is attacking, dashing or in hit-stun cannot be grabbed).
+  - The carrier is slowed and cannot attack while carrying.
+  - Short cooldown (about 2 s) after each throw to prevent spamming.
+  - A throw can never drop the partner into a bottomless pit without them seeing a landing marker (the target spot is shown while aiming).
+- **Conflict fix:** the Duo Special pair-trigger was LB+RB. Change it to **both players press LB within 0.5 s**.
+- **Effects on the move pool:** Grab & Throw and Ally Toss become redundant and leave the X pool, replaced by two new X moves:
+  - **Swap Step:** swap places with the partner instantly (rescue from a corner, reposition for a charge-up, pull them out of danger).
+  - **Focus Call:** mark an enemy for the partner: your partner's hits on it deal bonus damage for about 5 s (a communication tool).
+  - Totals stay at 52 moves (X: 5 existing, 5 new; 27 new overall).
+- The Hammer's **Home Run** stays as the long-range version. Ally Toss's old role (gap crossing) is now the default throw.
+
+Co-op test: passes strongly (communication: "throw me over", rescue, relay hits), and it adds a bit of fun chaos.
