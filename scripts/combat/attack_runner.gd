@@ -398,6 +398,8 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.wallbounce = bool(h.get("wallbounce", false))
 	info.heal_self = float(h.get("heal_self", 0.0))
 	info.ignite = float(h.get("ignite", 0.0))
+	info.shock = float(h.get("shock", 0.0))
+	info.frost = float(h.get("frost", 0.0))
 	info.color = h.get("color", a.figure.color)
 	if a.team == "enemy" and info.height == "high":
 		info.color = Color(2.4, 2.0, 0.3)  # high attacks spark amber

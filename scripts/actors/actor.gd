@@ -12,6 +12,12 @@ var team := "enemy"
 var max_hp := 100.0
 var hp := 100.0
 var burn_t := 0.0  ## seconds of burning left: ticks damage, and burning targets take BURN_BONUS more from everything
+var shock_t := 0.0  ## shocked: hits on this target arc to a neighbour (40 % damage)
+var frost_t := 0.0  ## chilled: slowed; three chilling hits freeze it solid
+var frost_stacks := 0
+var frozen_t := 0.0  ## frozen solid: cannot act; the next hit shatters the ice for +40 % damage
+var infusion := ""  ## "fire" | "shock" | "frost": every attack of this fighter carries the element (level-up card)
+var status_col := Color(2.2, 0.9, 0.3)
 var _burn_tick := 0.0
 const BURN_BONUS := 1.3
 var facing := 1
@@ -224,9 +230,16 @@ func take_hit(info: HitInfo) -> bool:
 	Coop.pre_hit(info, self)
 	var atk := info.attacker as Actor
 	var dmg := info.dmg * take_mult()
+	apply_infusion(info)
 	if burn_t > 0.0:
 		dmg *= BURN_BONUS
-		Fx.sparks(get_parent(), global_position + Vector2(0, -50), Color(2.2, 0.9, 0.2), 4)
+		Fx.sparks(get_parent(), global_position + Vector2(0, -50), info.color, 4)
+	var shattered := false
+	if frozen_t > 0.0 and info.frost <= 0.0:
+		dmg *= 1.4  # frozen solid: a hit shatters the ice
+		frozen_t = 0.0
+		shattered = true
+	var arc_from_shock := shock_t > 0.0 and info.source != "chain"
 	if info.friendly:
 		dmg *= Coop.ff_scale
 	hp = maxf(hp - dmg, 1.0 if info.friendly else 0.0)
@@ -234,7 +247,16 @@ func take_hit(info: HitInfo) -> bool:
 		Coop.stat_damage += dmg
 	if info.ignite > 0.0 and hp > 0.0:
 		burn_t = maxf(burn_t, info.ignite)
-		_ensure_burn_fx(info.color)
+		_ensure_status_fx(info.color)
+	if shattered:
+		_shatter_ice(info.color)
+	if info.shock > 0.0 and hp > 0.0:
+		shock_t = maxf(shock_t, info.shock)
+		_ensure_status_fx(info.color)
+	if info.frost > 0.0 and hp > 0.0:
+		_apply_frost(info)
+	if arc_from_shock and hp > 0.0:
+		_shock_arc(info, dmg)
 	if atk != null and atk.team != team:
 		last_hitter = atk
 	var lethal := hp <= 0.0
@@ -407,6 +429,9 @@ func _tick_timers(delta: float) -> void:
 	flash_t = maxf(0.0, flash_t - delta)
 	_chain_t = maxf(0.0, _chain_t - delta)
 	_tick_burn(delta)
+	shock_t = maxf(0.0, shock_t - delta)
+	frost_t = maxf(0.0, frost_t - delta)
+	frozen_t = maxf(0.0, frozen_t - delta)
 	if guard_t > 0 and guard_t < 99999:
 		guard_t -= 1
 	parry_t = maxi(0, parry_t - 1)
@@ -677,15 +702,84 @@ func _combo_break(info: HitInfo) -> void:
 	Sfx.play("parry", 0.9)
 
 
-var _burn_fx: BurnFx = null
+var _status_fx: StatusFx = null
 
 
-## Flames on the body, in the colour of whoever lit them.
-func _ensure_burn_fx(c: Color) -> void:
-	if _burn_fx != null and is_instance_valid(_burn_fx):
-		_burn_fx.col = c
+## Look of burning / shocked / chilled / frozen targets, in the colour of whoever applied the status.
+func _ensure_status_fx(c: Color) -> void:
+	status_col = c
+	if _status_fx != null and is_instance_valid(_status_fx):
+		_status_fx.col = c
 		return
-	_burn_fx = BurnFx.new()
-	_burn_fx.actor = self
-	_burn_fx.col = c
-	add_child(_burn_fx)
+	_status_fx = StatusFx.new()
+	_status_fx.actor = self
+	_status_fx.col = c
+	add_child(_status_fx)
+
+
+# ------------------------------------------------------------------ elemental statuses (fire / shock / frost)
+
+## An infused fighter's attacks carry its element unless the move already has one.
+func apply_infusion(info: HitInfo) -> void:
+	if infusion == "" or team != "player" or info.ignite > 0.0 or info.shock > 0.0 or info.frost > 0.0 or info.source == "chain":
+		return
+	match infusion:
+		"fire":
+			info.ignite = 2.0
+		"shock":
+			info.shock = 3.0
+		"frost":
+			info.frost = 2.5
+
+
+func _apply_frost(info: HitInfo) -> void:
+	frost_t = maxf(frost_t, info.frost)
+	frost_stacks += 1
+	_ensure_status_fx(info.color)
+	if frost_stacks >= 3 and frozen_t <= 0.0 and not launch_resist:
+		frost_stacks = 0
+		frozen_t = 1.6
+		if attack.active:
+			attack.interrupt()
+		Fx.ring(get_parent(), global_position + Vector2(0, -50), info.color, 80.0, 0.35)
+		Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 20.0), "FROZEN", info.color, 20)
+		Sfx.play("block", 0.7)
+
+
+func _shatter_ice(c: Color) -> void:
+	Fx.shatter(get_parent(), global_position + Vector2(0, -50), c, 24)
+	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 20.0), "SHATTER!", c, 22)
+	Sfx.play("break", 1.3)
+	Juice.shake(0.2)
+
+
+## A hit on a shocked target arcs to the nearest other enemy within reach for 40 % damage (and shocks it a little).
+func _shock_arc(info: HitInfo, dmg: float) -> void:
+	var best: Actor = null
+	var bd := 190.0
+	for n in get_tree().get_nodes_in_group("hurt_" + team):
+		if n == self or not (n is Actor) or not (n as Actor).is_targetable():
+			continue
+		var d := (n as Actor).global_position.distance_to(global_position)
+		if d < bd:
+			bd = d
+			best = n as Actor
+	if best == null:
+		return
+	var a := Vector2(global_position.x, global_position.y - 55.0)
+	var b := Vector2(best.global_position.x, best.global_position.y - 55.0)
+	Fx.beam(get_parent(), a, b, info.color, 0.18)
+	Sfx.play("hit2", 1.4)
+	var arc := HitInfo.new()
+	arc.attacker = info.attacker
+	arc.team = info.team
+	arc.dmg = dmg * 0.4 / maxf(take_mult(), 0.01)
+	arc.stun = 14
+	arc.kind = "normal"
+	arc.stop = 2
+	arc.source = "chain"
+	arc.shock = 2.0
+	arc.color = info.color
+	arc.pos = b
+	arc.kb = Vector2(signf(b.x - a.x) * 120.0, 0.0)
+	best.take_hit(arc)

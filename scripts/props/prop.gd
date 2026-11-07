@@ -9,6 +9,13 @@ const RIM := Color(2.0, 1.75, 0.25)
 
 var kind := "crate"  ## crate, barrel, vase, explosive
 var hp := 24.0
+var burn_t := 0.0  ## burning crates burn down (and a burning TNT crate goes off), spread to neighbours and ignite what they hit
+var shock_t := 0.0
+var frost_t := 0.0
+var frozen_t := 0.0
+var body_scale := 1.0
+var body_h := 46.0  ## (read by StatusFx)
+var _status_fx: StatusFx = null
 var state := "idle"  ## idle, held, flying, dead
 var thrown_by: Actor = null
 var guaranteed := ""  ## force a specific drop
@@ -102,6 +109,8 @@ func take_hit(info: HitInfo) -> bool:
 	_wob_dir = signf(info.kb.x) if info.kb.x != 0.0 else 1.0
 	Fx.impact(get_parent(), info.pos, col, 0.7, info.kb)
 	Sfx.play("hit", 0.8)
+	if info.ignite > 0.0:
+		_ignite(info.ignite * 1.6, info.color)
 	if info.kind == "spike" or hp <= 0.0:
 		_break(info.attacker as Actor)
 		return true
@@ -119,6 +128,17 @@ func take_hit(info: HitInfo) -> bool:
 
 func _physics_process(delta: float) -> void:
 	_wobble = maxf(0.0, _wobble - delta)
+	if burn_t > 0.0 and state != "dead":
+		burn_t = maxf(0.0, burn_t - delta)
+		hp -= 7.0 * delta
+		if hp <= 0.0:
+			_break(thrown_by)
+			return
+		if randf() < delta * 2.5:
+			for o in get_tree().get_nodes_in_group("props"):
+				if o != self and o is Prop and (o as Prop).state != "dead" and (o as Prop).burn_t <= 0.0 and o.global_position.distance_to(global_position) < 90.0:
+					(o as Prop)._ignite(2.5, col)
+					break
 	if state == "held":
 		return
 	if state == "dead":
@@ -142,6 +162,9 @@ func _physics_process(delta: float) -> void:
 				info.attacker = thrown_by
 				info.team = "player"
 				info.dmg = 18.0
+				if burn_t > 0.0:
+					info.ignite = 2.5
+					info.color = col
 				info.kind = "launch"
 				info.kb = Vector2(signf(vx if vx != 0.0 else 1.0) * 380.0, -420.0)
 				info.stun = 28
@@ -300,3 +323,17 @@ func _draw() -> void:
 			draw_line(r.position, r.end, col, UiKit.LINE)
 			draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), col, UiKit.LINE)
 	draw_set_transform(Vector2.ZERO, 0.0)
+
+
+## Set the crate on fire: flames in the igniter's colour, it burns down, spreads to neighbours and ignites what it hits.
+func _ignite(secs: float, c: Color) -> void:
+	if state == "dead":
+		return
+	burn_t = maxf(burn_t, maxf(secs, 6.0))  # a crate that catches fire burns until it is gone
+	if _status_fx != null and is_instance_valid(_status_fx):
+		_status_fx.col = c
+		return
+	_status_fx = StatusFx.new()
+	_status_fx.actor = self
+	_status_fx.col = c
+	add_child(_status_fx)

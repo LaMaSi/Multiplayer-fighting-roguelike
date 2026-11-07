@@ -4,7 +4,7 @@ extends RefCounted
 ## controller and/or a keyboard set. Polled once per physics frame by the Inp autoload.
 ## Tests can switch it to "scripted" mode and feed fake input.
 
-enum Btn { JUMP, X, Y, B, DASH, INTERACT, LB, RB, START, COUNT }
+enum Btn { JUMP, X, Y, B, DASH, INTERACT, LB, RB, START, BACK, COUNT }
 
 const DEADZONE := 0.35
 
@@ -16,17 +16,18 @@ const PAD_BTN := {
 	Btn.LB: JOY_BUTTON_LEFT_SHOULDER,
 	Btn.RB: JOY_BUTTON_RIGHT_SHOULDER,
 	Btn.START: JOY_BUTTON_START,
+	Btn.BACK: JOY_BUTTON_BACK,
 }
 
 # Keyboard fallbacks (physical keys, so layout independent).
-# P1: WASD + Space, F/G/H = X/Y/B, C = dash, V = interact, Q/E = LB/RB
+# P1: WASD + Space, F/G/H = X/Y/B, C = dash, V = interact, Q/E = LB/RB, Tab = loadout (pad: Back)
 # P2: Arrows + Shift, , . / = X/Y/B, ; = dash, ' = interact, [ ] = LB/RB
 const KB := [
 	{
 		"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S,
 		"btn": {
 			Btn.JUMP: KEY_SPACE, Btn.X: KEY_F, Btn.Y: KEY_G, Btn.B: KEY_H,
-			Btn.DASH: KEY_C, Btn.INTERACT: KEY_V, Btn.LB: KEY_Q, Btn.RB: KEY_E,
+			Btn.DASH: KEY_C, Btn.INTERACT: KEY_V, Btn.LB: KEY_Q, Btn.RB: KEY_E, Btn.BACK: KEY_TAB,
 		},
 	},
 	{
@@ -34,7 +35,7 @@ const KB := [
 		"btn": {
 			Btn.JUMP: KEY_SHIFT, Btn.X: KEY_COMMA, Btn.Y: KEY_PERIOD, Btn.B: KEY_SLASH,
 			Btn.DASH: KEY_SEMICOLON, Btn.INTERACT: KEY_APOSTROPHE,
-			Btn.LB: KEY_BRACKETLEFT, Btn.RB: KEY_BRACKETRIGHT,
+			Btn.LB: KEY_BRACKETLEFT, Btn.RB: KEY_BRACKETRIGHT, Btn.BACK: KEY_BACKSLASH,
 		},
 	},
 ]
@@ -141,7 +142,7 @@ func digital_dir() -> Vector2i:
 
 
 func buttons_string() -> String:
-	var names := ["A", "X", "Y", "B", "RT", "RB", "LB", "RB", "ST"]
+	var names := ["A", "X", "Y", "B", "RT", "RB", "LB", "RB", "ST", "BK"]
 	var s := ""
 	for i in Btn.COUNT:
 		if held[i]:

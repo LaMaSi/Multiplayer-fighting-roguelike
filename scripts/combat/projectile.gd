@@ -21,6 +21,8 @@ var reflected := false
 var height := "mid"
 var ignite := 0.0
 var splash := 0.0  ## blast radius: neighbours of the first victim take half damage (fireball)
+var shock := 0.0
+var frost := 0.0
 var _trail_t := 0.0
 
 var _age := 0.0
@@ -47,6 +49,8 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.returns = float(e.get("returns", 0.0))
 	p.ignite = float(e.get("ignite", 0.0))
 	p.splash = float(e.get("splash", 0.0))
+	p.shock = float(e.get("shock", 0.0))
+	p.frost = float(e.get("frost", 0.0))
 	p.height = String(e.get("height", "low" if p.ground else ("high" if p.shape == "bottle" else "mid")))
 	var off: Vector2 = e["pos"]
 	p.global_position = a.global_position + Vector2(off.x * a.facing, off.y)
@@ -223,6 +227,8 @@ func _check_hits() -> void:
 			info.stop = 3
 			info.source = "proj"
 			info.ignite = ignite
+			info.shock = shock
+			info.frost = frost
 			info.color = col
 			info.pos = global_position
 			info.shake = 0.1
@@ -302,6 +308,8 @@ func _splash_hit(first: Node, group: String) -> void:
 		info.stop = 3
 		info.source = "proj"
 		info.ignite = ignite
+		info.shock = shock
+		info.frost = frost
 		info.color = col
 		info.pos = n.global_position
 		n.take_hit(info)

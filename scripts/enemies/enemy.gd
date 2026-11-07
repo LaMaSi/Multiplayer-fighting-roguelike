@@ -175,7 +175,15 @@ func _control(delta: float) -> void:
 			hp = max_hp
 		return
 	_pick_target()
-	_cd -= delta
+	if frozen_t > 0.0:
+		# frozen solid: no thinking, no moving (the ice only breaks when it is hit)
+		velocity.x = move_toward(velocity.x, 0.0, 2400.0 * delta)
+		velocity.y = 50.0 if is_on_floor() else minf(velocity.y + GRAVITY * delta, MAX_FALL)
+		move_and_slide()
+		state = "idle"
+		return
+	var chill := 0.55 if frost_t > 0.0 else 1.0  # chilled: slower walking and slower attacks
+	_cd -= delta * chill
 	_strafe_t -= delta
 	if _strafe_t <= 0.0:
 		_strafe_t = randf_range(0.8, 2.0)
@@ -214,7 +222,7 @@ func _control(delta: float) -> void:
 			if s == 0.0:
 				s = 1.0 if get_instance_id() > o.get_instance_id() else -1.0
 			want_x += s * run_speed * 0.8
-	want_x = clampf(want_x, -run_speed, run_speed) * crowd_mult()  # enemies pass each other (and the players), slowed while overlapping
+	want_x = clampf(want_x, -run_speed, run_speed) * crowd_mult() * chill  # enemies pass each other (and the players), slowed while overlapping
 	velocity.x = move_toward(velocity.x, want_x, 2200.0 * delta)
 	if is_on_floor():
 		velocity.y = 50.0

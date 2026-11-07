@@ -163,6 +163,7 @@ func apply_to(f: Fighter) -> void:
 	f.hp = clampf(hp[i], 1.0, max_hp[i])
 	f.upgrades = (upgrades[i] as Dictionary).duplicate(true)
 	f.double_jump = bool((perks[i] as Dictionary).get("double_jump", false))
+	f.infusion = String((perks[i] as Dictionary).get("infuse", ""))
 
 
 func save_from(fighters: Array) -> void:
@@ -254,6 +255,8 @@ func make_cards(player: int, kind: String) -> Array:
 	_shuffle(kinds)
 	if not bool((perks[player] as Dictionary).get("double_jump", false)):
 		kinds.insert(_rng.randi_range(0, 2), "djump")  # always among the first three candidates
+	if String((perks[player] as Dictionary).get("infuse", "")) == "":
+		kinds.insert(_rng.randi_range(0, 3), "infuse")  # elemental infusion: every attack carries fire, shock or frost
 	if cid != "":
 		var owned_b: Array = (loadouts[player] as Dictionary).values()
 		var left: Array = []
@@ -274,6 +277,10 @@ func make_cards(player: int, kind: String) -> Array:
 				cards.append({"kind": "mend", "tag": "RECOVER", "title": "FULL HEAL", "desc": "Restore all of your health.", "extra": ""})
 			"djump":
 				cards.append({"kind": "djump", "tag": "ABILITY", "title": "DOUBLE JUMP", "desc": "Press jump again in the air.", "extra": ""})
+			"infuse":
+				var el: String = ["fire", "shock", "frost"][_rng.randi() % 3]
+				var el_text := {"fire": "Every attack sets enemies on fire.", "shock": "Every attack shocks: hits on shocked enemies arc to a neighbour.", "frost": "Every attack chills: three hits freeze an enemy solid."}
+				cards.append({"kind": "infuse", "element": el, "tag": "INFUSION", "title": el.to_upper() + " INFUSION", "desc": String(el_text[el]), "extra": ""})
 			_:
 				if eq.is_empty():
 					continue
@@ -318,6 +325,8 @@ func apply_card(player: int, card: Dictionary, slot := "") -> void:
 			hp[player] = max_hp[player]
 		"djump":
 			(perks[player] as Dictionary)["double_jump"] = true
+		"infuse":
+			(perks[player] as Dictionary)["infuse"] = String(card["element"])
 		"up":
 			var u: Dictionary = upgrades[player]
 			if not u.has(card["id"]):

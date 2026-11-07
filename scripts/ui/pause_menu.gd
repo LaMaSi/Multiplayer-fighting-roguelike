@@ -25,6 +25,7 @@ var _last_dir: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO]
 var _lv: LoadoutView
 var _b_guard := false  ## ignore B until it is released (the loadout screen closes on B)
 var _t := 0.0
+var _toggle_cd := 0.0
 const SPAWNABLE := ["thug", "biker", "thrower", "boss_street", "dummy"]
 const SLOT_NAMES := {
 	"X": "X", "X_UP": "X + Up", "X_SIDE": "X + Left/Right", "X_DOWN": "X + Down",
@@ -124,8 +125,30 @@ func _count() -> int:
 
 func _physics_process(delta: float) -> void:
 	_t += delta
+	_toggle_cd = maxf(0.0, _toggle_cd - delta)
+	# Start / Back from either player. One toggle per step however many pressed (two simultaneous presses used to
+	# open and close the menu again), and a short lockout so presses a few frames apart do not cancel either.
+	var start_pressed := false
+	var back_pressed := false
 	for p in Inp.players:
-		if p.pressed(PlayerInput.Btn.START) and _page != "loadout":
+		start_pressed = start_pressed or p.pressed(PlayerInput.Btn.START)
+		back_pressed = back_pressed or p.pressed(PlayerInput.Btn.BACK)
+	if _toggle_cd <= 0.0:
+		if back_pressed:
+			_toggle_cd = 0.3
+			if not open:
+				_toggle()
+				if open:
+					_lv.reset()
+					_go("loadout", 0)
+			elif _page == "loadout":
+				_lv.reset()
+				_toggle()
+			else:
+				_lv.reset()
+				_go("loadout", 0)
+		elif start_pressed and _page != "loadout":
+			_toggle_cd = 0.3
 			_toggle()
 	if not open:
 		return

@@ -628,24 +628,35 @@ static func _build_enemy() -> void:
 
 ## Moves that set targets on fire (seconds). Burning targets take +30% damage from everything, so these are
 ## the setup half of a synergy; the rest of the kit can pay it off.
-const IGNITE := {
-	"fireball": 3.0, "spread_shot": 2.0, "rising_dragon": 2.5, "quake_line": 3.0,
-	"arcane_beam": 3.0, "wind_slash": 1.5, "boost_spark": 1.5, "spark_shot": 1.0,
+## Elemental moves (seconds of status). Fire burns (+30 % damage taken, damage over time), shock arcs to a neighbour
+## when a shocked target is hit, frost slows and freezes after three chilling hits. Not only Magic: basic and weapon
+## moves carry elements too (and the Infusion level-up card puts an element on every attack).
+const ELEMENTS := {
+	"fireball": ["ignite", 3.0], "rising_dragon": ["ignite", 2.5], "overhead_smash": ["ignite", 2.0], "quake_line": ["ignite", 3.0],
+	"haymaker": ["ignite", 2.0], "thrust_lunge": ["ignite", 2.0],
+	"spark_shot": ["shock", 3.0], "arcane_beam": ["shock", 3.5], "riposte_step": ["shock", 3.0], "sky_launcher": ["shock", 3.0],
+	"popup_kick": ["shock", 2.5], "teleport_strike": ["shock", 3.0], "dash_punch": ["shock", 2.0],
+	"ground_wave": ["frost", 3.0], "spread_shot": ["frost", 2.5], "boomerang": ["frost", 2.5], "wind_slash": ["frost", 2.5],
+	"whirlwind_haul": ["frost", 2.5], "low_cut": ["frost", 2.5], "side_sweep": ["frost", 2.0],
 }
+const ELEMENT_WORD := {"ignite": "Ignites.", "shock": "Shocks.", "frost": "Chills."}
 
 
 static func _apply_status() -> void:
-	for id in IGNITE:
+	for id in ELEMENTS:
 		var m: MoveData = _db.get(id)
 		if m == null:
 			continue
+		var key: String = ELEMENTS[id][0]
+		var secs: float = ELEMENTS[id][1]
 		for h in m.hits:
-			h["ignite"] = float(IGNITE[id])
+			h[key] = secs
 		for e in m.events:
 			if String(e.get("type", "")) == "proj":
-				e["ignite"] = float(IGNITE[id])
-		if not m.desc.contains("Ignites"):
-			m.desc += " Ignites."
+				e[key] = secs
+		var word: String = ELEMENT_WORD[key]
+		if not m.desc.contains(word):
+			m.desc += " " + word
 
 
 ## Clarity pass: a hit window under 6 frames (about a tenth of a second) is too short to see or read. Stretch every
