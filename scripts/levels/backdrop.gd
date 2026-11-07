@@ -7,12 +7,13 @@ extends Node2D
 ##   fog: how far the fill is pulled toward the haze colour (per layer, far layers get more)
 ##   desat: 0..1 pull toward grey, dim: brightness multiplier, edge: roof-line alpha (0 = pure silhouette)
 ##   win: window alpha, dens: window density multiplier
-static var variant := 2
+static var variant := 4
 const STYLES := [
 	{"fog": 0.0, "desat": 0.0, "dim": 1.0, "edge": 1.0, "win": 1.0, "dens": 1.0},
 	{"fog": 0.55, "desat": 0.35, "dim": 0.75, "edge": 0.0, "win": 0.35, "dens": 0.6},
 	{"fog": 0.7, "desat": 0.6, "dim": 0.6, "edge": 0.0, "win": 0.18, "dens": 0.35},
 	{"fog": 0.35, "desat": 0.25, "dim": 0.45, "edge": 0.12, "win": 0.5, "dens": 0.5},
+	{"fog": 0.0, "desat": 0.0, "dim": 1.0, "edge": 0.0, "win": 1.0, "dens": 0.28, "limited": true},  # 4: limited palette
 ]
 
 class SkyLayer extends Node2D:
@@ -66,12 +67,17 @@ func setup(theme: Dictionary, level_w: float, ground_y: float) -> void:
 		var grey := Color(fill.get_luminance(), fill.get_luminance(), fill.get_luminance())
 		fill = fill.lerp(grey, st["desat"]).lerp(haze, float(st["fog"]) * (0.35 + 0.65 * far_t))
 		fill = Color(fill.r * st["dim"], fill.g * st["dim"], fill.b * st["dim"], 1.0)
+		if st.get("limited", false):
+			var li := clampi(int(round((float(s["f"]) - 0.25) / 0.265)), 0, 2)
+			fill = Pal.BG_BUILDING[li]
 		l.fill = fill
 		l.edge = s["edge"]
 		l.edge_a = st["edge"]
 		l.dens = 0.22 * float(st["dens"])
 		var wc: Color = theme["window"]
 		l.win = Color(wc.r, wc.g, wc.b, float(st["win"]))
+		if st.get("limited", false):
+			l.win = Pal.BG_WINDOW
 		l.windows = s["win"]
 		l.ground_y = ground_y
 		l.z_index = -50

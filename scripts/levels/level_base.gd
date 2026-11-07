@@ -325,6 +325,16 @@ func _paint_sky(c: CanvasItem) -> void:
 	var top: Color = theme["sky_top"]
 	var horizon: Color = theme["sky_bottom"]
 	var y0 := -300.0
+	if Backdrop.variant == 4:
+		var span := ground_y - y0
+		var b1 := y0 + span * float(Pal.BG_SKY_SPLIT[0])
+		var b2 := y0 + span * float(Pal.BG_SKY_SPLIT[1])
+		c.draw_rect(Rect2(-2500, -1800, level_w + 5000, b1 + 1800), Pal.BG_SKY[0])
+		c.draw_rect(Rect2(-2500, b1, level_w + 5000, b2 - b1), Pal.BG_SKY[1])
+		c.draw_rect(Rect2(-2500, b2, level_w + 5000, ground_y - b2 + 2), Pal.BG_SKY[2])
+		c.draw_rect(Rect2(-2500, -1800, 2500, 3200), Color(0.01, 0.0, 0.03))
+		c.draw_rect(Rect2(level_w, -1800, 2500, 3200), Color(0.01, 0.0, 0.03))
+		return
 	c.draw_rect(Rect2(-2500, -1800, level_w + 5000, 1800 + y0 + 2), top)
 	var bands := 40
 	var h := (ground_y - y0) / bands
@@ -338,7 +348,7 @@ func _paint_sky(c: CanvasItem) -> void:
 
 func _paint_ground(c: CanvasItem) -> void:
 	var ng: Color = theme["neon_ground"]
-	c.draw_rect(Rect2(-2500, ground_y, level_w + 5000, 700), theme["ground"])
+	c.draw_rect(Rect2(-2500, ground_y, level_w + 5000, 700), Pal.BG_GROUND if Backdrop.variant == 4 else theme["ground"])
 	c.draw_line(Vector2(-2500, ground_y), Vector2(level_w + 2500, ground_y), ng, 3.0, true)
 	var gx := -2500.0
 	while gx < level_w + 2500.0:
