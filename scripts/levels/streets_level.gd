@@ -86,16 +86,30 @@ func _pick(rng: RandomNumberGenerator, table: Array) -> String:
 func _enc(rng: RandomNumberGenerator, x: float, depth: int, bonus: int) -> Dictionary:
 	var waves: Array = []
 	for w in 2:
-		var count := 2 + depth / 2 + bonus / 2 + w
-		var tally := {}
-		for i in count:
-			var k := _pick(rng, [["thug", 55], ["biker", 20 + depth * 3], ["thrower", 25]])
-			tally[k] = int(tally.get(k, 0)) + 1
-		var wave: Array = []
-		for k in tally:
-			wave.append([k, tally[k]])
-		waves.append(wave)
+		waves.append(_wave(rng, depth, bonus, w))
 	return {"x": x, "waves": waves}
+
+
+## Few and tanky is the norm (1-2 brutes/heavies plus a couple of small ones); about one wave in five is a swarm of
+## small enemies for variety.
+func _wave(rng: RandomNumberGenerator, depth: int, bonus: int, w: int) -> Array:
+	var tally := {}
+	if rng.randf() < 0.2:
+		for i in 5 + depth / 2 + w:
+			var k := _pick(rng, [["thug", 60], ["thrower", 25], ["biker", 15]])
+			tally[k] = int(tally.get(k, 0)) + 1
+	else:
+		var tanks := 1 + (1 if (depth + bonus + w) >= 3 else 0)
+		for i in tanks:
+			var k2 := _pick(rng, [["brute", 65], ["heavy", 20 + depth * 5]])
+			tally[k2] = int(tally.get(k2, 0)) + 1
+		for i in rng.randi_range(0, 2):
+			var k3 := _pick(rng, [["thug", 50], ["thrower", 30], ["biker", 20]])
+			tally[k3] = int(tally.get(k3, 0)) + 1
+	var wave: Array = []
+	for k in tally:
+		wave.append([k, tally[k]])
+	return wave
 
 
 # ------------------------------------------------------------------ terrain

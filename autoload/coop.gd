@@ -28,6 +28,9 @@ var revives_max := 3
 ## per-level stats for the level complete screen
 var stat_damage := 0.0
 var stat_relay_hits := 0
+var stat_combo_coins := 0
+var last_hit_pos := Vector2.ZERO
+const COMBO_WINDOW := 2.2  # seconds to land the next hit (was 1.7): easier to chain alone
 var stat_rescues := 0
 var stat_containers := 0
 var stat_containers_total := 0
@@ -55,6 +58,7 @@ func reset_run() -> void:
 	revives_left = revives_max
 	stat_damage = 0.0
 	stat_relay_hits = 0
+	stat_combo_coins = 0
 	stat_rescues = 0
 	stat_containers = 0
 	stat_containers_total = 0
@@ -81,12 +85,29 @@ func _process(delta: float) -> void:
 			combo = 0
 			relay = 0
 			hits_by = [0, 0]
+			_pay_combo(c, r)
 			combo_ended.emit(c, r)
 			combo_changed.emit()
 
 
+## Damage multiplier of the running combo: +4 % per hit (up to 30 hits) and +25 % per relay (up to 4). Long team combos
+## are what kills the tanky enemies quickly.
 func combo_mult() -> float:
-	return 1.0 + 0.25 * minf(relay, 4) + 0.25 * minf(combo / 12.0, 1.0)
+	return 1.0 + 0.25 * minf(relay, 4) + 0.04 * minf(combo, 30)
+
+
+## Coins for a finished combo (paid into the shared wallet once its timer runs out).
+func combo_coins(count: int, relays: int) -> int:
+	return int(maxf(0.0, count - 8.0) * 0.75) + relays * 3
+
+
+func _pay_combo(count: int, relays: int) -> void:
+	var n := combo_coins(count, relays)
+	if n <= 0 or not RunState.active:
+		return
+	RunState.coins += n
+	stat_combo_coins += n
+	say("+%d COINS" % n, Color(2.0, 1.7, 0.4), last_hit_pos + Vector2(0, -150))
 
 
 ## Called before damage is applied: relay / alley-oop detection and combo damage scaling.
@@ -111,9 +132,10 @@ func post_hit(info: HitInfo, victim: Actor, dmg: float) -> void:
 		return
 	var atk := info.attacker as Fighter
 	combo += 1
-	combo_t = 1.7
+	combo_t = COMBO_WINDOW
 	best_combo = maxi(best_combo, combo)
 	hits_by[atk.player_index] += 1
+	last_hit_pos = victim.global_position
 	atk.meter = minf(100.0, atk.meter + dmg * 0.7)
 	if info.relay:
 		relay += 1
@@ -128,7 +150,7 @@ func post_hit(info: HitInfo, victim: Actor, dmg: float) -> void:
 func bonus_hit(attacker: Actor, victim: Actor, _dmg: float) -> void:
 	if attacker is Fighter and victim.team == "enemy":
 		combo += 1
-		combo_t = 1.7
+		combo_t = COMBO_WINDOW
 		best_combo = maxi(best_combo, combo)
 		hits_by[(attacker as Fighter).player_index] += 1
 		combo_changed.emit()

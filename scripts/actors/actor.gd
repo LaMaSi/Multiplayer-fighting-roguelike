@@ -269,7 +269,7 @@ func take_hit(info: HitInfo) -> bool:
 func _start_launch(info: HitInfo, lethal: bool) -> void:
 	var kb := info.kb
 	var was_launched := state == "launched"
-	var sc := maxf(0.5, 1.0 - 0.1 * juggle_hits) if was_launched else 1.0
+	var sc := maxf(0.6, 1.0 - 0.06 * juggle_hits) if was_launched else 1.0  # solo juggles last longer (weaker launches, not none)
 	if info.kind == "spike":
 		velocity = Vector2(kb.x * 0.3, absf(kb.y))
 	else:

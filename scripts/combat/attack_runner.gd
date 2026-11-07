@@ -365,7 +365,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.dmg = float(h["dmg"]) * a.dmg_mult() * a.upgrade_mult(move.id, "dmg")
 	if a.team == "enemy":
 		info.dmg *= Coop.enemy_dmg_mult
-	info.stun = int(h["stun"])
+	info.stun = int(h["stun"]) + (3 if a.team == "player" else 0)  # a little extra hitstun: solo chains become possible
 	info.kind = String(h["kind"])
 	info.stop = int(h["stop"]) + (4 if float(h["dmg"]) >= 18.0 else (2 if float(h["dmg"]) >= 9.0 else 1))
 	info.low = bool(h["low"])

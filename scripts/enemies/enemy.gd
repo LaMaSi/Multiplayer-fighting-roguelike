@@ -13,6 +13,11 @@ const DEFS := {
 		"attacks": ["e_charge"], "range": 0.0, "cd": 2.2},
 	"thrower": {"name": "Bottle Thrower", "hp": 40.0, "speed": 130.0, "color": Color(1.1, 0.1, 0.25), "style": "hood", "ai": "ranged", "build": {"limb": 0.8, "head": 0.9, "fill": false, "square": true},
 		"attacks": ["e_throw"], "range": 0.0, "cd": 2.4},
+	# few and tanky is the norm: brutes and heavies soak a long team combo; they still launch and juggle
+	"brute": {"name": "Brute", "hp": 230.0, "speed": 110.0, "color": Color(1.35, 0.15, 0.35), "style": "helmet", "ai": "melee", "build": {"limb": 1.8, "head": 1.15, "fill": true, "square": true},
+		"attacks": ["e_punch", "e_double"], "range": 72.0, "cd": 1.9, "scale": 1.25, "dmg": 1.35},
+	"heavy": {"name": "Heavy", "hp": 340.0, "speed": 90.0, "color": Color(1.2, 0.2, 0.9), "style": "horns", "ai": "melee", "build": {"limb": 2.0, "head": 1.2, "fill": true, "square": true},
+		"attacks": ["e_double", "e_punch"], "range": 78.0, "cd": 2.3, "scale": 1.4, "dmg": 1.6},
 	"boss_street": {"name": "Big Boss", "hp": 750.0, "speed": 120.0, "color": Color(1.45, 0.08, 0.08), "style": "crown", "ai": "boss", "build": {"limb": 1.9, "head": 1.1, "fill": true, "square": true},
 		"attacks": ["boss_swing", "boss_slam", "boss_charge"], "range": 100.0, "cd": 1.0, "scale": 1.5, "resist": true, "boss": true},
 }
@@ -298,3 +303,7 @@ func _ai_boss(dir: float, adx: float, _dy: float) -> float:
 	if adx > 150.0:
 		return dir * run_speed
 	return -dir * run_speed * 0.3
+
+
+func dmg_mult() -> float:
+	return super.dmg_mult() * float(def.get("dmg", 1.0))
