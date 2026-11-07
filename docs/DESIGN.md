@@ -58,7 +58,7 @@ Goal: the team decides together what the team can do.
 4. **Same card (a clash):** play **Rock-Paper-Scissors** with face buttons: **X = rock, Y = paper, B = scissors**. 3-2-1 countdown, then reveal. Ties repeat.
    - The **winner** keeps the card.
    - The **loser** chooses from the **remaining two** cards.
-5. After picking, each player chooses which X or Y slot gets the move (simultaneously). If all of that button's slots are full, the card replaces one move.
+5. After picking, each player chooses which X or Y slot gets the move (simultaneously). If all of that button's slots are full, the player chooses which equipped move to replace (see 3.3).
 6. Players who don't press within 15 s auto-pick the leftmost card.
 7. Juice: cards flip in, both hands "slam" the card in a clash, a screen-shake countdown, the loser's reaction.
 
@@ -78,11 +78,14 @@ Goal: your build, your character, your decision, but visible to your partner.
 4. No clash rule here (the sets are different). Both confirm to continue.
 5. **Rank bonus:** a high team rank (S) adds a 4th card to both sets and to the shared choice; a low rank (D) removes one.
 
-### 3.3 Pacing and scarcity (open, default given)
+### 3.3 Pacing and replacement (decided)
 
-- Slots: X 5 and Y 5 (X starts with 1) plus B 5 (starts with 3). That is 9 X/Y slots and 2 B slots to fill.
-- With about 12-15 levels per run and a shared move card every level, all X/Y slots fill after about 9 levels. Default: after that, shared cards offer **replace** or an **upgrade** choice instead.
-- If you want "not every level gives a move" (from the first idea), the default is to skip the shared choice on a few levels (e.g. after boss nodes get a bigger reward instead). Decide later.
+- Every level gives both rewards. Slots fill up after a few levels, and that is intended: **replacing moves is a normal part of the game**, not an edge case.
+- When a card's button has no empty slot, the player picks **which equipped move it replaces** (shown side by side, with the old move's stats). Replacing is never forced; a player can also decline a card (take no move) if they prefer their current kit.
+- Replacement choices drive the build conversation: "I'll drop my Spin Kick for it", so the screen shows both players' loadouts at all times.
+- Replaced moves return to the pool and can be offered again later.
+- Personal B-move cards work the same way: if all 5 B slots are full, the player chooses which B move gets replaced.
+- Because moves rotate, empower upgrades on a move are lost when it is replaced (to be decided: keep the upgrade with the slot, or with the move; default: with the move).
 
 ### 3.4 Co-op test for this system
 - Shared choice: pass (communication, clash, shared consequence).
