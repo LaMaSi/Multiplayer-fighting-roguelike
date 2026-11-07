@@ -36,7 +36,7 @@ If a feature fails 1-3 it needs a co-op twist or gets cut. If it fails 4 or 5 it
 | Level-up: +HP / empower a move | partial | Make it a joint choice: one option for each player or one team upgrade |
 | Rank at level end | partial | Team rank; add bonus points for relay hits and rescues |
 | RT dash | neutral | Add: dash through the partner to give them a short speed boost? (optional, test) |
-| Super meter | **unclear** | Own planning session, §5 |
+| Super meter | partly decided | Style meter, §5. Open: owner (shared Link vs individual) |
 
 ## 2. Decisions made
 
@@ -70,23 +70,49 @@ Same system for **level-ups and upgrades**: 3 team-upgrade cards (e.g. +max HP f
 - The game rolls random moves into each player's starting slots: B, side+B, up+B (from their class), X (from the universal pool). Y slots are empty at start.
 - Loadout screen shows both players' rolls side by side, with one re-roll per player per run and **one move swap**: a player may trade one of their rolled moves with their partner's (if the class rules allow it). This forces a quick conversation ("take my fireball?").
 
-## 5. Super meter: planning session (OPEN, to decide before implementing anything)
+## 5. Super meter: decisions so far and open items
 
-Problem: we have a per-player meter, Duo Specials needing both players at 50%, Magic needing "lots of meter", and no clear design for what the meter does. Under the pillar, the meter should reward **cooperation**, not solo damage.
+Nickname: the **Style meter**. Anything cool and cooperative fills it. Status: partly decided, the open items are at the end.
 
-Questions to settle:
-1. What does the meter fill from? (damage dealt, relay hits, healing/reviving/protecting the partner, taking hits for the partner)
-2. Is it shared by the team, individual, or both (e.g. individual fill, team spend)?
-3. What is it spent on? (Duo Specials, solo supers, empowering the partner's next move, Magic's B moves)
-4. How does Magic use it without becoming a meter-hog that blocks the partner?
-5. Do Duo Specials depend on the moves/classes the two players have equipped?
+### Decided
+- **Fills from** (in rough order of reward):
+  1. Relay hits and shared combos (largest)
+  2. Protecting and rescuing the partner (guarding a charging partner, reviving, taking a hit for them, healing them)
+  3. Perfect dodges and perfect parries ("coolness": anything awesome is rewarded, even solo)
+  Plain damage dealt fills little or nothing, so spamming alone is a poor way to build meter.
+- **Empowered moves:** holding **LT** while performing a move spends a little meter to make it a slightly stronger / larger version (bigger hitbox, more damage, extra effect). Mainly for B moves, but this applies to any move that has an empowered variant.
+- **Supers:**
+  - **Generic super** (choose 1 of 8 as a build choice): input **down, down-forward, forward, twice (a double quarter-circle forward), then X**.
+  - **Weapon super:** same motion, then **B**. One fixed super per class for now, to be expanded later.
+  - **Duo Specials** remain: both players have enough meter and press the pair trigger.
+- **Spent on:** Duo Specials, empowered moves (LT), solo supers.
 
-Candidate designs to evaluate:
-- **A. Link meter (shared):** one team gauge shown between the players. Fills from relay hits, protecting a charging partner, reviving, and staying close. Spent only on Duo Specials and "Link" versions of B moves. Magic's strongest B moves have a Link version.
-- **B. Giving meter:** each player has their own meter, and it fills mainly from actions that help the partner. You can *give* meter to your partner with a move. Duo Special needs both players at the threshold.
-- **C. Hybrid:** individual meters for solo supers (fill from own damage), plus a small team Link bonus. More complex, risks diluting the pillar.
+### Co-op check on these decisions
+- Solo supers can be played alone, so they compete with the pillar. Mitigation: every super gets a **team rider** (a bonus when the partner is in range or when it follows a relay hit: it may extend the combo window, heal the partner a little, or let the partner's next hit be empowered for free). Needs one rider design per super.
+- Perfect dodge/parry is a solo reward. That is fine as long as protect/relay actions are worth more. Tune: relay and rescue = 2-3x the perfect-dodge amount.
 
-Recommendation to test first: **A (Link meter)**, because it is the most direct answer to the pillar, and simple to read.
+### Technical risks
+- A double quarter-circle on a stick is hard and conflicts with crouch (down), down+face-button moves and the RT dash. Needs a motion-input parser with a buffer of about 25-30 frames, leniency on diagonals, and priority over ordinary moves when a full motion is detected. Make the window generous.
+- If the generic super is X + motion, it conflicts with X-slot moves; parse the motion first.
+- The generic super choice (1 of 8) needs a slot in the build: likely a reward type. Open.
+
+### Open (needs a decision)
+1. **Meter owner: not answered.** Default to test first: one shared **Link meter** between the players (supports the pillar the most). If you want individual meters, then the partner can gift meter.
+2. How is the generic super acquired (run start choice, reward card, both)?
+3. Do supers require a full meter, and what are the thresholds for: empowered move (about 10%), super (about 50%), Duo Special (about 50% for each or a shared 75%)?
+4. The 8 generic supers and 4 weapon supers still need to be listed.
+
+### Magic: rethink (no mana bar)
+Current problem: "Magic costs a lot of meter" made Magic a resource problem, not an identity. Magic should differ from Brawler/Sword/Hammer by **what it does for the team**, not by what it costs.
+
+Proposal (co-op first): **Magic is the Primer / Zoner.**
+- B moves are ranged, slow-moving projectiles and zones that **mark** enemies (fire, shock, oil, slow). Marks do small damage alone.
+- A different player's hit (or Magic's own empowered hit) **detonates** the mark for a large bonus, plus meter for the team. Marks = the enemy visibly glows.
+- Weakness: lowest HP of the classes, slow projectile speed, and no strong close-range tools (it has the universal X moves).
+- Cost: cooldowns on Magic's B moves (visible on the player), instead of a resource bar. LT empowered versions cost meter like every class.
+- This turns the Magic player into the person who sets up the other player's big hits. Great for communication ("mark him!", "detonate now!").
+
+Alternative if you prefer a more individual fantasy: Magic as pure glass-cannon artillery (strongest ranged damage, shortest HP, longest cooldowns).
 
 ## 6. Co-op level elements (ideas to implement, ordered by estimated value)
 
