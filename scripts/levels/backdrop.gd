@@ -7,7 +7,7 @@ extends Node2D
 ##   fog: how far the fill is pulled toward the haze colour (per layer, far layers get more)
 ##   desat: 0..1 pull toward grey, dim: brightness multiplier, edge: roof-line alpha (0 = pure silhouette)
 ##   win: window alpha, dens: window density multiplier
-static var variant := 1
+static var variant := 2
 const STYLES := [
 	{"fog": 0.0, "desat": 0.0, "dim": 1.0, "edge": 1.0, "win": 1.0, "dens": 1.0},
 	{"fog": 0.55, "desat": 0.35, "dim": 0.75, "edge": 0.0, "win": 0.35, "dens": 0.6},
