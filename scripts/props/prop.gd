@@ -24,6 +24,8 @@ var w := 46.0
 var h := 46.0
 
 var _wobble := 0.0
+var _squash := 0.0
+var _spring_cd: Dictionary = {}
 var _hit_set: Dictionary = {}
 var _bounces := 0
 var _wob_dir := 1.0
@@ -37,6 +39,11 @@ func setup(k: String) -> Prop:
 			col = Pal.interact()
 			w = 40.0
 			h = 54.0
+		"spring":
+			hp = 99999.0
+			w = 44.0
+			h = 30.0
+			col = Pal.interact()
 		"explosive":
 			hp = 20.0
 			col = Color(1.5, 0.35, 0.12)
@@ -53,7 +60,8 @@ func setup(k: String) -> Prop:
 
 func _ready() -> void:
 	add_to_group("props")
-	Coop.stat_containers_total += 1
+	if kind != "spring":
+		Coop.stat_containers_total += 1
 	add_to_group("hurt_enemy")
 	collision_layer = 0
 	collision_mask = 0
@@ -128,6 +136,8 @@ func take_hit(info: HitInfo) -> bool:
 
 func _physics_process(delta: float) -> void:
 	_wobble = maxf(0.0, _wobble - delta)
+	if kind == "spring" and state == "idle":
+		_spring_tick(delta)
 	if burn_t > 0.0 and state != "dead":
 		burn_t = maxf(0.0, burn_t - delta)
 		hp -= 7.0 * delta
@@ -173,10 +183,25 @@ func _physics_process(delta: float) -> void:
 				info.shake = 0.3
 				info.pos = get_hurt_rect().get_center()
 				if t.take_hit(info):
+					if kind == "spring":
+						velocity.x *= -0.25
+						continue
 					_break(thrown_by)
 					return
 		if is_on_wall():
-			_break(thrown_by)
+			if kind == "spring":
+				velocity.x *= -0.3
+			else:
+				_break(thrown_by)
+				return
+		if is_on_floor() and kind == "spring":
+			# a thrown spring lands and stays: it is now a spring pad
+			state = "idle"
+			velocity = Vector2.ZERO
+			rotation = 0.0
+			_squash = 1.0
+			Sfx.play("land", 1.2)
+			Fx.dust(get_parent(), global_position, 6)
 			return
 		if is_on_floor():
 			_bounces += 1
@@ -310,6 +335,18 @@ func _draw() -> void:
 			draw_rect(Rect2(-w * 0.34, -h * 0.2, w * 0.68, h * 0.4), Color(0.06, 0.02, 0.02))
 			draw_string(ThemeDB.fallback_font, Vector2(-w * 0.5, h * 0.1), "TNT", HORIZONTAL_ALIGNMENT_CENTER, w, 16, Color(2.0, 1.2, 0.4))
 			draw_circle(Vector2(0, -h * 0.5 - 5.0), 3.5 + 1.5 * fuse, Color(2.2, 1.3, 0.3))
+		"spring":
+			var sq := 1.0 - 0.45 * _squash
+			var top := h * 0.5 - (h - 8.0) * sq
+			draw_rect(Rect2(-w * 0.5, h * 0.5 - 6.0, w, 6.0), Color(0.06, 0.03, 0.1))
+			draw_rect(Rect2(-w * 0.5, h * 0.5 - 6.0, w, 6.0), col, false, 2.5)
+			var zig := PackedVector2Array()
+			for i in 7:
+				zig.append(Vector2((-w * 0.32) if i % 2 == 0 else (w * 0.32), lerpf(h * 0.5 - 6.0, top + 6.0, float(i) / 6.0)))
+			draw_polyline(zig, col, 3.0, true)
+			draw_rect(Rect2(-w * 0.5, top, w, 6.0), Color(0.06, 0.03, 0.1))
+			draw_rect(Rect2(-w * 0.5, top, w, 6.0), rim, false, 3.0)
+			draw_rect(Rect2(-w * 0.5, top, w, 6.0), col, false, 2.5)
 		"barrel":
 			draw_rect(r, Color(0.06, 0.03, 0.1))
 			draw_rect(r.grow(3.0), rim, false, 3.0)
@@ -337,3 +374,34 @@ func _ignite(secs: float, c: Color) -> void:
 	_status_fx.actor = self
 	_status_fx.col = c
 	add_child(_status_fx)
+
+
+## A deployed spring pad: whoever lands on or walks over it is launched high; players are flung in a fast jump they can
+## act out of, enemies are launched (the combo carries on).
+func _spring_tick(delta: float) -> void:
+	_squash = maxf(0.0, _squash - delta * 5.0)
+	for k in _spring_cd.keys():
+		_spring_cd[k] = float(_spring_cd[k]) - delta
+		if float(_spring_cd[k]) <= 0.0:
+			_spring_cd.erase(k)
+	var top := Rect2(global_position.x - w * 0.5, global_position.y - h - 10.0, w, 26.0)
+	for n in get_tree().get_nodes_in_group("actors"):
+		if not (n is Actor):
+			continue
+		var a := n as Actor
+		if not a.is_alive() or a.state == "dead" or a.state == "downed" or a.state == "grabbed" or _spring_cd.has(a.get_instance_id()):
+			continue
+		var feet := Rect2(a.global_position.x - 12.0, a.global_position.y - 8.0, 24.0, 12.0)
+		if top.intersects(feet) and a.velocity.y > -60.0:
+			_spring_cd[a.get_instance_id()] = 0.45
+			_squash = 1.0
+			var v := Vector2(a.velocity.x * 0.8, -1250.0)
+			var by: Actor = a
+			if a.team == "enemy" and a.last_hitter != null and is_instance_valid(a.last_hitter):
+				by = a.last_hitter
+			a.thrown(v, by)
+			Fx.ring(get_parent(), global_position + Vector2(0, -h), col, 70.0, 0.25)
+			Fx.dust(get_parent(), global_position, 8)
+			Sfx.play("jump", 0.8)
+			if a.team == "enemy":
+				Coop.bonus_hit(a.last_hitter as Actor, a, 0.0)

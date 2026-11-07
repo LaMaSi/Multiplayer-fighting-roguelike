@@ -220,6 +220,24 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			doors_spec.append({"x": cands[ci], "kind": kinds[i % 2]})
 			cands.remove_at(ci)
 
+	# floor hazards: spike traps, bumpers and throwable springs inside every arena (so enemies can be thrown into them),
+	# plus the odd spike trap on the road between arenas
+	hazards_spec = []
+	for e in encounters:
+		var ex := float(e["x"])
+		var sgn := -1.0 if rng.randf() < 0.5 else 1.0
+		hazards_spec.append({"kind": "spikes", "x": ex + sgn * rng.randf_range(260.0, 520.0)})
+		if rng.randf() < 0.6:
+			hazards_spec.append({"kind": "bumper", "x": ex - sgn * rng.randf_range(220.0, 480.0)})
+		if rng.randf() < 0.5:
+			hazards_spec.append({"kind": "spring", "x": ex + rng.randf_range(-150.0, 150.0)})
+	for i in 2:
+		for tries in 10:
+			var hx := rng.randf_range(400.0, level_w - 600.0)
+			if is_safe_ground(Vector2(hx, ground_at(hx))):
+				hazards_spec.append({"kind": "spikes" if rng.randf() < 0.7 else "spring", "x": hx})
+				break
+
 	# containers: on solid ground or on a platform, never over a pit
 	var n_props: int = {"fight": 10, "elite": 12, "treasure": 22, "boss": 5}.get(t, 10)
 	for i in n_props:

@@ -11,6 +11,7 @@ var ground_y := 600.0
 var platforms: Array = []  ## Rect2 (top-left, size)
 var ground_segs: Array = []  ## Rect2 (x, top_y, width, depth) pieces of ground; empty = one flat ground. Gaps between pieces are pits.
 var doors_spec: Array = []  ## {x, kind: "challenge" | "shop"}
+var hazards_spec: Array = []  ## {kind: "spikes" | "bumper" | "spring", x}
 var in_room := false  ## the players are inside a door room (the level itself is paused in place)
 var _room: DoorRoom = null
 var _room_door: Door = null
@@ -65,6 +66,7 @@ func _ready() -> void:
 	_build_camera()
 	_spawn_props()
 	_spawn_doors()
+	_spawn_hazards()
 	hud = Hud.new()
 	hud.level = self
 	hud.objective = objective
@@ -194,6 +196,23 @@ func _spawn_props() -> void:
 	for s in props_spec:
 		var y: float = s[2] if s.size() > 2 else ground_top(float(s[0]))
 		spawn_prop(String(s[1]), Vector2(float(s[0]), y - 1.0))
+
+
+func _spawn_hazards() -> void:
+	for hz in hazards_spec:
+		var x := float(hz["x"])
+		var pos := Vector2(x, ground_top(x))
+		match String(hz["kind"]):
+			"spikes":
+				var st := SpikeTrap.new()
+				st.position = pos
+				add_child(st)
+			"bumper":
+				var bp := Bumper.new()
+				bp.position = pos
+				add_child(bp)
+			"spring":
+				spawn_prop("spring", pos + Vector2(0, -1.0))
 
 
 func spawn_prop(kind: String, pos: Vector2, guaranteed := "") -> Prop:

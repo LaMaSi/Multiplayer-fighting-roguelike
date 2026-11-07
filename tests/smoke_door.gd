@@ -97,6 +97,7 @@ func _ready() -> void:
 		f.input.script_set(Vector2.ZERO, [])
 		await frames(5)
 		check("shop door opens the shop room", lv.in_room and lv._room.kind == "shop")
+		var picks_before: int = RunState.bonus_picks.size()
 		var it: Dictionary = lv._room._items[0]
 		f.global_position = Vector2(float(it["x"]), lv.ground_y - 1.0)
 		await frames(3)
@@ -104,5 +105,5 @@ func _ready() -> void:
 		await frames(2)
 		f.input.script_set(Vector2.ZERO, [])
 		await frames(5)
-		check("buying a move pick costs coins and queues a pick", RunState.coins == 50 and RunState.bonus_picks.size() == 1)
+		check("buying a move pick costs coins and queues a pick", RunState.coins == 50 and RunState.bonus_picks.size() == picks_before + 1)
 	get_tree().quit()
