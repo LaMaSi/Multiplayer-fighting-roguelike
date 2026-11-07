@@ -112,6 +112,24 @@ static func heart(c: CanvasItem, pos: Vector2, r: float, on := true) -> void:
 		poly_line(c, pts, Color(HEART.r, HEART.g, HEART.b, 0.3), 2.0)
 
 
+## Menu button: chamfered, glowing and thicker when selected, with a pink arrow. `value` is drawn at the
+## right (with < > around it when arrows is true and the button is selected).
+static func button(c: CanvasItem, r: Rect2, label: String, selected: bool, value := "", arrows := false) -> void:
+	var col := TEXT if selected else Color(0.8, 0.8, 1.0, 0.45)
+	var p := chamfer(r, 12.0)
+	if selected:
+		glow_poly(c, p, GLOW_PINK, 0.28)
+	c.draw_colored_polygon(p, Color(0.12, 0.05, 0.2, 0.92) if selected else Color(INK.r, INK.g, INK.b, 0.8))
+	poly_line(c, p, col, 4.0 if selected else LINE)
+	if selected:
+		var my := r.position.y + r.size.y * 0.5
+		c.draw_colored_polygon(PackedVector2Array([Vector2(r.position.x - 26, my - 12), Vector2(r.position.x - 8, my), Vector2(r.position.x - 26, my + 12)]), PINK)
+	txt(c, head(), r.position + Vector2(22, r.size.y * 0.5 + 8), label, 20 if selected else 18, TEXT if selected else Color(0.8, 0.8, 0.95))
+	if value != "":
+		var t := ("<  %s  >" % value) if (arrows and selected) else value
+		txt(c, body(), r.position + Vector2(0, r.size.y * 0.5 + 7), t, 17, AMBER if selected else DIM_TEXT, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 20.0)
+
+
 static func check(c: CanvasItem, pos: Vector2, col: Color) -> void:
 	c.draw_polyline(PackedVector2Array([pos, pos + Vector2(5, 6), pos + Vector2(16, -7)]), col, 3.0, true)
 

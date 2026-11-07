@@ -1,7 +1,9 @@
 class_name PauseMenu
 extends CanvasLayer
-## Pause menu (Start / Esc): friendly-fire settings, Move Lab (assign any of the 30 moves to
-## any of the 15 slots), training tools, restart. Navigate with the stick/D-pad, A = select, B = back.
+## Pause menu (Start / Esc). Pages: main (resume, loadout, options, testing, restart, quit), options,
+## testing (Move Lab, enemy spawner ...), lab (any move in any slot for the training room) and
+## loadout (swap moves between buttons, both players at once, see LoadoutView).
+## Stick up/down moves, left/right changes a value, A selects, B goes back, Start / Esc resumes.
 
 class Canvas extends Control:
 	var menu: PauseMenu
@@ -20,12 +22,16 @@ var _sel := 0
 var _lo_player := 0
 var _spawn_idx := 1
 var _last_dir: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO]
+var _lv: LoadoutView
+var _b_guard := false  ## ignore B until it is released (the loadout screen closes on B)
+var _t := 0.0
 const SPAWNABLE := ["thug", "biker", "thrower", "boss_street", "dummy"]
 const SLOT_NAMES := {
 	"X": "X", "X_UP": "X + Up", "X_SIDE": "X + Left/Right", "X_DOWN": "X + Down",
 	"Y": "Y", "Y_UP": "Y + Up", "Y_SIDE": "Y + Left/Right", "Y_DOWN": "Y + Down",
 	"B": "B", "B_UP": "B + Up", "B_SIDE": "B + Left/Right", "B_DOWN": "B + Down",
 }
+const PlayerSlots: Array[String] = ["X", "X_UP", "X_SIDE", "X_DOWN", "Y", "Y_UP", "Y_SIDE", "Y_DOWN", "B", "B_UP", "B_SIDE", "B_DOWN"]
 
 
 func _ready() -> void:
@@ -36,13 +42,17 @@ func _ready() -> void:
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_canvas)
+	_lv = LoadoutView.new(
+		func(p: int) -> Dictionary: return Coop.fighters[p].loadout,
+		func(p: int, slot: String, id: String) -> void: Coop.fighters[p].set_move(slot, id),
+		func(p: int) -> String: return Coop.fighters[p].class_id,
+		func(p: int) -> Dictionary: return Coop.fighters[p].upgrades)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
 		if open and _page != "main":
-			_page = "testing" if _page == "lab" else "main"
-			_sel = 0
+			_back()
 		else:
 			_toggle()
 
@@ -52,52 +62,101 @@ func _toggle() -> void:
 		return
 	open = not open
 	get_tree().paused = open
+	if level.hud != null:
+		level.hud.visible = not open  # the pause screens replace the HUD
 	_page = "main"
 	_sel = 0
+	_lv.reset()
 	Sfx.play("ui")
 
 
+func _back() -> void:
+	match _page:
+		"lab":
+			_go("testing", 0)
+		"options":
+			_go("main", 2)
+		"testing":
+			_go("main", 3)
+		"loadout":
+			_lv.reset()
+			_go("main", 1)
+		_:
+			_go("main", 0)
+
+
+func _go(page: String, sel := 0) -> void:
+	_page = page
+	_sel = sel
+	Sfx.play("ui", 0.8)
+
+
+# ------------------------------------------------------------------ items
+
+func _testing_items() -> Array:
+	var t: Array = []
+	if not RunState.active:
+		t.append_array([["lo0", "MOVE LAB  -  PLAYER 1", ""], ["lo1", "MOVE LAB  -  PLAYER 2", ""]])
+	if level is TrainingLevel:
+		t.append_array([["spawn_kind", "SPAWN ENEMY", String(SPAWNABLE[_spawn_idx]).to_upper()], ["crate", "SPAWN A CRATE", ""], ["heal", "HEAL BOTH PLAYERS", ""]])
+	t.append(["back", "BACK", ""])
+	return t
+
+
 func _items() -> Array:
-	if _page == "testing":
-		var t: Array = [["moves", "Show move list on HUD: %s" % ("ON" if Hud.show_moves else "OFF")],
-			["impact", "Hit explosion size: %d%%" % int(Fx.impact_scale * 100.0)]]
-		if not RunState.active:
-			t.append_array([["lo0", "Move Lab - Player 1"], ["lo1", "Move Lab - Player 2"]])
-		if level is TrainingLevel:
-			t.append_array([["spawn_kind", "Enemy to spawn: %s   (A: spawn)" % SPAWNABLE[_spawn_idx]], ["crate", "Spawn a crate"], ["heal", "Heal both players"]])
-		t.append(["back", "Back"])
-		return t
-	return [["resume", "Resume"],
-		["ff", "Friendly fire: %s" % ("ON" if Coop.friendly_fire else "OFF")],
-		["ffscale", "Friendly fire damage: %d%%" % int(Coop.ff_scale * 100.0)],
-		["testing", "Testing Options"],
-		["restart", "Restart level"], ["menu", "Main menu"]]
-
-
-func _process(_delta: float) -> void:
-	for p in Inp.players:
-		if p.pressed(PlayerInput.Btn.START):
-			_toggle()
-	if open:
-		for p in Inp.players:
-			var d := p.digital_dir()
-			if d != _last_dir[p.index] and d != Vector2i.ZERO:
-				_nav(d)
-			_last_dir[p.index] = d
-			if p.pressed(PlayerInput.Btn.JUMP):
-				_activate()
-			elif p.pressed(PlayerInput.Btn.B):
-				if _page != "main":
-					_page = "testing" if _page == "lab" else "main"
-					_sel = 0
-					Sfx.play("ui", 0.8)
-				else:
-					_toggle()
-		_canvas.queue_redraw()
+	match _page:
+		"options":
+			return OptionsList.items()
+		"testing":
+			return _testing_items()
+	var m: Array = [["resume", "RESUME", ""], ["loadout", "LOADOUT", ""], ["options", "OPTIONS", ""]]
+	if _testing_items().size() > 1:
+		m.append(["testing", "TESTING", ""])
+	m.append_array([["restart", "RESTART LEVEL", ""], ["menu", "QUIT TO MENU", ""]])
+	return m
 
 
 func _count() -> int:
 	return PlayerSlots.size() + 1 if _page == "lab" else _items().size()
+
+
+# ------------------------------------------------------------------ input (physics step, right after Inp polls)
+
+func _physics_process(delta: float) -> void:
+	_t += delta
+	for p in Inp.players:
+		if p.pressed(PlayerInput.Btn.START) and _page != "loadout":
+			_toggle()
+	if not open:
+		return
+	if _page == "loadout":
+		_lv.update(delta)
+		if _lv.close_requested:
+			_lv.reset()
+			_b_guard = true
+			_go("main", 1)
+		_canvas.queue_redraw()
+		return
+	var b_ok := true
+	if _b_guard:
+		b_ok = false
+		var any_b := false
+		for p in Inp.players:
+			any_b = any_b or p.is_held(PlayerInput.Btn.B)
+		_b_guard = any_b
+	for p in Inp.players:
+		var d := p.digital_dir()
+		if d != _last_dir[p.index] and d != Vector2i.ZERO:
+			_nav(d)
+		_last_dir[p.index] = d
+		if p.pressed(PlayerInput.Btn.JUMP):
+			_activate()
+		elif b_ok and p.pressed(PlayerInput.Btn.B):
+			if _page != "main":
+				_back()
+			else:
+				_toggle()
+	_canvas.queue_redraw()
 
 
 func _nav(d: Vector2i) -> void:
@@ -109,110 +168,140 @@ func _nav(d: Vector2i) -> void:
 
 
 func _side(dx: int) -> void:
-	if _page != "lab":
-		var id: String = _items()[_sel][0]
-		match id:
-			"moves": Hud.show_moves = not Hud.show_moves
-			"impact": Fx.impact_scale = clampf(snappedf(Fx.impact_scale + 0.25 * dx, 0.25), 0.0, 3.0)
-			"ff": Coop.friendly_fire = not Coop.friendly_fire
-			"ffscale":
-				var opts := [0.25, 0.5, 0.75, 1.0]
-				var i := opts.find(Coop.ff_scale)
-				Coop.ff_scale = opts[posmod(i + dx, opts.size())]
-			"spawn_kind": _spawn_idx = posmod(_spawn_idx + dx, SPAWNABLE.size())
-	elif _sel < PlayerSlots.size():
-		var f := Coop.fighters[_lo_player]
-		var slot: String = PlayerSlots[_sel]
-		var list: Array = [""]
-		if f.class_id == "":
-			list.append_array(MoveDB.POOL)  # legacy fighter: the original pool, any slot
-		else:
-			list.append_array(ClassData.pool_for_slot(slot, f.class_id))  # X universal, Y adaptive, B own class
-		var cur: String = f.loadout.get(slot, "")
-		var i2 := list.find(cur)
-		f.set_move(slot, list[posmod(i2 + dx, list.size())])
+	if _page == "lab":
+		if _sel < PlayerSlots.size():
+			var f := Coop.fighters[_lo_player]
+			var slot: String = PlayerSlots[_sel]
+			var list: Array = [""]
+			if f.class_id == "":
+				list.append_array(MoveDB.POOL)  # legacy fighter: the original pool, any slot
+			else:
+				list.append_array(ClassData.pool_for_slot(slot, f.class_id))  # X universal, Y adaptive, B own class
+			var cur: String = f.loadout.get(slot, "")
+			f.set_move(slot, list[posmod(list.find(cur) + dx, list.size())])
+		return
+	var id: String = _items()[_sel][0]
+	if _page == "options":
+		OptionsList.adjust(id, dx)
+	elif id == "spawn_kind":
+		_spawn_idx = posmod(_spawn_idx + dx, SPAWNABLE.size())
 
 
 func _activate() -> void:
-	if _page != "lab":
-		var id: String = _items()[_sel][0]
-		match id:
-			"resume": _toggle()
-			"ff", "ffscale", "moves", "impact": _side(1)
-			"testing":
-				_page = "testing"
-				_sel = 0
-			"back":
-				_page = "main"
-				_sel = 0
-			"lo0", "lo1":
-				_lo_player = int(id.substr(2))
-				_page = "lab"
-				_sel = 0
-			"spawn_kind":
-				var x := Coop.fighters[0].global_position.x + 360.0
-				level.spawn_enemy(SPAWNABLE[_spawn_idx], Vector2(clampf(x, 100.0, level.level_w - 100.0), level.ground_y - 1.0))
-				_toggle()
-			"crate":
-				level.spawn_prop(["crate", "barrel", "vase"][randi() % 3], Vector2(Coop.fighters[0].global_position.x + 120.0, level.ground_y - 200.0))
-				_toggle()
-			"heal":
-				for f in Coop.fighters:
-					f.hp = f.max_hp
-					f.meter = 100.0
-					if f.state == "downed":
-						f.revive()
-				_toggle()
-			"restart": level.restart()
-			"menu": level.to_menu()
-	elif _sel == PlayerSlots.size():
-		_page = "testing"
-		_sel = 0
+	if _page == "lab":
+		if _sel == PlayerSlots.size():
+			_go("testing", 0)
+		return
+	var id: String = _items()[_sel][0]
+	if _page == "options":
+		if id == "back":
+			_back()
+		else:
+			OptionsList.adjust(id, 1)
+		return
+	match id:
+		"resume":
+			_toggle()
+		"loadout":
+			_lv.reset()
+			_go("loadout", 0)
+		"options":
+			_go("options", 0)
+		"testing":
+			_go("testing", 0)
+		"back":
+			_back()
+		"lo0", "lo1":
+			_lo_player = int(id.substr(2))
+			_go("lab", 0)
+		"spawn_kind":
+			var x := Coop.fighters[0].global_position.x + 360.0
+			level.spawn_enemy(SPAWNABLE[_spawn_idx], Vector2(clampf(x, 100.0, level.level_w - 100.0), level.ground_y - 1.0))
+			_toggle()
+		"crate":
+			level.spawn_prop(["crate", "barrel", "vase"][randi() % 3], Vector2(Coop.fighters[0].global_position.x + 120.0, level.ground_y - 200.0))
+			_toggle()
+		"heal":
+			for f in Coop.fighters:
+				f.hp = f.max_hp
+				f.meter = 100.0
+				if f.state == "downed":
+					f.revive()
+			_toggle()
+		"restart":
+			level.restart()
+		"menu":
+			level.to_menu()
 
 
-const PlayerSlots: Array[String] = ["X", "X_UP", "X_SIDE", "X_DOWN", "Y", "Y_UP", "Y_SIDE", "Y_DOWN", "B", "B_UP", "B_SIDE", "B_DOWN"]
+# ------------------------------------------------------------------ drawing
 
-
-func _text(c: Control, pos: Vector2, text: String, size: int, col: Color, width := -1.0, align := HORIZONTAL_ALIGNMENT_LEFT) -> void:
-	var f := ThemeDB.fallback_font
-	c.draw_string_outline(f, pos, text, align, width, size, 5, Color(0, 0, 0, 0.9))
-	c.draw_string(f, pos, text, align, width, size, col)
+func _title(c: Control, text: String, pos: Vector2, size: int) -> void:
+	c.draw_set_transform_matrix(UiKit.italic(pos, -0.02))
+	for k in 3:
+		UiKit.txt(c, UiKit.head(), Vector2.ZERO, text, size, Color(2.0, 0.7, 1.2, 0.16), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 8 + k * 8, Color(2.0, 0.7, 1.2, 0.08))
+	UiKit.txt(c, UiKit.head(), Vector2.ZERO, text, size, UiKit.TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 4, Color(0.05, 0.0, 0.1))
+	c.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
 func paint(c: Control) -> void:
-	c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.82))
-	if _page != "lab":
-		_text(c, Vector2(240, 120), "PAUSED" if _page == "main" else "TESTING OPTIONS", 56 if _page == "main" else 44, Color(1, 1, 1), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		var items := _items()
-		for i in items.size():
-			var sel := i == _sel
-			var col := Color(1, 0.9, 0.4) if sel else Color(1, 1, 1, 0.75)
-			_text(c, Vector2(240, 190 + i * 38), ("> " if sel else "") + String(items[i][1]), 26, col, 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		_text(c, Vector2(240, 660), "Stick / D-pad: move and change      A: select      B or Start: back", 16, Color(1, 1, 1, 0.55), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-	else:
-		var f := Coop.fighters[_lo_player]
-		var pc := Color(minf(f.figure.color.r, 1.0), minf(f.figure.color.g, 1.0), minf(f.figure.color.b, 1.0))
-		_text(c, Vector2(240, 70), "MOVE LAB - PLAYER %d" % (_lo_player + 1), 40, pc, 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		_text(c, Vector2(240, 98), "Left/Right swaps the move in a slot. Resume and try it out.", 16, Color(1, 1, 1, 0.6), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		for i in PlayerSlots.size():
-			var slot := PlayerSlots[i]
-			var id: String = f.loadout.get(slot, "")
-			var name := "(empty)" if id == "" else MoveDB.get_move(id).name
-			var sel := i == _sel
-			var col := Color(1, 0.9, 0.4) if sel else Color(1, 1, 1, 0.75)
-			var y := 140.0 + i * 26.0
-			_text(c, Vector2(300, y), ("> " if sel else "") + String(SLOT_NAMES[slot]), 20, col, 220.0)
-			_text(c, Vector2(540, y), name, 20, col if id != "" else Color(1, 1, 1, 0.35), 360.0)
-		var back_sel := _sel == PlayerSlots.size()
-		_text(c, Vector2(300, 140.0 + 12 * 26.0 + 8.0), ("> " if back_sel else "") + "Back", 20, Color(1, 0.9, 0.4) if back_sel else Color(1, 1, 1, 0.75))
-		if _sel < PlayerSlots.size():
-			var id2: String = f.loadout.get(PlayerSlots[_sel], "")
-			if id2 != "":
-				var mv := MoveDB.get_move(id2)
-				var tags := ", ".join(mv.tags) if mv.tags.size() > 0 else "melee"
-				var extra := ""
-				if mv.ground_only:
-					extra = "   (ground only)"
-				elif mv.air_only:
-					extra = "   (air only)"
-				_text(c, Vector2(240, 664), "%s  -  %s   [%s]%s" % [mv.name, mv.desc, tags, extra], 18, Color(0.8, 1, 0.9), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
+	if Coop.fighters.size() < 2:
+		return
+	if _page == "loadout":
+		c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.8))
+		_lv.paint_screen(c)
+		return
+	c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.68))
+	var heading := {"main": "PAUSED", "options": "OPTIONS", "testing": "TESTING", "lab": "MOVE LAB"}[_page] as String
+	_title(c, heading, Vector2(60, 96), 56 if _page == "main" else 44)
+	if _page == "lab":
+		_paint_lab(c)
+		return
+	var items := _items()
+	for i in items.size():
+		var id: String = items[i][0]
+		var adj := (_page == "options" and id != "back") or id == "spawn_kind"
+		UiKit.button(c, Rect2(80, 150 + i * 62.0, 360, 50), String(items[i][1]), i == _sel, String(items[i][2]), adj)
+	if _page == "main":
+		_paint_status(c)
+	UiKit.txt(c, UiKit.body(), Vector2(80, 690), "STICK  MOVE      A  SELECT      B  BACK", 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 3)
+
+
+## Right side of the main page: run info and a read-only view of both loadouts.
+func _paint_status(c: Control) -> void:
+	var x := 500.0
+	if RunState.active:
+		UiKit.panel(c, Rect2(x, 150, 330, 50), 12.0, UiKit.AMBER, 3.0, 0.85)
+		UiKit.coin(c, Vector2(x + 28, 175), 13.0)
+		UiKit.txt(c, UiKit.head(), Vector2(x + 52, 184), str(RunState.coins), 22, UiKit.AMBER)
+	UiKit.panel(c, Rect2(x + 350, 150, 340, 50), 12.0, Color(0.8, 0.8, 1.0, 0.55), 3.0, 0.85)
+	var n := Coop.revives_max
+	for h in n:
+		UiKit.heart(c, Vector2(x + 380 + h * 36, 176), 13.0, h < Coop.revives_left)
+	if RunState.active:
+		UiKit.txt(c, UiKit.body(), Vector2(x + 350, 182), "STREETS  ·  %d CLEARED" % RunState.levels_cleared, 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_RIGHT, 326.0)
+	_lv.paint_mini(c, 0, Rect2(x, 230, 370, 232))
+	_lv.paint_mini(c, 1, Rect2(x + 390, 230, 370, 232))
+
+
+func _paint_lab(c: Control) -> void:
+	var f := Coop.fighters[_lo_player]
+	var pc := UiKit.player_color(_lo_player)
+	UiKit.txt(c, UiKit.head(), Vector2(60, 126), "PLAYER %d" % (_lo_player + 1), 18, pc)
+	UiKit.txt(c, UiKit.body(), Vector2(200, 124), "LEFT / RIGHT SWAPS THE MOVE IN A SLOT", 16, UiKit.DIM_TEXT)
+	for i in PlayerSlots.size():
+		var slot := PlayerSlots[i]
+		var id: String = f.loadout.get(slot, "")
+		var nm := "EMPTY" if id == "" else MoveDB.get_move(id).name.to_upper()
+		var r := Rect2(80 + (i % 4) * 0.0, 150 + i * 36.0, 520, 32)
+		UiKit.button(c, r, String(SLOT_NAMES[slot]).to_upper(), i == _sel, nm, true)
+	var back_r := Rect2(80, 150 + PlayerSlots.size() * 36.0 + 8, 520, 32)
+	UiKit.button(c, back_r, "BACK", _sel == PlayerSlots.size())
+	if _sel < PlayerSlots.size():
+		var id2: String = f.loadout.get(PlayerSlots[_sel], "")
+		if id2 != "":
+			var mv := MoveDB.get_move(id2)
+			var tags := ", ".join(mv.tags) if mv.tags.size() > 0 else "melee"
+			UiKit.txt(c, UiKit.body(), Vector2(660, 190), mv.name.to_upper(), 26, UiKit.TEXT)
+			UiKit.txt(c, UiKit.body(), Vector2(660, 222), mv.desc, 18, Color(0.85, 0.85, 1.0))
+			UiKit.txt(c, UiKit.body(), Vector2(660, 250), tags.to_upper() + ("   GROUND ONLY" if mv.ground_only else ("   AIR ONLY" if mv.air_only else "")), 14, UiKit.DIM_TEXT)
