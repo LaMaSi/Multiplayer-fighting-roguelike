@@ -1,6 +1,6 @@
 # Class Moves (B slots) and the Move Pool
 
-Status: proposal for review. The names of the existing moves (✔ = already implemented) come from `PLAN.md`. Everything marked NEW still needs to be built. Overrides: `DESIGN.md` wins on the co-op rules.
+Status: proposal for review. The names of the existing moves (✔ = already implemented) come from `PLAN.md`. Sections: B (2-5), X (6), Y (7), overview and totals (8), supers (9). Everything marked NEW still needs to be built. Overrides: `DESIGN.md` wins on the co-op rules.
 
 ## 1. Rules for B moves
 
@@ -91,56 +91,87 @@ Identity: sets up the partner's big hits. Lowest HP, slow projectiles, no strong
 
 **Super (weapon):** *Starfall*. Rain of marks across the screen (all three types). Team rider: the partner's next hits detonate marks in a chain across all enemies.
 
-## 6. The rest of the pool
+## 6. X moves: Universal (10), identical for every class
 
-### Universal (X), 12 moves: identical for every class
+X has 5 slots (X, X+Up, X+Forward, X+Down, X+Back) and a pool of **10** moves, so 5 are spares for rewards. Slot-agnostic. Only **Off-hand Jab** is equipped at run start. The names make clear that X moves are *the same for everyone* (off-hand actions, not weapon actions).
 
-| Move | Role |
-|---|---|
-| ✔ Off-hand Jab (start in X) | basic close attack (NEW as a universal; replaces the starter Jab Chain on X) |
-| ✔ Back Kick | hits behind |
-| ✔ Guard Block | block |
-| ✔ Reflect Shield | reflects projectiles |
-| ✔ Grab & Throw | throws an enemy as a projectile |
-| ✔ Pull Hook | pulls an enemy to you |
-| ✔ Ally Toss | throws the partner as a kick |
-| ✔ Heal Pulse | small heal on hit |
-| ✔ Rage Taunt | self buff, draws aggro |
-| ✔ Boost Spark | buffs the partner's next hit |
-| NEW Pocket Mine | drops a proximity mine (replaces Dodge Roll Strike) |
-| NEW Spark Shot | small off-hand projectile, never affected by weapon |
+| # | Move | Speed | H | What it does | LT version | Co-op hook |
+|---|---|---|---|---|---|---|
+| 1 | NEW Off-hand Jab ★ (start) | F | M | Quick 2-hit jab with the free hand; low damage, tiny knockback. Always available, always close range | third hit | Fast combo filler that keeps the shared combo alive |
+| 2 | NEW Spark Shot ★ | M | M | Small straight projectile, not affected by the weapon | larger, slightly pierces | Pokes enemies off a **channeling or reviving** partner |
+| 3 | ✔ Guard Block | F | H/M | Hold to block high and mid hits (not low); chip damage | perfect-block window fills Style meter | **Back-to-back:** when blocking within about 1.5 m of the partner, damage taken by both is reduced |
+| 4 | ✔ Grab & Throw ★ | M | M | Grab a close enemy and throw it as a projectile that bowls over others | longer throw | A thrown enemy is a **relay hit** target for the partner |
+| 5 | ✔ Pull Hook | M | M | Hook pulls an enemy to you | pulls and stuns | Pull enemies **onto the partner's charged move**, or pull a downed partner out of a hazard |
+| 6 | ✔ Ally Toss | S | - | Throw the partner as a flying kick; the partner can steer slightly | extra distance and damage | Crosses gaps; the partner arrives with a relay hit |
+| 7 | ✔ Heal Pulse | M | - | Area heal pulse (cooldown about 15 s). **Partner heals 100%, you heal about 25%** | wider radius | You cannot heal yourself well, so you need the partner (and vice versa) |
+| 8 | ✔ Taunt Roar (was Rage Taunt) | M | - | Draws enemy aggro to you for about 4 s with 30% damage reduction | wider and longer | The "tank" move. Lets the partner flank, channel or revive |
+| 9 | ✔ Boost Spark | F | - | Buffs the **partner's** next hit (more damage and knockback) if within range; gives nothing to you | buffs the next two hits | Pure partner-enabling; stacks with relay hits |
+| 10 | NEW Pocket Mine | M | L | Drop a proximity mine; explodes on enemies stepping on it | bigger blast | The **partner can hit the mine** to trigger or bat it into a group |
 
-### Adaptive (Y), 10 moves: modified by the class's multiplier table
+Cut from the pool (decision to confirm): **Reflect Shield** (covered by the Sword's Deflect Stance and Magic's Mirror Ward) and **Back Kick** (the Brawler's B+Back slot and the Hammer's Whirlwind Haul cover hitting behind). If you want them to stay, put them in Y (see §7 open questions).
 
-| Move | Role | Notes |
-|---|---|---|
-| ✔ Uppercut | launcher | Brawler: fast fist; Sword: arc; Hammer: slow, big |
-| ✔ Leg Sweep | low trip | |
-| ✔ Spin Kick | 360 multi-hit | |
-| ✔ Cyclone | moving whirlwind | |
-| ✔ Shockwave Stomp | ground AoE | |
-| ✔ Dive Kick | air spike | |
-| ✔ Anti-air Hook | hits upwards | |
-| ✔ Pillar Smash | breaks and throws crates | |
-| ✔ Flurry | rapid low-knockback hits | |
-| NEW Slide Strike | low sliding attack that ends in a crouch | |
+## 7. Y moves: Adaptive (10), changed by the class
 
-### Retired
-- Dodge Roll Strike (replaced by the RT dash and Pocket Mine).
+Y has 5 slots and a pool of **10** moves, so 5 spares for rewards. **Y is empty at run start.** Every Y move is built once, then modified by the class's multiplier table. This keeps the content cost low (10 moves, not 40).
+
+### Class modifier table (starting values, tune in the Move Lab)
+
+| | Reach | Startup | Recovery | Damage | Knockback | Special |
+|---|---|---|---|---|---|---|
+| Brawler | x1.0 | x0.85 | x0.9 | x0.9 | x0.9 | combo timer +0.3 s |
+| Sword | x1.5 | x1.15 | x1.1 | x1.1 | x1.0 | adds a thin blade trail |
+| Hammer | x1.8 (dead zone at very close range) | x1.7 | x1.5 | x1.8 | x1.8 | breaks guard on hit |
+| Magic | x1.2 (energy) | x1.0 | x1.0 | x0.8 | x1.0 | applies the move's **mark** |
+
+### The 10 moves
+
+| # | Move | Base (speed, height) | What it does | Co-op hook | Magic mark |
+|---|---|---|---|---|---|
+| 1 | ✔ Uppercut ★ | M, M | Launcher | Launches for the partner's juggle | Flame |
+| 2 | ✔ Leg Sweep | M, L | Low trip | Trips for the partner's smash | Frost |
+| 3 | ✔ Spin Kick | M, M | 360 multi-hit | Pushes enemies away from a channeling partner | Volt |
+| 4 | ✔ Cyclone | M, M | Moving whirlwind that drags enemies | Carries enemies to the partner's position | Volt |
+| 5 | ✔ Shockwave Stomp | S, L | Ground AoE shockwave | Stuns a group the partner can then hit | Frost |
+| 6 | ✔ Dive Kick | M, H | Air-only downward spike | The spike half of the **alley-oop** (launcher + spike) | Flame |
+| 7 | ✔ Anti-air Hook | F, M | Hits upwards in front | Catches an enemy the partner launched (relay hit) | Volt |
+| 8 | ✔ Pillar Smash | S, M | Smashes crates/props and throws them | Throws crates through enemy lines; partner's relay hit on the crate | none (telekinesis lift) |
+| 9 | ✔ Flurry | F, M | Rapid low-knockback hits | Keeps the shared combo alive | Flame |
+| 10 | NEW Slide Strike | F, L | Low slide that ends in a crouch | Slides under attacks, carries an enemy to the partner | Frost |
+
+Per-class look of the same move (the Uppercut as an example): Brawler = quick fist, Sword = rising arc slash, Hammer = slow, huge upward swing (dead zone at the base), Magic = palm burst with a Flame mark. Other Y moves follow the same rule.
+
+Design guards:
+- Y moves must never outclass B moves in damage per second, since B moves define the class.
+- Hammer's dead zone applies to all its Y moves with a long reach, so the Hammer player prefers X moves up close (that is the intended trade).
+- Y moves marked ★ are the likeliest first reward offers (an easy first Y).
+
+## 8. Overview: slots, start loadout and counts
+
+| Button | Slots | Pool | Start equipped | Nature |
+|---|---|---|---|---|
+| **X** | X, X+Up, X+Fwd, X+Down, X+Back | 10 universal | X (Off-hand Jab) | same for everyone |
+| **Y** | Y, Y+Up, Y+Fwd, Y+Down, Y+Back | 10 adaptive | none | modified by the class |
+| **B** | B, B+Up, B+Fwd, B+Down, B+Back | 8 per class (32 total) | B, B+Fwd, B+Up (random ★ from class) | class-specific, strongest |
+| **A** | - | - | - | jump |
+| **RT** | - | - | - | dash |
+| **LT (hold)** | - | - | - | empowered version, spends Style meter |
+
+Start loadout: **4 moves** (X, B, B+Fwd, B+Up). Down-forward x2 + X/B = generic or weapon super.
+
+### Totals
+- B: 32 moves (11 existing, 21 new). X: 10 moves (7 existing, 3 new). Y: 10 moves (9 existing, 1 new).
+- **52 moves in the pool, 25 of them new.**
+- Cut or retired: Dodge Roll Strike (replaced by RT dash), Reflect Shield, Back Kick (decision to confirm).
 
 ### Reassignment of the 30 original moves
 - Brawler B: Jab Chain, Dash Punch, Rising Dragon, Heavy Haymaker, Wall-bounce Elbow
 - Magic B: Fireball, Spread Shot, Boomerang Disc, Ground Wave, Teleport Strike
 - Sword B: Parry Counter
-- Universal X: Back Kick, Guard Block, Reflect Shield, Grab & Throw, Pull Hook, Ally Toss, Heal Pulse, Rage Taunt, Boost Spark
-- Adaptive Y: Uppercut, Leg Sweep, Spin Kick, Cyclone, Shockwave Stomp, Dive Kick, Anti-air Hook, Pillar Smash, Flurry
-- Retired: Dodge Roll Strike
+- X: Guard Block, Grab & Throw, Pull Hook, Ally Toss, Heal Pulse, Rage Taunt (renamed Taunt Roar), Boost Spark
+- Y: Uppercut, Leg Sweep, Spin Kick, Cyclone, Shockwave Stomp, Dive Kick, Anti-air Hook, Pillar Smash, Flurry
+- Cut: Dodge Roll Strike, Reflect Shield, Back Kick
 
-### Totals
-- Class B moves: 32 (8 per class), of which 11 are existing (5 Brawler, 5 Magic, 1 Sword) and 21 are new.
-- Universal 12 (2 new), Adaptive 10 (1 new). Total pool: 54 moves, 24 new.
-
-## 7. Weapon supers (one per class, fixed for now)
+## 9. Weapon supers (one per class, fixed for now)
 
 | Class | Super | Team rider |
 |---|---|---|
@@ -151,10 +182,13 @@ Identity: sets up the partner's big hits. Lowest HP, slow projectiles, no strong
 
 Input: down, down-forward, forward, twice, then B. The generic super (1 of 8, X) is still to be designed.
 
-## 8. Open questions
+## 10. Open questions
 
 1. Magic as Primer/Zoner or as a pure glass-cannon artillery? (see `DESIGN.md` §5)
 2. Are the cooldown values OK (3-10 s), and should cooldowns be visible as small rings on the hands?
 3. Hammer's Home Run launching the partner: allowed with friendly fire off? Default: yes, a partner launch never damages the partner.
 4. Do the generic supers (8) get a design pass next?
+6. Cut Reflect Shield and Back Kick as proposed, or keep them (they'd need to replace Pocket Mine / Slide Strike)?
+7. Heal Pulse heals the partner fully and yourself about 25%: OK?
+8. Hammer and Magic Y moves (reach dead zone, marks): tune after the first playtest.
 5. Starter roll: should the first B move be guaranteed to be a ★ move? Default: all three rolled slots use ★ moves.
