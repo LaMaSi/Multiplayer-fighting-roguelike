@@ -29,7 +29,8 @@ func _ready() -> void:
 	_hint.add_theme_color_override("font_outline_color", Color.BLACK)
 	_hint.add_theme_constant_override("outline_size", 5)
 	_hint.modulate = Color(1, 1, 1, 0.75)
-	_hint.text = "F1 debug | F11 fullscreen | P1: pad or WASD+Space, F/G/H=X/Y/B | P2: pad or Arrows+Shift, , . /=X/Y/B | Down+A on a platform = drop through"
+	_hint.text = ""  # no on-screen button hints (F1 debug overlay and F11 still work)
+	_hint.visible = false
 	add_child(_hint)
 
 

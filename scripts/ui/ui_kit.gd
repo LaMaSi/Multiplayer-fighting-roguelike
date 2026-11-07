@@ -11,6 +11,9 @@ const INK := Color(0.03, 0.02, 0.07)
 const TEXT := Color(0.95, 0.95, 1.0)
 const DIM_TEXT := Color(0.8, 0.8, 0.95)
 const GLOW_PINK := Color(2.0, 0.7, 1.2)
+const HEART := Color(1.0, 0.25, 0.48)
+## One line weight for every outline and detail line in the world and the UI (selection states may be thicker).
+const LINE := 3.0
 
 static var _head: Font
 static var _body: Font
@@ -56,7 +59,7 @@ static func chamfer(r: Rect2, cut: float) -> PackedVector2Array:
 
 
 ## Chamfered panel: dark fill plus a solid outline.
-static func panel(c: CanvasItem, r: Rect2, cut: float, outline: Color, width := 2.5, fill_a := 0.85) -> void:
+static func panel(c: CanvasItem, r: Rect2, cut: float, outline: Color, width := 3.0, fill_a := 0.85) -> void:
 	var p := chamfer(r, cut)
 	c.draw_colored_polygon(p, Color(INK.r, INK.g, INK.b, fill_a))
 	poly_line(c, p, outline, width)
@@ -85,6 +88,46 @@ static func head_icon(c: CanvasItem, pos: Vector2, r: float, col: Color, on := t
 		c.draw_arc(pos, r, 0.0, TAU, 20, Color(col.r, col.g, col.b, 0.25), 2.0, true)
 		c.draw_line(pos + Vector2(-r * 0.4, -r * 0.4), pos + Vector2(r * 0.4, r * 0.4), Color(1, 0.3, 0.3, 0.5), 2.0)
 		c.draw_line(pos + Vector2(r * 0.4, -r * 0.4), pos + Vector2(-r * 0.4, r * 0.4), Color(1, 0.3, 0.3, 0.5), 2.0)
+
+
+## Neon heart for shared lives: a bright filled heart with a soft halo; a lost life is a dark
+## empty outline. r is roughly the half width.
+static func heart(c: CanvasItem, pos: Vector2, r: float, on := true) -> void:
+	var pts := PackedVector2Array()
+	var k := r / 17.0
+	for i in 40:
+		var t := TAU * float(i) / 40.0
+		var x := 16.0 * pow(sin(t), 3.0)
+		var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
+		pts.append(pos + Vector2(x, y + 1.0) * k)
+	if on:
+		for g in 3:
+			var o := Geometry2D.offset_polygon(pts, (2.0 + g * 3.5) * maxf(k, 0.6))
+			if o.size() > 0:
+				c.draw_colored_polygon(o[0], Color(HEART.r, HEART.g, HEART.b, 0.16 - g * 0.04))
+		c.draw_colored_polygon(pts, HEART)
+		poly_line(c, pts, Color(1.0, 0.7, 0.8), 2.0)
+	else:
+		c.draw_colored_polygon(pts, Color(INK.r, INK.g, INK.b, 0.6))
+		poly_line(c, pts, Color(HEART.r, HEART.g, HEART.b, 0.3), 2.0)
+
+
+## Menu button: chamfered, glowing and thicker when selected, with a pink arrow. `value` is drawn at the
+## right (with < > around it when arrows is true and the button is selected).
+static func button(c: CanvasItem, r: Rect2, label: String, selected: bool, value := "", arrows := false) -> void:
+	var col := TEXT if selected else Color(0.8, 0.8, 1.0, 0.45)
+	var p := chamfer(r, 12.0)
+	if selected:
+		glow_poly(c, p, GLOW_PINK, 0.28)
+	c.draw_colored_polygon(p, Color(0.12, 0.05, 0.2, 0.92) if selected else Color(INK.r, INK.g, INK.b, 0.8))
+	poly_line(c, p, col, 4.0 if selected else LINE)
+	if selected:
+		var my := r.position.y + r.size.y * 0.5
+		c.draw_colored_polygon(PackedVector2Array([Vector2(r.position.x - 26, my - 12), Vector2(r.position.x - 8, my), Vector2(r.position.x - 26, my + 12)]), PINK)
+	txt(c, head(), r.position + Vector2(22, r.size.y * 0.5 + 8), label, 20 if selected else 18, TEXT if selected else Color(0.8, 0.8, 0.95))
+	if value != "":
+		var t := ("<  %s  >" % value) if (arrows and selected) else value
+		txt(c, body(), r.position + Vector2(0, r.size.y * 0.5 + 7), t, 17, AMBER if selected else DIM_TEXT, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 20.0)
 
 
 static func check(c: CanvasItem, pos: Vector2, col: Color) -> void:

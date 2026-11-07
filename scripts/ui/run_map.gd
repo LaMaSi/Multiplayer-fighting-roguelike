@@ -20,6 +20,8 @@ const DESCS := {
 var _sel := 0
 var _last: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO]
 var _t := 0.0
+var _lv: LoadoutView  ## loadout screen, opened with Y between levels
+var _lv_open := false
 
 
 func _ready() -> void:
@@ -34,6 +36,15 @@ func _ready() -> void:
 	env.environment = e
 	add_child(env)
 	Engine.time_scale = 1.0
+	_lv = LoadoutView.new(
+		func(p: int) -> Dictionary: return RunState.loadouts[p],
+		func(p: int, slot: String, id: String) -> void:
+			if id == "":
+				(RunState.loadouts[p] as Dictionary).erase(slot)
+			else:
+				(RunState.loadouts[p] as Dictionary)[slot] = id,
+		func(p: int) -> String: return RunState.classes[p],
+		func(p: int) -> Dictionary: return RunState.upgrades[p])
 
 
 func _node_pos(l: int, i: int) -> Vector2:
@@ -46,8 +57,27 @@ func _start_pos() -> Vector2:
 	return Vector2(110.0, 330.0)
 
 
+## Input for the loadout screen is read in the physics step (right after Inp polls).
+func _physics_process(delta: float) -> void:
+	if _lv_open:
+		_lv.update(delta)
+		if _lv.close_requested:
+			_lv.reset()
+			_lv_open = false
+		return
+	for p in Inp.players:
+		if p.pressed(PlayerInput.Btn.Y):
+			_lv.reset()
+			_lv_open = true
+			Sfx.play("ui")
+			return
+
+
 func _process(delta: float) -> void:
 	_t += delta
+	if _lv_open:
+		queue_redraw()
+		return
 	var opts := RunState.available_next()
 	for p in Inp.players:
 		var d := p.digital_dir()
@@ -131,7 +161,6 @@ func _draw() -> void:
 		var tn: String = RunState.TYPE_NAMES[cur["type"]]
 		_txt(Vector2(0, 600), tn, 30, _c(COLORS[cur["type"]]), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 		_txt(Vector2(0, 632), String(DESCS[cur["type"]]), 18, Color(1, 1, 1, 0.8), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
-		_txt(Vector2(0, 668), "Up / Down: choose      A: go", 16, Color(1, 1, 1, 0.5), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	for p in 2:
 		var x := 20.0 if p == 0 else 1280.0 - 20.0 - 230.0
 		var col := _c(Fighter.PLAYER_COLORS[p])
@@ -140,6 +169,9 @@ func _draw() -> void:
 		draw_rect(Rect2(x, 170, 230, 12), Color(0.12, 0.05, 0.08))
 		draw_rect(Rect2(x, 170, 230.0 * frac, 12), Color(1.0, 0.25 + 0.7 * frac, 0.25 + 0.7 * frac))
 		_txt(Vector2(x, 202), "%d / %d HP" % [int(RunState.hp[p]), int(RunState.max_hp[p])], 13, Color(1, 1, 1, 0.7))
+	if _lv_open:
+		draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.88))
+		_lv.paint_screen(self)
 
 
 func _edge(a: Vector2, b: Vector2, hot: bool) -> void:

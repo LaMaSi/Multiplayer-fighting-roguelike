@@ -30,3 +30,23 @@ Look and colour rules: `STYLEGUIDE.md`. All screens share `scripts/ui/ui_kit.gd`
 - `tests/smoke_scenes.tscn`: loads every scene and checks shops appear on the map.
 - `tests/ui_real_test.tscn`: real HUD and level complete screenshots.
 - Run with a virtual display on a server: `xvfb-run -a godot --path . res://tests/<name>.tscn -- <args>`.
+
+
+## Start screen (`scripts/ui/main_menu.gd`)
+- Synthwave backdrop (`ScreenBackdrop`), tilted neon title, button list, and the two players standing on screen in the class and weapon they picked (they update live).
+- Main page: NEW RUN, a class selector per player (left/right cycles; the Magic toggle lives in Testing), TRAINING ROOM, OPTIONS, TESTING, QUIT.
+- Options (shared with the pause menu, `scripts/ui/options_list.gd`): fullscreen, friendly fire and its damage, move grid, hit explosion size, screen effect.
+- Testing: full test level, shop preview, Magic class unlock.
+- Stick up/down moves, left/right changes a value, A selects, B goes back; either player can drive it.
+
+## Pause menu (`scripts/ui/pause_menu.gd`)
+- Start / Esc. Pages: main, options, testing, move lab, loadout. The game HUD is hidden while paused.
+- Main page: Resume, Loadout, Options, Testing (training room and non-run only), Restart, Quit, plus a status panel with shared coins, hearts and a read-only view of both loadouts.
+- Move Lab (any move in any slot) stays under Testing for the training room.
+
+## Loadout screen (`scripts/ui/loadout_view.gd`)
+- Reached from the pause menu and from the run map (**Y**, between levels). Both players edit their own 3x4 grid at the same time.
+- Stick moves the cursor, **A** lifts a move, **A** on another slot drops it and the two moves swap, **B** cancels (or leaves when nobody is holding anything).
+- Slot rules follow the classes: X = off-hand moves, Y = adaptive moves, B = the player's own weapon moves. A move cannot be dropped on the wrong kind of slot and the screen says why. Upgrades belong to the move and travel with it.
+- The detail card shows the move's kind, tags, description and any upgrades it carries.
+- Tests: `tests/ui_menus_test.tscn` (swap rules, real input, screenshots).
