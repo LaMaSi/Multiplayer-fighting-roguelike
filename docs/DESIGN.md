@@ -1,6 +1,6 @@
 # Design Philosophy and Co-op Systems
 
-This file overrides other docs when they conflict. `PLAN.md` is the original plan; `ITERATION2.md` is the work breakdown.
+This file overrides other docs when they conflict. Known holes and their proposed fixes are in `AUDIT.md`. `PLAN.md` is the original plan; `ITERATION2.md` is the work breakdown.
 
 ## 1. The pillar
 
@@ -40,7 +40,7 @@ If a feature fails 1-3 it needs a co-op twist or gets cut. If it fails 4 or 5 it
 
 ## 2. Decisions made
 
-- X = universal moves (identical for all classes, at least 10), Y = adaptive moves (modified by class, at least 10), B = weapon moves (8 per class).
+- X = universal moves (identical for all classes, exactly 10), Y = adaptive moves (modified by class, exactly 10), B = weapon moves (8 per class).
 - Magic is unlocked through meta progression. Brawler, Sword and Hammer (decide in a later review) are available from the start; Magic locked.
 - **No separate mana bar.** Magic's heavy cost is solved through the super meter session (§5).
 
@@ -85,7 +85,7 @@ Goal: your build, your character, your decision, but visible to your partner.
 - Replacement choices drive the build conversation: "I'll drop my Spin Kick for it", so the screen shows both players' loadouts at all times.
 - Replaced moves return to the pool and can be offered again later.
 - Personal B-move cards work the same way: if all 5 B slots are full, the player chooses which B move gets replaced.
-- Because moves rotate, empower upgrades on a move are lost when it is replaced (to be decided: keep the upgrade with the slot, or with the move; default: with the move).
+- **Decided:** empower upgrades are lost when the move is replaced. Players therefore weigh "replace or keep my upgraded move".
 
 ### 3.4 Co-op test for this system
 - Shared choice: pass (communication, clash, shared consequence).
@@ -94,8 +94,8 @@ Goal: your build, your character, your decision, but visible to your partner.
 ## 4. Run start
 
 - Each player picks a class (Magic locked until unlocked).
-- The game rolls random moves into each player's starting slots: B, side+B, up+B (from their class), X (from the universal pool). Y slots are empty at start.
-- Loadout screen shows both players' rolls side by side, with one re-roll per player per run and **one move swap**: a player may trade one of their rolled moves with their partner's (if the class rules allow it). This forces a quick conversation ("take my fireball?").
+- The game rolls random moves into each player's B, B+Forward and B+Up slots (from their class, marked ★). X starts as the fixed Off-hand Jab. Y slots are empty at start.
+- Loadout screen shows both players' rolls side by side, with one **joint re-roll** (both players must press to re-roll, once per run). Players of the same class may also swap one rolled B move. (B moves are class-locked and X/Y are fixed or empty at start, so a general swap is not possible.)
 
 ## 5. Super meter: decisions so far and open items
 
@@ -133,7 +133,7 @@ Nickname: the **Style meter**. Anything cool and cooperative fills it. Status: p
 Current problem: "Magic costs a lot of meter" made Magic a resource problem, not an identity. Magic should differ from Brawler/Sword/Hammer by **what it does for the team**, not by what it costs.
 
 Proposal (co-op first): **Magic is the Primer / Zoner.**
-- B moves are ranged, slow-moving projectiles and zones that **mark** enemies (fire, shock, oil, slow). Marks do small damage alone.
+- B moves are ranged, slow-moving projectiles and zones that **mark** enemies (Flame, Volt, Frost; see `CLASS_MOVES.md` §5). Marks do small damage alone.
 - A different player's hit (or Magic's own empowered hit) **detonates** the mark for a large bonus, plus meter for the team. Marks = the enemy visibly glows.
 - Weakness: lowest HP of the classes, slow projectile speed, and no strong close-range tools (it has the universal X moves).
 - Cost: cooldowns on Magic's B moves (visible on the player), instead of a resource bar. LT empowered versions cost meter like every class.
@@ -155,7 +155,7 @@ Alternative if you prefer a more individual fantasy: Magic as pure glass-cannon 
 - **Pincer enemies:** armoured front, weak back. A player must hit from behind while the partner holds attention (taunt/aggro).
 
 **Priority 3: combo and status synergy**
-- **Prime and detonate:** certain moves put a *mark* (shock, fire, oil) on an enemy. A different player's matching move detonates it for big damage. Self-detonation is weaker.
+- **Prime and detonate:** certain moves put a *mark* (Flame, Volt, Frost) on an enemy. A different player's finisher hit detonates it for big damage. Self-detonation is weaker.
 - **Aggro tokens:** the AI picks the player with the most recent taunt/high threat. Players can intentionally take the heat (tank) while the partner flanks.
 - **Relay objectives:** "Combo challenge" arenas: the exit unlocks after both players score a number of relay hits.
 
@@ -196,7 +196,7 @@ Today throwing only exists as the X moves **Grab & Throw** and **Ally Toss** (an
 - **Conflict fix:** the Duo Special pair-trigger was LB+RB. Change it to **both players press LB within 0.5 s**.
 - **Effects on the move pool:** Grab & Throw and Ally Toss become redundant and leave the X pool, replaced by two new X moves:
   - **Swap Step:** swap places with the partner instantly (rescue from a corner, reposition for a charge-up, pull them out of danger).
-  - **Focus Call:** mark an enemy for the partner: your partner's hits on it deal bonus damage for about 5 s (a communication tool).
+  - **Focus Call:** tag an enemy as a "target" (separate from Magic's elemental marks): your partner's hits on it deal bonus damage for about 5 s (a communication tool).
   - Totals stay at 52 moves (X: 5 existing, 5 new; 27 new overall).
 - The Hammer's **Home Run** stays as the long-range version. Ally Toss's old role (gap crossing) is now the default throw.
 

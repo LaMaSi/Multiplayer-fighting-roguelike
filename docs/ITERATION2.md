@@ -9,7 +9,7 @@ Context: the first playtests ran fine. All 30 moves from `PLAN.md` are implement
 | X / Y moves | Split: **X = universal** (identical for every class, exactly 10 moves), **Y = adaptive** (modified by class, exactly 10 moves). Biggest class difference lives in B moves. See `DESIGN.md` for the co-op philosophy that overrides everything here |
 | Class pick | Player chooses the class. Moves are random |
 | Start loadout | Only X, B, side+B and up+B are filled. No Y moves at start. The other slots are empty and get filled by rewards |
-| B slots | Always weapon-specific. 5 B slots (B, up, side, down, back/other side), 8 moves per class, so 3 are spares/rewards |
+| B slots | Always weapon-specific. 5 B slots (B, up, side, down, back/other side), 8 moves per class; 3 are rolled at run start and 5 unlock through personal level-ups |
 | Magic resource | **No separate mana bar.** How Magic's heavy move cost works is decided in the super meter planning session (`DESIGN.md` §5). Do not implement mana. Magic is locked in meta progression |
 | Level goal | Objective banner, "GO" arrow, wave locks, end-of-level rank and score |
 | Fonts / screen | Cyberpunk font(s), fullscreen on start |
@@ -22,7 +22,7 @@ Context: the first playtests ran fine. All 30 moves from `PLAN.md` are implement
 4. **Crouch**: holding down eases (about 6-8 frames, an ease curve, no snap) into a crouch pose. Crouching avoids **high** hits and projectiles. It does not avoid mid or low. Needs a `height` tag on every attack and projectile: `HIGH / MID / LOW`. Enemy telegraphs must show the height (e.g. high attacks are a different spark colour, and the enemy's arm is raised). Down + face-button moves must fire from the crouch without extra startup lag (use the input buffer).
 5. **Hit explosion too dominant**: shrink it, lower alpha, draw it on a layer *behind* the fighters, and let hit-stop, flash, shake and a thin directional slash line carry the impact. The model silhouette must always stay readable. Add a debug slider for impact scale.
 6. **Cyberpunk fonts** (all SIL OFL on Google Fonts; check the licence on download): Orbitron or Audiowide for headings and big combo numbers, Rajdhani or Chakra Petch for body and HUD, Share Tech Mono for the debug overlay. Pick two at most.
-7. **Top UI rework**: show only HP, super meter (and mana for Magic), combo counter and the objective. Remove the permanent move list. The move display becomes a toggle (default **off**). The toggle and the **Move Lab** move to a new **Testing Options** section in the menu.
+7. **Top UI rework**: show only HP, Style meter, combo counter and the objective. Remove the permanent move list. The move display becomes a toggle (default **off**). The toggle and the **Move Lab** move to a new **Testing Options** section in the menu.
 8. **Visual separation** (foreground vs background vs interactables):
    - Darken and desaturate backgrounds, and add a little atmospheric haze, so that anything bright is gameplay.
    - Give the ground a clear lit strip/edge line.
@@ -31,12 +31,12 @@ Context: the first playtests ran fine. All 30 moves from `PLAN.md` are implement
 
 ## 2. Phase B: goal, urgency, run start
 
-1. **Run start loadout screen** (after class pick): each player gets random moves for B, side+B, up+B (from their class) and X (from a pool of basic generic attacks, so the player always has a useful X). The screen shows both loadouts side by side with names and short descriptions, plus one re-roll per player per run. Then it starts the first level.
+1. **Run start loadout screen** (after class pick): each player gets random moves for B, B+Forward and B+Up (from their class, ★ moves). X is the fixed Off-hand Jab. The screen shows both loadouts side by side with names and short descriptions, plus one joint re-roll per run (both players must press). Then it starts the first level.
 2. **Objective banner**: at the start of a level a short line such as "Break through to the generator" fades in and then remains as a small HUD line.
 3. **Wave locks**: the camera locks at arena points. Enemies spawn in waves (2-3 waves per arena). When cleared, a blinking **GO >>** arrow appears and the camera unlocks. This gives pacing and the feeling of progress.
 4. **Level end rank**: S/A/B/C/D from combo peak, damage taken, time against a par time and containers broken. The rank influences the reward quality (e.g. S offers 4 move cards instead of 3, or an extra upgrade).
-6. **Reward screen rework** per `DESIGN.md` §3: (a) a shared X/Y move choice (3 cards, simultaneous picks, RPS on clashes), then (b) a personal level-up for each player (3 own cards: new B move, empower, max HP, team card, generic super). Also the loadout swap from `DESIGN.md` §4.
 5. **Urgency without a hard timer**: the waves, the par-time rank bonus and an optional "danger" background track layer at low HP. Do not add a failing timer in this iteration.
+6. **Reward screen rework** per `DESIGN.md` §3: (a) a shared X/Y move choice (3 cards, simultaneous picks, RPS on clashes), then (b) a personal level-up for each player (3 own cards: new B move, empower, max HP, team card, generic super). Also the loadout swap from `DESIGN.md` §4.
 
 ## 3. Phase C: classes (do after A and B are stable)
 
@@ -50,7 +50,7 @@ Yes, with three clear tiers, so the player always knows what a move does:
 | **Adaptive** | Y (5 slots, empty at start) | Same move for everyone, but a class modifier table changes reach, speed, damage, visual (fist, blade, hammer, glowing hand). 10 moves | "adapts" tag |
 | **Universal (off-hand)** | X (5 slots, X neutral filled at start with Off-hand Jab) | Never changes: punches, small projectile, block, grab, heal, co-op moves, Pocket Mine. Name/description says so (e.g. "Off-hand Jab"). 10 moves | "off-hand" tag |
 
-Why this works: it solves the problem that the Hammer can't hit up close (an off-hand punch is the answer, so the dead zone becomes a choice rather than a handicap) and the Magic user always has a free attack when out of mana. It also keeps the move reward pool large, because most rewards work for everyone.
+Why this works: it solves the problem that the Hammer can't hit up close (an off-hand punch is the answer, so the dead zone becomes a choice rather than a handicap) and the Magic user always has a free attack while B moves are on cooldown. It also keeps the move reward pool large, because most rewards work for everyone.
 
 Risks to watch:
 - **Homogenisation**: if universal moves are as strong as B moves, class choice stops mattering. Rule: universal moves get a lower damage ceiling and little knockback, and B moves must win in DPS. Check this in the Move Lab.
@@ -80,9 +80,9 @@ Magic is locked behind meta progression. Brawler is available from the start; Sw
 ### 3.4 Technical changes
 
 - `MoveData` gets: `tier` (WEAPON / ADAPTIVE / UNIVERSAL), `class_id` (only for WEAPON), `height` (HIGH / MID / LOW), `meter_cost` (reserved, 0 until the super meter design is done).
-- New `ClassData` resource: multipliers, mana settings, visual skin, list of 8 weapon moves, starter-pool rules.
+- New `ClassData` resource: multipliers, cooldown settings, visual skin, list of 8 weapon moves, starter-pool rules.
 - Loadout slots: `X, B, B_UP, B_SIDE, B_DOWN, B_BACK` plus `Y` and `X` directions as before. B slots only accept WEAPON moves of the player's class.
-- Reward cards show tier, class tag and who can use them. Reward flow is described in `DESIGN.md` §3.
+- Reward cards show tier and class tag. Reward flow is described in `DESIGN.md` §3.
 - Stickfigure weapon rendering: sword (line with glow), hammer (thick line with block head), glowing hands for Magic. Keep it code-drawn.
 - Add a save-data version field now so older saves don't break when classes arrive.
 
@@ -130,9 +130,14 @@ The same base-pose system is used for **enemies**. Every enemy gets a weapon arc
 | A | quick wins | about 1.5-2.5 h |
 | B | goal, waves, rank, run-start screen | about 2-3 h |
 | C1 | class framework, move data refactor, tags | about 2 h |
-| C2 | Brawler B moves (3 new), Magic and mana | about 2-3 h |
+| C2 | Brawler B moves (3 new), Magic marks and cooldowns | about 2-3 h |
 | C3 | Sword (7 new) | about 2 h |
 | C4 | Hammer (8 new) | about 2 h |
+| D1 | Reward rework: shared X/Y choice with RPS, personal level-up, replacement flow | about 2-3 h |
+| D2 | Default grab/throw (RB), interact verb, revive on RB, fall/respawn rules | about 2 h |
+| D3 | Style meter, LT empower, motion-input supers (parser) | about 3-4 h |
+| D4 | Co-op level elements for Streets (4 types) and Duo Specials | about 3-4 h |
+(Estimates exclude your playtest and feedback rounds. Resolve the holes in `AUDIT.md` first.)
 
 ## 5. Open questions with my default (change if you disagree)
 

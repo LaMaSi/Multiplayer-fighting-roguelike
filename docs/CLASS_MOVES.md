@@ -60,7 +60,7 @@ Identity: break guards, send things far. Cannot hit very close (the X moves and 
 | 4 | NEW Quake Line | S | L | Slam that sends a shockwave line along the ground; trips | longer line | The line trips a group so the partner can clean up |
 | 5 | NEW Whirlwind Haul | S | M | Spinning swing that hits in front and behind; fixes the dead zone partly | extra spin | Pushes enemies off a partner who is channeling |
 | 6 | NEW Guard Breaker | VS (charge) | M | **Charged** slam that breaks shields and armour and stuns; hold to charge | full-charge area | The partner must cover the charge, and a **stunned** enemy is a free relay target |
-| 7 | NEW Home Run ★ | S | M | Swing that launches enemies **or your partner** far horizontally (a human projectile) | longer range | Partner becomes a flying kick; a way to cross gaps (couples with Ally Toss) |
+| 7 | NEW Home Run ★ | S | M | Swing that launches enemies **or your partner** far horizontally (a human projectile) | longer range | Partner becomes a flying kick; a way to cross gaps (couples with the grab/throw; see `DESIGN.md` §8) |
 | 8 | NEW Bulwark Plant | M | M | Plant the hammer, creating a barrier pillar that blocks projectiles and melee for about 4 s | taller and longer | The partner can shelter behind it; the pillar can also be launched with Home Run |
 
 **Super (weapon):** *Meteor Drop*. Jump and crash down with a large radius. Team rider: the shockwave launches every enemy for the partner.
@@ -138,7 +138,7 @@ Y has 5 slots and a pool of **10** moves, so 5 spares for rewards. **Y is empty 
 | 9 | ✔ Flurry | F, M | Rapid low-knockback hits | Keeps the shared combo alive | Flame |
 | 10 | NEW Slide Strike | F, L | Low slide that ends in a crouch | Slides under attacks, carries an enemy to the partner | Frost |
 
-Per-class look of the same move (the Uppercut as an example): Brawler = quick fist, Sword = rising arc slash, Hammer = slow, huge upward swing (dead zone at the base), Magic = palm burst with a Flame mark. Other Y moves follow the same rule.
+Per-class look of the same move (the Uppercut as an example): Brawler = quick fist, Sword = rising arc slash, Hammer = slow, huge upward swing (dead zone at the base), Magic = palm burst with a Flame mark. (Marks detonate on finisher hits only, see `AUDIT.md` #1.) Other Y moves follow the same rule.
 
 Design guards:
 - Y moves must never outclass B moves in damage per second, since B moves define the class.
@@ -188,7 +188,7 @@ Input: down, down-forward, forward, twice, then B. The generic super (1 of 8, X)
 2. Are the cooldown values OK (3-10 s), and should cooldowns be visible as small rings on the hands?
 3. Hammer's Home Run launching the partner: allowed with friendly fire off? Default: yes, a partner launch never damages the partner.
 4. Do the generic supers (8) get a design pass next?
-6. Cut Reflect Shield and Back Kick as proposed, or keep them (they'd need to replace Pocket Mine / Slide Strike)?
-7. Heal Pulse heals the partner fully and yourself about 25%: OK?
-8. Hammer and Magic Y moves (reach dead zone, marks): tune after the first playtest.
-5. Starter roll: should the first B move be guaranteed to be a ★ move? Default: all three rolled slots use ★ moves.
+5. Cut Reflect Shield and Back Kick as proposed, or keep them (they'd need to replace Pocket Mine / Slide Strike)?
+6. Heal Pulse heals the partner fully and yourself about 25%: OK?
+7. Hammer and Magic Y moves (reach dead zone, marks): tune after the first playtest.
+8. Starter roll: should the first B move be guaranteed to be a ★ move? Default: all three rolled slots use ★ moves.
