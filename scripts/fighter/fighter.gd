@@ -60,6 +60,7 @@ var _crouch := 0.0  ## 0..1, eases in over ~7 frames while holding down on the g
 var _ghost := false
 var _toss_t := 0.0
 var _toss_hit: Dictionary = {}
+var _flung_t := 0.0  ## thrown by the partner: a fast floaty jump that can still act (attack, dash) and body-checks enemies
 var _ghost_tick := 0.0
 
 
@@ -193,10 +194,12 @@ func _locomotion(delta: float) -> void:
 		else:
 			_turn_t = 0
 		var a := ACCEL if on_floor else AIR_ACCEL
-		velocity.x = move_toward(velocity.x, mx * get_run_speed(), a * delta)
+		if not (_flung_t > 0.0 and signf(mx) == signf(velocity.x)):  # a fling keeps its speed unless you steer against it
+			velocity.x = move_toward(velocity.x, mx * get_run_speed(), a * delta)
 	else:
 		_turn_t = 0
-		velocity.x = move_toward(velocity.x, 0.0, (FRICTION if on_floor else AIR_FRICTION) * delta)
+		if _flung_t <= 0.0:
+			velocity.x = move_toward(velocity.x, 0.0, (FRICTION if on_floor else AIR_FRICTION) * delta)
 	if not is_instance_valid(_floor_collider):
 		_floor_collider = null  # the thing we stood on was freed (a crate broke, an enemy died)
 	if on_floor and _floor_collider is Fighter:
@@ -214,9 +217,11 @@ func _locomotion(delta: float) -> void:
 		velocity.y = 50.0
 	else:
 		_coyote -= delta
-		var g := GRAVITY * (FALL_MULT if velocity.y > 0.0 else 1.0)
+		var g := GRAVITY * (FALL_MULT if velocity.y > 0.0 else 1.0) * (0.55 if _flung_t > 0.0 else 1.0)  # flung: a fast, floaty jump
 		velocity.y = minf(velocity.y + g * delta, MAX_FALL)
 
+	if _flung_t > 0.0:
+		_flung_tick(delta, on_floor)
 	# jump / drop through
 	_jump_buf -= delta
 	if input.pressed(PlayerInput.Btn.JUMP):
@@ -252,7 +257,7 @@ func _locomotion(delta: float) -> void:
 
 	# actions
 	if held != null:
-		if input.pressed(PlayerInput.Btn.INTERACT) or input.pressed(PlayerInput.Btn.X) or input.pressed(PlayerInput.Btn.Y) or input.pressed(PlayerInput.Btn.B):
+		if input.pressed(PlayerInput.Btn.INTERACT) or input.pressed(PlayerInput.Btn.LB) or input.pressed(PlayerInput.Btn.X) or input.pressed(PlayerInput.Btn.Y) or input.pressed(PlayerInput.Btn.B):
 			_throw_held()
 	else:
 		if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0 and (on_floor or not _air_dash_used):
@@ -878,3 +883,65 @@ func _draw_throw_aim(is_prop: bool) -> void:
 	var perp := Vector2(-dir.y, dir.x)
 	draw_line(start + dir * 20.0, tip, col, 4.0, true)
 	draw_colored_polygon(PackedVector2Array([tip + dir * 16.0, tip + perp * 8.0, tip - perp * 8.0]), col)
+
+
+# ------------------------------------------------------------------ being thrown by the partner
+
+## Grab & Throw on the partner: instead of falling, the thrown player is flung in a fast, floaty jump and can act out
+## of it (attacks, dash, double jump). The body also checks enemies on the way: a combo starter.
+func thrown(vel: Vector2, by: Actor) -> void:
+	if by != null and by.team == team:
+		_begin_fling(vel)
+	else:
+		super.thrown(vel, by)
+
+
+func _begin_fling(vel: Vector2) -> void:
+	if attack.active:
+		attack.interrupt()
+	state = "jump"
+	holder = null
+	velocity = vel
+	_flung_t = 0.9
+	_toss_hit.clear()
+	figure.rot = 0.0
+	invuln = maxf(invuln, 0.25)
+	_air_dash_used = false
+	_air_jump_ready = true
+	_jumping = false
+	global_position.y -= 8.0
+	Sfx.play("whoosh", 0.8)
+	Fx.ring(get_parent(), global_position + Vector2(0, -40), Color(2.0, 1.7, 1.9), 70.0, 0.3)
+
+
+func _flung_tick(delta: float, on_floor: bool) -> void:
+	_flung_t = maxf(0.0, _flung_t - delta)
+	if on_floor and _flung_t < 0.8:
+		_flung_t = 0.0
+		return
+	_ghost_tick -= delta
+	if _ghost_tick <= 0.0:
+		_ghost_tick = 0.05
+		Fx.afterimage(get_parent(), figure, Color(2.0, 1.6, 0.5))
+	if velocity.length() < 450.0:
+		return
+	var rect := Rect2(global_position.x - 30.0 + signf(velocity.x if velocity.x != 0.0 else float(facing)) * 24.0, global_position.y - 95.0, 68.0, 100.0)
+	for t in get_tree().get_nodes_in_group("hurt_enemy"):
+		if not t.is_targetable() or _toss_hit.has(t.get_instance_id()) or not (t is Actor):
+			continue
+		if rect.intersects(t.get_hurt_rect()):
+			_toss_hit[t.get_instance_id()] = true
+			var info := HitInfo.new()
+			info.attacker = self
+			info.team = "player"
+			info.dmg = 16.0 * dmg_mult()
+			info.kind = "launch"
+			info.kb = Vector2(signf(velocity.x if velocity.x != 0.0 else float(facing)) * 300.0, -620.0)  # pops them up for the follow-up
+			info.stun = 34
+			info.stop = 6
+			info.shake = 0.35
+			info.color = Color(2.0, 1.6, 0.5)
+			info.pos = rect.get_center()
+			if t.take_hit(info):
+				freeze = maxi(freeze, 4)
+				meter = minf(100.0, meter + 6.0)

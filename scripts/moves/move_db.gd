@@ -321,7 +321,7 @@ static func _build_player() -> void:
 		"kf": [[0, {"lean": 0.1, "ua_f": 0.4, "la_f": 1.8, "ua_b": 0.5, "la_b": 1.8, "th_f": 0.4, "kn_f": 0.6}],
 			[10, {"lean": -0.1, "ua_f": 1.5, "la_f": 0.1, "ua_b": 1.45, "la_b": 0.15, "th_f": 0.5, "kn_f": 0.6, "th_b": -0.4}],
 			[28, _idle()]],
-		"events": [_proj(10, {"kind": "orb", "pos": Vector2(45, -62), "vel": Vector2(580, 0), "dmg": 9.0, "stun": 18,
+		"events": [_proj(10, {"kind": "fireball", "splash": 90.0, "pos": Vector2(45, -62), "vel": Vector2(580, 0), "dmg": 9.0, "stun": 18,
 			"kb": Vector2(200, 0), "life": 1.4, "radius": 14.0, "color": ORANGE})]})
 
 	# --- 7 Boomerang disc -----------------------------------------------
@@ -330,7 +330,7 @@ static func _build_player() -> void:
 		"kf": [[0, {"lean": -0.2, "ua_f": -0.6, "la_f": 1.0, "th_f": 0.4, "kn_f": 0.6}],
 			[8, {"lean": 0.3, "ua_f": 1.55, "la_f": 0.1, "th_f": 0.6, "kn_f": 0.4, "th_b": -0.4}],
 			[26, _idle()]],
-		"events": [_proj(8, {"kind": "disc", "pos": Vector2(40, -62), "vel": Vector2(560, 0), "dmg": 6.0, "stun": 16,
+		"events": [_proj(8, {"kind": "blade", "pos": Vector2(40, -62), "vel": Vector2(560, 0), "dmg": 6.0, "stun": 16,
 			"kb": Vector2(120, -80), "life": 2.4, "radius": 16.0, "color": CYAN, "returns": 0.42, "pierce": true})]})
 
 	# --- 8 Spread shot --------------------------------------------------
@@ -340,9 +340,9 @@ static func _build_player() -> void:
 			[8, {"lean": -0.1, "ua_f": 1.5, "la_f": 0.2, "ua_b": 1.4, "la_b": 0.2, "th_f": 0.5, "kn_f": 0.5, "th_b": -0.5}],
 			[26, _idle()]],
 		"events": [
-			_proj(8, {"kind": "orb", "pos": Vector2(42, -62), "vel": Vector2(520, -120), "dmg": 5.0, "stun": 14, "kb": Vector2(120, 0), "life": 0.9, "radius": 10.0, "color": GREEN}),
-			_proj(8, {"kind": "orb", "pos": Vector2(42, -62), "vel": Vector2(540, 0), "dmg": 5.0, "stun": 14, "kb": Vector2(120, 0), "life": 0.9, "radius": 10.0, "color": GREEN, "sfx": ""}),
-			_proj(8, {"kind": "orb", "pos": Vector2(42, -62), "vel": Vector2(520, 120), "dmg": 5.0, "stun": 14, "kb": Vector2(120, 0), "life": 0.9, "radius": 10.0, "color": GREEN, "sfx": ""})]})
+			_proj(8, {"kind": "dart", "pos": Vector2(42, -62), "vel": Vector2(520, -120), "dmg": 5.0, "stun": 14, "kb": Vector2(120, 0), "life": 0.9, "radius": 10.0, "color": GREEN}),
+			_proj(8, {"kind": "dart", "pos": Vector2(42, -62), "vel": Vector2(540, 0), "dmg": 5.0, "stun": 14, "kb": Vector2(120, 0), "life": 0.9, "radius": 10.0, "color": GREEN, "sfx": ""}),
+			_proj(8, {"kind": "dart", "pos": Vector2(42, -62), "vel": Vector2(520, 120), "dmg": 5.0, "stun": 14, "kb": Vector2(120, 0), "life": 0.9, "radius": 10.0, "color": GREEN, "sfx": ""})]})
 
 	# --- 9 Ground wave --------------------------------------------------
 	_mk({"id": "ground_wave", "name": "Ground Wave", "short": "WAVE", "desc": "Low projectile that trips.",
@@ -497,7 +497,7 @@ static func _build_player() -> void:
 			[32, {"lean": 0.55, "ua_f": 1.3, "la_f": 0.15, "ua_b": 1.3, "la_b": 0.15, "th_f": 0.8, "kn_f": 0.5, "th_b": -0.5, "kn_b": 0.4}],
 			[58, _idle()]],
 		"events": [{"at": 11, "type": "whiff_skip", "to": 40}, {"at": 26, "type": "throw", "vx": 600.0, "vy": -300.0}],
-		"hits": [_hit(5, 3, Rect2(8, -88, 50, 74), 0, 0, Vector2.ZERO, {"grab": true})]})
+		"hits": [_hit(5, 3, Rect2(8, -88, 50, 74), 0, 0, Vector2.ZERO, {"grab": true, "partner_safe": true})]})
 
 	# --- Shockwave clap: replaces Grab & Throw in the X pool (grab is on LB now) ---------------
 	_mk({"id": "shockwave", "name": "Shockwave Clap", "short": "CLAP", "desc": "A clap that blasts everything around you away. Makes room, breaks crates.",

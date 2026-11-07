@@ -20,6 +20,8 @@ var returns := 0.0
 var reflected := false
 var height := "mid"
 var ignite := 0.0
+var splash := 0.0  ## blast radius: neighbours of the first victim take half damage (fireball)
+var _trail_t := 0.0
 
 var _age := 0.0
 var _done: Dictionary = {}
@@ -44,6 +46,7 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.ground = bool(e.get("ground", false))
 	p.returns = float(e.get("returns", 0.0))
 	p.ignite = float(e.get("ignite", 0.0))
+	p.splash = float(e.get("splash", 0.0))
 	p.height = String(e.get("height", "low" if p.ground else ("high" if p.shape == "bottle" else "mid")))
 	var off: Vector2 = e["pos"]
 	p.global_position = a.global_position + Vector2(off.x * a.facing, off.y)
@@ -113,6 +116,9 @@ func _physics_process(delta: float) -> void:
 			Sfx.play("block", 1.2)
 			queue_free()
 			return
+	_trail_t -= delta
+	if _trail_t <= 0.0:
+		_trail_t = ProjectileFx.trail(get_parent(), shape, global_position, vel.normalized() if vel.length() > 1.0 else Vector2(1, 0), radius, col)
 	_check_reflect()
 	_check_hits()
 	queue_redraw()
@@ -223,6 +229,9 @@ func _check_hits() -> void:
 			if t.take_hit(info):
 				if is_instance_valid(owner_actor) and owner_actor is Actor and team == "player":
 					owner_actor.on_hit_landed(info, t)
+				ProjectileFx.hit(get_parent(), shape, global_position, col, splash)
+				if splash > 0.0:
+					_splash_hit(t, group)
 				if not pierce:
 					queue_free()
 					return
@@ -230,6 +239,16 @@ func _check_hits() -> void:
 
 func _draw() -> void:
 	match shape:
+		"fireball":
+			ProjectileFx.fireball(self, vel, radius, col, _age)
+		"spark":
+			ProjectileFx.spark(self, vel, radius, col, _age)
+		"dart":
+			ProjectileFx.dart(self, vel, radius, col)
+		"blade":
+			ProjectileFx.blade(self, radius, col, _spin)
+		"quake":
+			ProjectileFx.quake(self, vel, radius, col, _age)
 		"mine":
 			var armed := _age >= 0.45
 			var blink := 0.5 + 0.5 * sin(_age * (10.0 if armed else 3.0))
@@ -262,3 +281,27 @@ func _draw() -> void:
 			draw_circle(Vector2.ZERO, radius + 7.0, Color(col.r, col.g, col.b, 0.15))
 			draw_circle(Vector2.ZERO, radius, col)
 			draw_circle(Vector2.ZERO, radius * 0.5, Color(2.5, 2.5, 2.5))
+
+
+## Fireball blast: neighbours of the first victim take half damage and catch fire too.
+func _splash_hit(first: Node, group: String) -> void:
+	for n in get_tree().get_nodes_in_group(group):
+		if n == first or _done.has(n.get_instance_id()) or not n.is_targetable():
+			continue
+		if n.global_position.distance_to(global_position) > splash:
+			continue
+		_done[n.get_instance_id()] = true
+		var info := HitInfo.new()
+		info.attacker = owner_actor
+		info.team = team
+		info.dmg = dmg * 0.5
+		info.stun = stun
+		info.kind = kind
+		var away := signf(n.global_position.x - global_position.x)
+		info.kb = Vector2(kb.x * (away if away != 0.0 else 1.0), kb.y)
+		info.stop = 3
+		info.source = "proj"
+		info.ignite = ignite
+		info.color = col
+		info.pos = n.global_position
+		n.take_hit(info)

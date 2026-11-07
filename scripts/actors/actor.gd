@@ -234,6 +234,7 @@ func take_hit(info: HitInfo) -> bool:
 		Coop.stat_damage += dmg
 	if info.ignite > 0.0 and hp > 0.0:
 		burn_t = maxf(burn_t, info.ignite)
+		_ensure_burn_fx(info.color)
 	if atk != null and atk.team != team:
 		last_hitter = atk
 	var lethal := hp <= 0.0
@@ -627,8 +628,6 @@ func _tick_burn(delta: float) -> void:
 		return
 	burn_t = maxf(0.0, burn_t - delta)
 	_burn_tick -= delta
-	if randf() < delta * 14.0:
-		Fx.sparks(get_parent(), global_position + Vector2(randf_range(-10.0, 10.0), randf_range(-70.0, -10.0)), Color(2.2, 0.8, 0.15), 2, Vector2(0, -1))
 	if _burn_tick <= 0.0:
 		_burn_tick = 0.5
 		if not dying and hp > 0.0:
@@ -676,3 +675,17 @@ func _combo_break(info: HitInfo) -> void:
 	Fx.ring(get_parent(), global_position + Vector2(0, -50), Color(2.0, 1.7, 1.9), 70.0, 0.3)
 	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 20.0), "BREAK!", Color(2.0, 1.7, 1.9), 22)
 	Sfx.play("parry", 0.9)
+
+
+var _burn_fx: BurnFx = null
+
+
+## Flames on the body, in the colour of whoever lit them.
+func _ensure_burn_fx(c: Color) -> void:
+	if _burn_fx != null and is_instance_valid(_burn_fx):
+		_burn_fx.col = c
+		return
+	_burn_fx = BurnFx.new()
+	_burn_fx.actor = self
+	_burn_fx.col = c
+	add_child(_burn_fx)

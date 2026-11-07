@@ -60,7 +60,7 @@ static func _universal() -> void:
 		"kf": [[0, {"lean": 0.0, "ua_f": 0.5, "la_f": 1.7, "th_f": 0.4, "kn_f": 0.6}],
 			[6, {"lean": -0.05, "ua_f": 1.5, "la_f": 0.1, "th_f": 0.45, "kn_f": 0.5, "th_b": -0.4}],
 			[20, _idle()]],
-		"events": [MoveDB._proj(6, {"kind": "orb", "pos": Vector2(42, -62), "vel": Vector2(720, 0), "dmg": 4.0, "stun": 12,
+		"events": [MoveDB._proj(6, {"kind": "spark", "pos": Vector2(42, -62), "vel": Vector2(720, 0), "dmg": 4.0, "stun": 12,
 			"kb": Vector2(60, 0), "life": 1.0, "radius": 8.0, "color": Color(1.9, 1.9, 2.2)})]}, "universal")
 
 
@@ -197,7 +197,7 @@ static func _hammer() -> void:
 			[30, _p(HAMMER_UP, {"lean": 0.9, "ua_f": 1.1, "la_f": 0.1, "ua_b": 0.9, "la_b": 0.3, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.8, "wp_rot": 0.8})],
 			[58, _idle()]],
 		"events": [{"at": 30, "type": "ring", "radius": 90.0, "sfx": "boom", "shake": 0.45},
-			MoveDB._proj(30, {"kind": "wave", "pos": Vector2(70, -16), "vel": Vector2(540, 0), "dmg": 9.0, "stun": 26,
+			MoveDB._proj(30, {"kind": "quake", "pos": Vector2(70, -16), "vel": Vector2(540, 0), "dmg": 9.0, "stun": 26,
 				"kb": Vector2(80, -330), "pkind": "trip", "life": 1.0, "radius": 20.0, "color": Color(1.9, 1.9, 2.2), "pierce": true, "ground": true, "sfx": ""})],
 		"hits": [_hit(30, 3, Rect2(50, -64, 110, 68), 12, 30, Vector2(100, -360), {"kind": "trip", "low": true, "height": "low", "stop": 6, "shake": 0.35})]}, "weapon", "hammer")
 	_mk({"id": "whirlwind_haul", "name": "Whirlwind Haul", "short": "WHIRL", "desc": "Spinning swing: hits in front and behind.",
