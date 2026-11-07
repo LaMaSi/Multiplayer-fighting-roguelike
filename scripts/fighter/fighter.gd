@@ -33,6 +33,16 @@ var _drop_t := 0.0
 var _drop_clear_y := 0.0
 var _floor_collider: Object = null
 var last_safe := Vector2.ZERO  ## last solid ground (>= 60 px from a pit edge) stood on: where a fall respawns
+
+## Ledge grab: hang from the corner of a pit / platform; 3 s to climb alone, instant when the partner helps.
+const LEDGE_SOLO_TIME := 3.0
+const LEDGE_HANG_Y := 112.0  # feet this far below the corner: the raised hands are on it
+var _ledge := {}  # the corner being held ({p, dir}), empty when not hanging
+var _ledge_t := 0.0
+var _ledge_cd := 0.0
+var _ledge_climb := 0.0
+var _ledge_from := Vector2.ZERO
+var _ledge_to := Vector2.ZERO
 var _was_on_floor := false
 var _land_t := 0.0
 var _turn_t := 0
@@ -153,12 +163,17 @@ func _control(delta: float) -> void:
 			_st_tossed(delta)
 		"downed":
 			_st_downed(delta)
+		"ledge":
+			_st_ledge(delta)
 		_:
 			_locomotion(delta)
 
 
 func _locomotion(delta: float) -> void:
 	var on_floor := is_on_floor()
+	_ledge_cd = maxf(0.0, _ledge_cd - delta)
+	if not on_floor and _ledge_cd <= 0.0 and velocity.y > -120.0 and held == null and _try_ledge():
+		return
 	var mx := input.dir.x
 	if absf(mx) < 0.2:
 		mx = 0.0
@@ -687,6 +702,8 @@ func _loco_pose_base() -> Dictionary:
 			p = PoseLib.rise()
 		"fall":
 			p = PoseLib.fall()
+		"ledge":
+			p = PoseLib.hang()
 		"walk":
 			p = PoseLib.walk(_walk_phase)
 		"dash":
@@ -741,6 +758,8 @@ func _draw() -> void:
 		draw_arc(c, 34.0, 0.0, TAU, 32, Color(1, 1, 1, 0.2), 4.0, true)
 		if revive_progress > 0.0:
 			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * revive_progress, 32, Color(2.0, 1.7, 1.9), 5.0, true)
+		if state == "ledge" and _ledge_climb <= 0.0:
+			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(_ledge_t / LEDGE_SOLO_TIME, 0.0, 1.0), 32, Color(2.0, 1.5, 0.4), 5.0, true)
 		var f := ThemeDB.fallback_font
 		var txt := "HOLD RB" if Coop.revives_left > 0 else "NO REVIVES"
 		draw_string(f, Vector2(-34, -92), txt, HORIZONTAL_ALIGNMENT_CENTER, 70.0, 13, Color(1, 1, 1, 0.8))
@@ -755,3 +774,68 @@ func debug_text() -> String:
 	return "P%d %-8s hp=%3.0f meter=%3.0f pos(%4.0f,%4.0f) v(%5.0f,%5.0f) floor=%s %s\n    dir(%+.2f,%+.2f) btns: %s" % [
 		player_index + 1, state, hp, meter, global_position.x, global_position.y, velocity.x, velocity.y,
 		is_on_floor(), attack.move.id if attack.active else "", input.dir.x, input.dir.y, input.buttons_string()]
+
+
+# ------------------------------------------------------------------ ledge grab
+
+## While falling next to a pit edge or platform end, grab it and hang.
+func _try_ledge() -> bool:
+	var lvl := get_parent()
+	if lvl == null or not lvl.has_method("ledge_points"):
+		return false
+	for l: Dictionary in lvl.ledge_points():
+		var c: Vector2 = l["p"]
+		if int(l["dir"]) != facing:
+			continue
+		var dxf := (c.x - global_position.x) * float(facing)
+		var dy := c.y - (global_position.y - 96.0)
+		if dxf >= 2.0 and dxf <= 36.0 and dy >= -24.0 and dy <= 40.0:
+			_ledge = l
+			state = "ledge"
+			_ledge_t = 0.0
+			_ledge_climb = 0.0
+			velocity = Vector2.ZERO
+			global_position = Vector2(c.x - float(facing) * 16.0, c.y + LEDGE_HANG_Y)
+			_air_dash_used = false
+			_air_jump_ready = true
+			Sfx.play("pickup", 1.3)
+			Fx.dust(get_parent(), c, 4)
+			return true
+	return false
+
+
+func _st_ledge(delta: float) -> void:
+	velocity = Vector2.ZERO
+	if _ledge_climb > 0.0:
+		# pulling up: slide from the hang to the top of the ledge
+		_ledge_climb = maxf(0.0, _ledge_climb - delta)
+		var k := 1.0 - _ledge_climb / 0.22
+		global_position = _ledge_from.lerp(_ledge_to, k)
+		if _ledge_climb <= 0.0:
+			global_position = _ledge_to
+			state = "idle"
+			_ledge = {}
+			_ledge_cd = 0.4
+			Fx.dust(get_parent(), global_position, 6)
+		return
+	if input.pressed(PlayerInput.Btn.JUMP) or input.dir.y > 0.7:
+		state = "fall"
+		_ledge = {}
+		_ledge_cd = 0.5
+		velocity = Vector2(-float(facing) * 60.0, -200.0 if input.pressed(PlayerInput.Btn.JUMP) else 60.0)
+		return
+	_ledge_t += delta
+	var helped := false
+	var p := Coop.partner_of(self)
+	if p != null and p.is_alive() and p.state != "downed" and absf(p.global_position.x - global_position.x) < 160.0 and absf(p.global_position.y - global_position.y) < 180.0:
+		if p.input.pressed(PlayerInput.Btn.INTERACT) or p.input.pressed(PlayerInput.Btn.LB):
+			helped = true
+	if helped or _ledge_t >= LEDGE_SOLO_TIME:
+		var c: Vector2 = _ledge["p"]
+		_ledge_from = global_position
+		_ledge_to = Vector2(c.x + float(facing) * 26.0, c.y - 1.0)
+		_ledge_climb = 0.22
+		if helped:
+			Fx.ring(get_parent(), global_position + Vector2(0, -60), Color(2.0, 1.7, 1.9), 60.0, 0.3)
+			Fx.number(get_parent(), global_position + Vector2(0, -130), "HELP!", Color(2.0, 1.7, 1.9), 22)
+			Sfx.play("revive", 1.2)

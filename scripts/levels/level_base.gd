@@ -437,3 +437,30 @@ func _paint_ground(c: CanvasItem) -> void:
 		c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, UiKit.LINE, true)
 		c.draw_line(Vector2(r.position.x, r.position.y), Vector2(r.position.x, r.end.y), Color(np.r, np.g, np.b, 0.55), UiKit.LINE, true)
 		c.draw_line(Vector2(r.end.x, r.position.y), r.end, Color(np.r, np.g, np.b, 0.55), UiKit.LINE, true)
+
+
+# ------------------------------------------------------------------ ledges
+
+var _ledges: Array = []
+
+
+## Corners a falling player can grab: {p: corner position, dir: +1 when the standable surface extends to the right of
+## the corner (a left edge), -1 for a right edge}. Pit edges, steps down and both ends of every platform.
+func ledge_points() -> Array:
+	if not _ledges.is_empty() or (ground_segs.is_empty() and platforms.is_empty()):
+		return _ledges
+	var n := ground_segs.size()
+	for i in n:
+		var g: Rect2 = ground_segs[i]
+		if i > 0:
+			var prev: Rect2 = ground_segs[i - 1]
+			if g.position.x - prev.end.x > 1.0 or prev.position.y > g.position.y + 10.0:
+				_ledges.append({"p": g.position, "dir": 1})
+		if i < n - 1:
+			var nxt: Rect2 = ground_segs[i + 1]
+			if nxt.position.x - g.end.x > 1.0 or nxt.position.y > g.position.y + 10.0:
+				_ledges.append({"p": Vector2(g.end.x, g.position.y), "dir": -1})
+	for r: Rect2 in platforms:
+		_ledges.append({"p": r.position, "dir": 1})
+		_ledges.append({"p": Vector2(r.end.x, r.position.y), "dir": -1})
+	return _ledges

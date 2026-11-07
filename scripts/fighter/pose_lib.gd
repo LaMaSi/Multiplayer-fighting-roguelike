@@ -192,3 +192,12 @@ static func breath(t: float) -> Dictionary:
 	var ph := t * 10.0  # one breath = PI of phase, ~0.31 s
 	var down := (1.0 - cos(ph)) * 0.5  # 0 = in / up, 1 = out / down
 	return {"x": sin(ph * 0.5) * 4.0, "dip": down * 3.5, "b": cos(ph) * 0.04, "down": down}
+
+
+## Hanging from a ledge: both arms straight up, legs dangling.
+static func hang() -> Dictionary:
+	return {
+		"lean": 0.0, "head": 0.0,
+		"th_f": 0.2, "kn_f": 0.25, "th_b": -0.12, "kn_b": 0.35,
+		"ua_f": 3.05, "la_f": 0.05, "ua_b": 3.0, "la_b": 0.1,
+	}
