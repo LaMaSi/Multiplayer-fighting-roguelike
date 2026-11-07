@@ -356,6 +356,17 @@ func _paint_ground(c: CanvasItem) -> void:
 		c.draw_string(ThemeDB.fallback_font, door.position + Vector2(0, -12), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, door.size.x, 26, Color(2.0, 1.7, 0.5))
 	var np: Color = theme["neon_plat"]
 	for r: Rect2 in platforms:
-		c.draw_rect(r, Color(0.08, 0.03, 0.14))
-		c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, 3.5, true)
-		c.draw_line(Vector2(r.position.x, r.end.y), r.end, Color(np.r, np.g, np.b, 0.3), 2.0, true)
+		if Backdrop.variant == 0:
+			c.draw_rect(r, Color(0.08, 0.03, 0.14))
+			c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, 3.5, true)
+			c.draw_line(Vector2(r.position.x, r.end.y), r.end, Color(np.r, np.g, np.b, 0.3), 2.0, true)
+			continue
+		# readable "solid": soft shadow below, a lit slab body, a bright top edge and a dark underside
+		for i in 3:
+			c.draw_rect(Rect2(r.position.x + 6 + i * 3, r.end.y + 2 + i * 6, r.size.x - 12 - i * 6, 6), Color(0, 0, 0, 0.22 - i * 0.06))
+		c.draw_rect(r, Color(np.r * 0.16, np.g * 0.16, np.b * 0.16, 1.0))
+		c.draw_rect(Rect2(r.position.x, r.position.y, r.size.x, r.size.y * 0.45), Color(np.r * 0.3, np.g * 0.3, np.b * 0.3, 1.0))
+		c.draw_rect(Rect2(r.position.x, r.end.y - 4.0, r.size.x, 4.0), Color(0.02, 0.01, 0.04, 0.9))
+		c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, 4.0, true)
+		c.draw_line(Vector2(r.position.x, r.position.y), Vector2(r.position.x, r.end.y), Color(np.r, np.g, np.b, 0.55), 2.0, true)
+		c.draw_line(Vector2(r.end.x, r.position.y), r.end, Color(np.r, np.g, np.b, 0.55), 2.0, true)
