@@ -44,6 +44,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	RunState.classes = ["", ""]  # these checks use the legacy starter loadout (jab on X); class loadouts are covered by smoke_classes
 	print("[map generation]")
 	for sd in [1, 5, 42, 99, 1234]:
 		RunState.start_run(sd)
@@ -77,9 +78,10 @@ func _run() -> void:
 		if c["id"] in RunState.loadouts[0].values():
 			owned_clash = true
 	check(cards.size() == 3 and ids.size() == 3 and not owned_clash, "3 distinct, not-yet-owned move cards")
+	var before1: Dictionary = RunState.loadouts[1].duplicate()
 	RunState.apply_card(0, cards[0], "X_DOWN")
 	check(RunState.loadouts[0]["X_DOWN"] == cards[0]["id"], "move card replaces the chosen slot")
-	check(RunState.loadouts[1]["X_DOWN"] == "sweep", "other player's loadout untouched")
+	check(RunState.loadouts[1] == before1, "other player's loadout untouched")
 	RunState.apply_card(0, cards[1], "Y_UP")
 	check(RunState.loadouts[0].size() == 5 and RunState.loadouts[0].has("Y_UP"), "a move can go into an empty slot")
 	var lv := RunState.make_cards(0, "level")
