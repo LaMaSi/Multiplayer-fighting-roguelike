@@ -9,8 +9,8 @@ func _setup() -> void:
 	level_name = "Streets"
 	theme["sky_top"] = Color(0.12, 0.04, 0.26)
 	theme["sky_bottom"] = Color(1.0, 0.36, 0.30)
-	theme["neon_ground"] = Color(2.0, 0.7, 1.2)
-	theme["neon_plat"] = Color(1.3, 0.9, 2.0)  # cool violet: gold is reserved for interactables
+	theme["neon_ground"] = Pal.terrain()
+	theme["neon_plat"] = Pal.terrain()
 	theme["bld_far"] = Color(0.45, 0.15, 0.40)
 	theme["edge_mid"] = Color(2.0, 0.6, 0.3)
 	theme["edge_near"] = Color(2.0, 0.4, 1.2)

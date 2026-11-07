@@ -12,7 +12,7 @@ var hp := 24.0
 var state := "idle"  ## idle, held, flying, dead
 var thrown_by: Actor = null
 var guaranteed := ""  ## force a specific drop
-var col := Color(2.0, 1.2, 0.4)
+var col := Pal.interact()
 var w := 46.0
 var h := 46.0
 
@@ -27,22 +27,23 @@ func setup(k: String) -> Prop:
 	match k:
 		"barrel":
 			hp = 34.0
-			col = Color(0.95, 0.8, 0.65)
+			col = Pal.interact()
 			w = 40.0
 			h = 54.0
 		"vase":
 			hp = 12.0
-			col = Color(1.0, 0.9, 0.95)
+			col = Pal.interact()
 			w = 34.0
 			h = 50.0
 		_:
 			hp = 24.0
-			col = Color(1.0, 0.85, 0.6)
+			col = Pal.interact()
 	return self
 
 
 func _ready() -> void:
 	add_to_group("props")
+	Coop.stat_containers_total += 1
 	add_to_group("hurt_enemy")
 	collision_layer = 0
 	collision_mask = 0
@@ -165,6 +166,7 @@ func _break(by: Actor) -> void:
 	if state == "dead":
 		return
 	state = "dead"
+	Coop.stat_containers += 1
 	var parent := get_parent()
 	var pos := global_position + Vector2(0, -h * 0.5)
 	Fx.shatter(parent, pos, col, 18)

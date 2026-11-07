@@ -8,6 +8,7 @@ const ITEMS := [
 	["", "magic"],
 	["Streets (full test level)", "res://scenes/streets.tscn"],
 	["Training Room", "res://scenes/training.tscn"],
+	["Shop (preview)", "shop"],
 	["Quit", ""],
 ]
 
@@ -59,6 +60,11 @@ func _process(delta: float) -> void:
 			var path: String = ITEMS[_sel][1]
 			if path == "":
 				get_tree().quit()
+			elif path == "shop":
+				RunState.start_run()
+				RunState.coins = 260
+				RunState.current = {"seed": randi(), "type": "shop", "layer": 0, "idx": 0, "next": [], "done": false}
+				get_tree().change_scene_to_file("res://scenes/shop.tscn")
 			elif path == "run":
 				RunState.start_run()
 				get_tree().change_scene_to_file("res://scenes/run_map.tscn")

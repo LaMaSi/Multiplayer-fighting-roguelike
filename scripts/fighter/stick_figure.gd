@@ -302,14 +302,14 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 						draw_circle(hp_ + Vector2.from_angle(a) * (r + 6.0), 1.8, col)
 
 
-## Black half-circle eyes (flat side up, slight inward tilt = "cool, not angry"). They slide towards
+## Bright half-circle eyes (flat side up, slight inward tilt = "cool, not angry"). They slide towards
 ## the aim vector, clamped inside the head, close on a blink and flatten when squinting.
 func _draw_eyes(h: Vector2, hr: float, ang: float) -> void:
 	var off := _eye_off.limit_length(1.0) * hr * 0.28
 	var open := 0.12 if _blink > 0.0 else lerpf(1.0, 0.35, squint)
-	var r := hr * 0.2
+	var r := hr * 0.27
 	for sx: float in [-1.0, 1.0]:
-		var c := Vector2(hr * 0.1 + sx * hr * 0.32, -hr * 0.05) + off
+		var c := Vector2(hr * 0.1 + sx * hr * 0.36, hr * 0.0) + off
 		var tilt: float = -sx * 0.18
 		var pts := PackedVector2Array()
 		for i in range(9):
@@ -318,7 +318,7 @@ func _draw_eyes(h: Vector2, hr: float, ang: float) -> void:
 		var poly := PackedVector2Array()
 		for q in pts:
 			poly.append(h + (c + q).rotated(ang))
-		draw_colored_polygon(poly, Color(0, 0, 0, 1))
+		draw_colored_polygon(poly, Color(minf(color.r + 0.35, 1.0), minf(color.g + 0.35, 1.0), minf(color.b + 0.35, 1.0), 1.0))  # bright: the head fill is near-black, so black eyes were invisible
 
 
 func _accessory(h: Vector2, c: Color, hr: float) -> void:

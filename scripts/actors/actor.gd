@@ -213,6 +213,8 @@ func take_hit(info: HitInfo) -> bool:
 	if info.friendly:
 		dmg *= Coop.ff_scale
 	hp = maxf(hp - dmg, 1.0 if info.friendly else 0.0)
+	if self is Fighter:
+		Coop.stat_damage += dmg
 	if atk != null and atk.team != team:
 		last_hitter = atk
 	var lethal := hp <= 0.0

@@ -1,7 +1,9 @@
 class_name Hud
 extends CanvasLayer
-## In-game overlay: per-player HP / meter / 15-slot loadout grid, shared combo counter,
-## revive count, boss bar, GO arrow, banners and the result screen.
+## In-game overlay (see docs/STYLEGUIDE.md): per player a ring with the HP number, 10 HP blocks and a
+## big super meter (gold pulse when usable, burning when full); a shared tilted combo counter that
+## punches on every hit and grows every 5; shared lives; boss bar, GO arrow, banners and the level
+## complete / game over screens. The move grid is hidden by default (F2 toggles it).
 
 class Canvas extends Control:
 	var hud: Hud
@@ -11,7 +13,9 @@ class Canvas extends Control:
 			hud.paint(self)
 
 
-## Permanent move list under each health bar. Off by default; toggled in Testing Options.
+const TILTS := [-0.06, 0.09, -0.15, 0.13, -0.21, 0.17]
+const METER_USABLE := 0.5  ## a super / Duo needs at least half a meter
+
 static var show_moves := false
 
 var level: LevelBase
@@ -25,11 +29,14 @@ var _banner_col := Color.WHITE
 var _go := false
 var _result := ""
 var _result_win := false
+var _stats: Dictionary = {}
 var _combo_end := ""
 var _combo_end_t := 0.0
-var _combo_pulse := 0.0
+var _combo_age := 9.0
 var _go_t := 0.0
-var _last_combo := 0
+var _clock := 0.0
+var _result_t := 0.0
+var _result_layer: CanvasLayer
 
 
 func _ready() -> void:
@@ -40,7 +47,7 @@ func _ready() -> void:
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_canvas)
 	Coop.combo_ended.connect(_on_combo_ended)
-	Coop.combo_changed.connect(func(): _combo_pulse = 1.0)
+	Coop.combo_changed.connect(func(): _combo_age = 0.0)
 
 
 func banner(text: String, col: Color) -> void:
@@ -53,9 +60,46 @@ func set_go(v: bool) -> void:
 	_go = v
 
 
-func show_result(text: String, win: bool) -> void:
+func show_result(text: String, win: bool, stats := {}) -> void:
 	_result = text
 	_result_win = win
+	_stats = stats
+	_result_t = 0.0
+	if win and _result_layer == null and level != null:
+		_spawn_result_backdrop()
+
+
+## Dimmed backdrop and the two cheering stickfigures, one canvas layer below the HUD text.
+func _spawn_result_backdrop() -> void:
+	for f in Coop.fighters:
+		if is_instance_valid(f):
+			f.visible = false  # the cheering figures below stand in for them
+	for n in level.get_children():
+		if n is Prop or n is Pickup or n is Enemy:
+			n.visible = false
+	_result_layer = CanvasLayer.new()
+	_result_layer.layer = 9
+	level.add_child(_result_layer)
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.02, 0.01, 0.06, 0.6)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_result_layer.add_child(dim)
+	var poses := [
+		{"lean": -0.05, "head": -0.12, "root_y": -4.0, "th_f": 0.35, "kn_f": 0.3, "th_b": -0.35, "kn_b": 0.3, "ua_f": 2.7, "la_f": 0.3, "ua_b": 2.9, "la_b": 0.2},
+		{"lean": 0.0, "head": -0.15, "root_y": -10.0, "th_f": 0.25, "kn_f": 0.7, "th_b": -0.25, "kn_b": 0.7, "ua_f": 2.5, "la_f": 0.4, "ua_b": 3.0, "la_b": 0.1},
+	]
+	for i in 2:
+		var f := StickFigure.new()
+		f.color = UiKit.player_color(i)
+		f.arm_scale = 1.22
+		f.leg_scale = 1.2
+		f.eyes = true
+		f.aim = Vector2(0.3 if i == 0 else -0.3, -0.8)
+		f.position = Vector2(90.0 + i * 100.0, 668)
+		f.scale = Vector2(1.4, 1.4)
+		f.set_target(poses[i], true)
+		_result_layer.add_child(f)
 
 
 func _on_combo_ended(count: int, relays: int) -> void:
@@ -64,11 +108,19 @@ func _on_combo_ended(count: int, relays: int) -> void:
 		_combo_end_t = 2.0
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F2:
+		show_moves = not show_moves
+
+
 func _process(delta: float) -> void:
+	_clock += delta
 	_banner_t = maxf(0.0, _banner_t - delta)
 	_combo_end_t = maxf(0.0, _combo_end_t - delta)
-	_combo_pulse = maxf(0.0, _combo_pulse - delta * 5.0)
+	_combo_age += delta
 	_go_t += delta
+	if _result != "":
+		_result_t += delta
 	for i in Coop.fighters.size():
 		var f := Coop.fighters[i]
 		_trail[i] = move_toward(_trail[i], f.hp, 40.0 * delta)
@@ -92,119 +144,228 @@ static func _c(c: Color) -> Color:
 	return Color(minf(c.r, 1.0), minf(c.g, 1.0), minf(c.b, 1.0), c.a)
 
 
-func _text(c: Control, pos: Vector2, text: String, size: int, col: Color, width := -1.0, align := HORIZONTAL_ALIGNMENT_LEFT) -> void:
-	var f := ThemeDB.fallback_font
-	c.draw_string_outline(f, pos, text, align, width, size, 5, Color(0, 0, 0, 0.9))
-	c.draw_string(f, pos, text, align, width, size, _c(col))
-
-
 func paint(c: Control) -> void:
+	if _result != "" and _result_win:
+		LevelCompleteView.paint(c, _stats, _result_t)
+		return
 	for i in Coop.fighters.size():
 		_paint_player(c, Coop.fighters[i], i)
 	_paint_combo(c)
-	# revive hearts
-	_text(c, Vector2(540, 22), "REVIVES", 12, Color(1, 1, 1, 0.7), 200.0, HORIZONTAL_ALIGNMENT_CENTER)
-	for h in 3:
-		var col := Color(1.0, 0.3, 0.45) if h < Coop.revives_left else Color(0.25, 0.25, 0.3)
-		c.draw_circle(Vector2(600 + h * 20, 34), 6.0, col)
-	if objective != "":
-		_text(c, Vector2(240, 62), objective, 16, Color(1, 1, 1, 0.75), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-	# boss bar
-	for b in get_tree().get_nodes_in_group("boss"):
-		if b is Enemy and is_instance_valid(b):
-			var e := b as Enemy
-			var r := Rect2(390, 684, 500, 14)
-			c.draw_rect(Rect2(r.position - Vector2(3, 3), r.size + Vector2(6, 6)), Color(0, 0, 0, 0.6))
-			c.draw_rect(Rect2(r.position, Vector2(r.size.x * clampf(e.hp / e.max_hp, 0, 1), r.size.y)), Color(1.0, 0.25, 0.25))
-			_text(c, Vector2(390, 676), String(e.def["name"]).to_upper(), 15, Color(1, 0.7, 0.7))
+	_paint_lives(c)
+	_paint_boss(c)
 	if _go:
 		var a := 0.5 + 0.5 * sin(_go_t * 8.0)
-		_text(c, Vector2(1080, 380), "GO  >>", 46, Color(1, 0.9, 0.3, a), 200.0, HORIZONTAL_ALIGNMENT_CENTER)
+		c.draw_set_transform_matrix(UiKit.italic(Vector2(1180, 380), -0.04))
+		UiKit.txt(c, UiKit.head(), Vector2(-100, 0), "GO >>", 46, Color(UiKit.AMBER.r, UiKit.AMBER.g, UiKit.AMBER.b, a), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 5, Color(0, 0, 0, a))
+		c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	if _banner_t > 0.0:
 		var k := clampf(_banner_t / 1.6, 0.0, 1.0)
-		var sz := int(70 + 30 * pow(k, 6.0))
-		_text(c, Vector2(240, 300), _banner, sz, Color(_banner_col.r, _banner_col.g, _banner_col.b, minf(1.0, k * 3.0)), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
+		var sc := 1.0 + 0.45 * pow(k, 6.0)
+		var col := Color(_banner_col.r, _banner_col.g, _banner_col.b, minf(1.0, k * 3.0))
+		c.draw_set_transform_matrix(UiKit.italic(Vector2(640, 330), -0.03, sc))
+		for g in 3:
+			UiKit.txt(c, UiKit.head(), Vector2(-400, 0), _banner, 72, Color(col.r, col.g, col.b, col.a * 0.14), HORIZONTAL_ALIGNMENT_CENTER, 800.0, 8 + g * 8, Color(col.r, col.g, col.b, col.a * 0.07))
+		UiKit.txt(c, UiKit.head(), Vector2(-400, 0), _banner, 72, _c(col), HORIZONTAL_ALIGNMENT_CENTER, 800.0, 6, Color(0.05, 0.0, 0.1, col.a))
+		c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	if _result != "":
-		c.draw_rect(Rect2(0, 0, 1280, 720), Color(0, 0, 0, 0.6))
-		_text(c, Vector2(240, 300), _result, 84, Color(0.6, 1.0, 0.8) if _result_win else Color(1, 0.4, 0.4), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		_text(c, Vector2(240, 370), "Best combo %d" % maxi(Coop.best_combo, RunState.best_combo), 26, Color(1, 1, 1), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
-		var prompt := "A: continue" if _result_win else ("A: main menu   (run over)" if RunState.active else "A: try again     B: main menu")
-		_text(c, Vector2(240, 430), prompt, 22, Color(1, 1, 1, 0.85), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
+		_paint_game_over(c)
+
+
+# ------------------------------------------------------------------ players
+
+func _flame(c: Control, x: float, y: float, w: float, strength: float) -> void:
+	var n := int(w / 9.0)
+	for i in n:
+		var ph := _clock * 11.0 + float(i) * 1.9
+		var hgt := (14.0 + 16.0 * (0.5 + 0.5 * sin(ph)) + 8.0 * sin(ph * 2.3 + 1.0)) * strength
+		var fx := x + 4.0 + i * 9.0
+		c.draw_colored_polygon(PackedVector2Array([Vector2(fx - 5.5, y), Vector2(fx + sin(ph) * 2.0, y - hgt), Vector2(fx + 5.5, y)]), Color(2.2, 0.9, 0.2, 0.9))
+		c.draw_colored_polygon(PackedVector2Array([Vector2(fx - 2.5, y), Vector2(fx, y - hgt * 0.6), Vector2(fx + 2.5, y)]), Color(2.4, 2.0, 1.0, 0.95))
 
 
 func _paint_player(c: Control, f: Fighter, i: int) -> void:
-	var w := 292.0
-	var x0 := 14.0 if i == 0 else 1280.0 - 14.0 - w
-	var col := _c(f.figure.color)
-	var panel_h := 124.0 if show_moves else 60.0
-	c.draw_rect(Rect2(x0, 8, w, panel_h), Color(0, 0, 0, 0.5))
-	c.draw_rect(Rect2(x0, 8, w, panel_h), Color(col.r, col.g, col.b, 0.7), false, 2.0)
-	_text(c, Vector2(x0 + 8, 28), "P%d" % (i + 1), 20, col)
-	# hp
-	var bar := Rect2(x0 + 42, 14, 236, 14)
-	c.draw_rect(bar, Color(0.12, 0.05, 0.08))
-	c.draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(_trail[i] / f.max_hp, 0, 1), bar.size.y)), Color(1, 1, 1, 0.8))
-	var frac := clampf(f.hp / f.max_hp, 0.0, 1.0)
-	c.draw_rect(Rect2(bar.position, Vector2(bar.size.x * frac, bar.size.y)), Color(1.0, 0.25 + frac * 0.7, 0.25 + frac * 0.7))
-	_text(c, bar.position + Vector2(4, 12), "%d" % int(f.hp), 12, Color(1, 1, 1), 60.0)
-	# meter
-	var m := Rect2(x0 + 42, 32, 236, 7)
-	c.draw_rect(m, Color(0.1, 0.1, 0.05))
-	var mc := Color(1.0, 0.85, 0.2) if f.meter >= 50.0 else Color(0.7, 0.6, 0.2)
-	c.draw_rect(Rect2(m.position, Vector2(m.size.x * f.meter / 100.0, m.size.y)), mc)
-	c.draw_line(m.position + Vector2(m.size.x * 0.5, -1), m.position + Vector2(m.size.x * 0.5, 8), Color(1, 1, 1, 0.6), 1.0)
-	# buffs
-	var bx := x0 + 8.0
-	var by := 128.0 if show_moves else 56.0
+	var flip := i == 1
+	var col := UiKit.player_color(i)
+	var hp := clampf(f.hp / f.max_hp, 0.0, 1.0)
+	var trail := clampf(_trail[i] / f.max_hp, 0.0, 1.0)
+	var meter := clampf(f.meter / 100.0, 0.0, 1.0)
+	var x0 := 24.0
+	var y0 := 18.0
+	var cx := 1280.0 - (x0 + 38.0) if flip else x0 + 38.0
+	var cy := y0 + 38.0
+	var mx := Transform2D(Vector2(-1, 0), Vector2(0, 1), Vector2(1280, 0)) if flip else Transform2D.IDENTITY
+	c.draw_set_transform_matrix(mx)
+	var hx := x0 + 62.0
+	var hy := y0 + 10.0
+	var frame := PackedVector2Array([
+		Vector2(hx, hy + 6), Vector2(hx + 34, hy + 6), Vector2(hx + 44, hy), Vector2(hx + 290, hy), Vector2(hx + 300, hy + 6),
+		Vector2(hx + 386, hy + 6), Vector2(hx + 386, hy + 34), Vector2(hx + 364, hy + 56), Vector2(hx + 60, hy + 56),
+		Vector2(hx + 48, hy + 50), Vector2(hx, hy + 50)])
+	c.draw_colored_polygon(frame, Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.8))
+	UiKit.poly_line(c, frame, col, 3.0)
+	# 10 HP blocks
+	for b in 10:
+		var r := Rect2(hx + 22.0 + b * 35.0, hy + 15.0, 29.0, 26.0)
+		var t0 := float(b) / 10.0
+		var t1 := float(b + 1) / 10.0
+		if hp >= t1:
+			c.draw_rect(r, col)
+		elif hp > t0:
+			c.draw_rect(Rect2(r.position, Vector2(r.size.x * (hp - t0) * 10.0, r.size.y)), col)
+			c.draw_rect(r, Color(col.r, col.g, col.b, 0.3), false, 2.0)
+		elif trail > t0:
+			c.draw_rect(r, Color(0.95, 0.4, 0.25, 0.85) if trail >= t1 else Color(0.95, 0.4, 0.25, 0.5))
+		else:
+			c.draw_rect(r, Color(col.r, col.g, col.b, 0.22), false, 2.0)
+	# super meter: calm below the usable mark, gold + soft pulse when usable, burning when full
+	var mxp := hx + 14.0
+	var myp := hy + 66.0
+	var mw := 372.0
+	var mh := 22.0
+	var full := meter >= 0.999
+	var usable := meter >= METER_USABLE
+	var pulse := 0.5 + 0.5 * sin(_clock * (9.0 if full else 3.4))
+	var mframe := PackedVector2Array([Vector2(mxp, myp), Vector2(mxp + mw - 18.0, myp), Vector2(mxp + mw, myp + mh), Vector2(mxp + 14.0, myp + mh)])
+	if usable:
+		var ha := (0.10 + 0.16 * pulse) if not full else (0.22 + 0.28 * pulse)
+		UiKit.glow_poly(c, mframe, Color(2.0, 1.4, 0.5), ha * 1.6)
+	c.draw_colored_polygon(mframe, Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.85))
+	if meter > 0.01:
+		var fw := (mw - 22.0) * meter
+		var fill_poly := PackedVector2Array([Vector2(mxp + 2.0, myp + 2.0), Vector2(mxp + 2.0 + fw, myp + 2.0), Vector2(mxp + 2.0 + fw + 12.0, myp + mh - 2.0), Vector2(mxp + 14.0, myp + mh - 2.0)])
+		var fc := Color(0.85, 0.85, 1.0)
+		if usable:
+			fc = Color(1.6, 1.4, 0.8).lerp(Color(2.2, 1.7, 0.7), pulse) if not full else Color(2.4, 1.6, 0.5).lerp(Color(2.6, 2.4, 1.4), pulse)
+		c.draw_colored_polygon(fill_poly, fc)
+	for q in [0.5]:
+		var qx: float = mxp + 2.0 + (mw - 22.0) * q + 7.0
+		c.draw_line(Vector2(qx, myp + 2.0), Vector2(qx, myp + mh - 2.0), Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.9), 3.0)
+	UiKit.poly_line(c, mframe, Color(2.0, 1.6, 0.8) if usable else Color(1.0, 0.95, 0.8), 2.5)
+	if full:
+		_flame(c, mxp + 16.0, myp + 1.0, mw - 40.0, 0.7 + 0.3 * pulse)
+	c.draw_set_transform_matrix(Transform2D.IDENTITY)
+	# ring: HP number and player tag
+	var rc := Vector2(cx, cy)
+	c.draw_circle(rc, 36.0, Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.9))
+	c.draw_arc(rc, 36.0, 0.0, TAU, 40, col, 3.5, true)
+	c.draw_arc(rc, 29.0, 0.0, TAU, 40, Color(col.r, col.g, col.b, 0.25), 2.0, true)
+	UiKit.txt(c, UiKit.body(), Vector2(cx - 30, cy + 9), "%d" % int(ceil(f.hp)), 28, UiKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER, 60.0)
+	UiKit.txt(c, UiKit.head(), Vector2(cx - 30, cy - 12), "P%d" % (i + 1), 10, col, HORIZONTAL_ALIGNMENT_CENTER, 60.0)
+	if full:
+		var bcx := 1280.0 - (mxp + mw * 0.5) if flip else mxp + mw * 0.5
+		UiKit.txt(c, UiKit.head(), Vector2(bcx - 100.0, myp + 16.0), "SUPER READY", 12, Color(0.12, 0.04, 0.02), HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+	# buffs under the meter
+	var side := -1.0 if flip else 1.0
+	var bx := 1280.0 - hx - 14.0 if flip else hx + 14.0
+	var by := myp + mh + 18.0
 	for b in f.buffs:
-		_text(c, Vector2(bx, by), String(b).to_upper(), 10, Color(1, 0.9, 0.5))
-		bx += 46.0
+		var tx := bx - (46.0 if flip else 0.0)
+		UiKit.txt(c, UiKit.body(), Vector2(tx, by), String(b).to_upper(), 13, UiKit.AMBER, HORIZONTAL_ALIGNMENT_LEFT, 46.0, 3)
+		bx += 50.0 * side
 	if f.shield_hits > 0:
-		_text(c, Vector2(bx, by), "SHIELD %d" % f.shield_hits, 10, Color(0.6, 0.9, 1.0))
-	if not show_moves:
-		return
-	# loadout grid (Testing Options toggle)
-	var gx := x0 + 20.0
-	var gy := 52.0
+		UiKit.txt(c, UiKit.body(), Vector2(bx - (80.0 if flip else 0.0), by), "SHIELD %d" % f.shield_hits, 13, Color(0.6, 0.9, 1.0), HORIZONTAL_ALIGNMENT_LEFT, 80.0, 3)
+	if show_moves:
+		_paint_moves(c, f, i, 140.0)
+
+
+func _paint_moves(c: Control, f: Fighter, i: int, gy: float) -> void:
+	var col := UiKit.player_color(i)
+	var w := 292.0
+	var x0 := 24.0 if i == 0 else 1280.0 - 24.0 - w
+	c.draw_rect(Rect2(x0 - 6, gy - 16, w + 12, 96), Color(0, 0, 0, 0.5))
 	var heads := ["-", "UP", "SIDE", "DOWN"]
-	for ci in 4:
-		_text(c, Vector2(gx + ci * 62.0, gy - 3), heads[ci], 9, Color(1, 1, 1, 0.55), 62.0, HORIZONTAL_ALIGNMENT_CENTER)
 	var names := ["X", "Y", "B"]
 	var sufs := ["", "_UP", "_SIDE", "_DOWN"]
+	for ci in 4:
+		UiKit.txt(c, UiKit.body(), Vector2(x0 + 18 + ci * 62.0, gy - 3), heads[ci], 11, Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER, 62.0)
 	for r in 3:
-		_text(c, Vector2(x0 + 6, gy + 15 + r * 23), names[r], 13, col)
+		UiKit.txt(c, UiKit.body(), Vector2(x0, gy + 15 + r * 23), names[r], 15, col)
 		for ci in 4:
 			var slot: String = names[r] + sufs[ci]
 			var id: String = f.loadout.get(slot, "")
-			var rect := Rect2(gx + ci * 62.0, gy + r * 23, 60, 21)
+			var rect := Rect2(x0 + 18 + ci * 62.0, gy + r * 23 - 2, 60, 21)
 			var active := f.attack != null and f.attack.active and f.attack.move.id.rstrip("0123456789") == id and id != ""
 			c.draw_rect(rect, Color(col.r, col.g, col.b, 0.55) if active else Color(1, 1, 1, 0.07))
 			if id != "":
-				var mv := MoveDB.get_move(id)
-				_text(c, rect.position + Vector2(0, 14), mv.short, 10, Color(1, 1, 1), 60.0, HORIZONTAL_ALIGNMENT_CENTER)
+				UiKit.txt(c, UiKit.body(), rect.position + Vector2(0, 15), MoveDB.get_move(id).short, 12, Color(1, 1, 1), HORIZONTAL_ALIGNMENT_CENTER, 60.0)
 			else:
 				c.draw_rect(rect, Color(1, 1, 1, 0.1), false, 1.0)
 
 
+# ------------------------------------------------------------------ shared: combo, lives, boss
+
 func _paint_combo(c: Control) -> void:
 	var n := Coop.combo
 	if n >= 2:
-		var pulse := 1.0 + 0.25 * _combo_pulse
-		var sz := int((40 + minf(n, 30)) * pulse)
-		_text(c, Vector2(440, 100), "%d HITS" % n, sz, Color(1, 1, 1), 400.0, HORIZONTAL_ALIGNMENT_CENTER)
-		var mult := Coop.combo_mult()
-		var sub := "x%.2f DMG" % mult
+		var tier := n / 5
+		var age := _combo_age
+		var spring := 1.0 + 0.26 * exp(-9.0 * age) * cos(24.0 * age)
+		var base := 0.92 + 0.045 * minf(float(tier), 4.0)  # capped: the combo must not cover the screen
+		var tilt: float = TILTS[tier % TILTS.size()] + 0.09 * exp(-6.0 * age) * sin(30.0 * age)
+		var shake := Vector2.ZERO
+		if age < 0.25:
+			shake = Vector2(sin(_clock * 90.0), cos(_clock * 77.0)) * 5.0 * (1.0 - age / 0.25)
+		var heat := clampf(float(tier) / 5.0, 0.0, 1.0)
+		var glow_c := UiKit.GLOW_PINK.lerp(Color(2.4, 1.6, 0.6), heat)
+		var plate_c := UiKit.PINK.lerp(Color(1.0, 0.72, 0.3), heat)
+		var s := base * spring
+		if n % 5 == 0 and age < 0.5:
+			var rr := 50.0 + 150.0 * (age / 0.5)
+			c.draw_arc(Vector2(640, 134), rr, 0.0, TAU, 48, Color(glow_c.r, glow_c.g, glow_c.b, 0.7 * (1.0 - age / 0.5)), 4.0, true)
+		c.draw_set_transform_matrix(UiKit.italic(Vector2(640, 152) + shake, tilt, s, -0.28))
+		var slash := PackedVector2Array([Vector2(-96, 12), Vector2(-74, -52), Vector2(96, -52), Vector2(74, 12)])
+		var ga := 0.14 + 0.05 * float(tier) + 0.3 * exp(-6.0 * age)
+		UiKit.glow_poly(c, slash, glow_c, ga)
+		c.draw_colored_polygon(slash, Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.85))
+		UiKit.poly_line(c, slash, plate_c, 2.5)
+		var label := "x%d" % n
+		for k in 3:
+			UiKit.txt(c, UiKit.head(), Vector2(-100, 0), label, 64, Color(glow_c.r, glow_c.g, glow_c.b, ga * 0.7), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 8 + k * 8, Color(glow_c.r, glow_c.g, glow_c.b, ga * 0.4))
+		var numc := Color(0.97, 0.97, 1.0).lerp(Color(2.2, 2.0, 1.4), heat * 0.7)
+		UiKit.txt(c, UiKit.head(), Vector2(-100, 0), label, 64, numc, HORIZONTAL_ALIGNMENT_CENTER, 200.0, 4, Color(0.05, 0.0, 0.1))
+		var sub := "TEAM COMBO"
 		if Coop.relay > 0:
-			sub += "   RELAY x%d" % Coop.relay
-		_text(c, Vector2(440, 124), sub, 18, Color(1.0, 0.9, 0.4) if Coop.relay > 0 else Color(1, 1, 1, 0.8), 400.0, HORIZONTAL_ALIGNMENT_CENTER)
-		# who contributed
+			sub += "  ·  %d RELAYS" % Coop.relay
+		UiKit.txt(c, UiKit.body(), Vector2(-100, 36), sub, 17, plate_c, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		# who contributed + time left
 		var total := float(maxi(Coop.hits_by[0] + Coop.hits_by[1], 1))
-		var bw := 260.0
-		var bx := 640.0 - bw * 0.5
-		var w1 := bw * Coop.hits_by[0] / total
-		c.draw_rect(Rect2(bx, 134, w1, 7), _c(Fighter.PLAYER_COLORS[0]))
-		c.draw_rect(Rect2(bx + w1, 134, bw - w1, 7), _c(Fighter.PLAYER_COLORS[1]))
-		# time left
-		c.draw_rect(Rect2(bx, 143, bw * clampf(Coop.combo_t / 1.7, 0.0, 1.0), 2), Color(1, 1, 1, 0.7))
+		var w1 := 160.0 * Coop.hits_by[0] / total
+		c.draw_rect(Rect2(-80, 44, w1, 5), UiKit.P1)
+		c.draw_rect(Rect2(-80 + w1, 44, 160.0 - w1, 5), UiKit.P2)
+		c.draw_rect(Rect2(-80, 51, 160.0 * clampf(Coop.combo_t / 1.7, 0.0, 1.0), 2), Color(1, 1, 1, 0.7))
+		c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	if _combo_end_t > 0.0:
-		_text(c, Vector2(340, 100), _combo_end, 30, Color(1, 0.9, 0.4, minf(1.0, _combo_end_t)), 600.0, HORIZONTAL_ALIGNMENT_CENTER)
+		UiKit.txt(c, UiKit.head(), Vector2(340, 250), _combo_end, 24, Color(UiKit.AMBER.r, UiKit.AMBER.g, UiKit.AMBER.b, minf(1.0, _combo_end_t)), HORIZONTAL_ALIGNMENT_CENTER, 600.0, 5, Color(0, 0, 0, 0.8))
+
+
+func _paint_lives(c: Control) -> void:
+	UiKit.txt(c, UiKit.body(), Vector2(540, 24), "LIVES", 14, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_CENTER, 200.0, 3)
+	var n := Coop.revives_max
+	var x0 := 640.0 - (n - 1) * 15.0
+	for h in n:
+		UiKit.head_icon(c, Vector2(x0 + h * 30.0, 44), 9.0, UiKit.TEXT, h < Coop.revives_left)
+
+
+func _paint_boss(c: Control) -> void:
+	for b in get_tree().get_nodes_in_group("boss"):
+		if b is Enemy and is_instance_valid(b):
+			var e := b as Enemy
+			var r := Rect2(390, 676, 500, 22)
+			c.draw_colored_polygon(UiKit.chamfer(r, 8.0), Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.85))
+			var fr := Rect2(r.position + Vector2(3, 3), Vector2((r.size.x - 6.0) * clampf(e.hp / e.max_hp, 0.0, 1.0), r.size.y - 6.0))
+			c.draw_rect(fr, Color(1.0, 0.25, 0.25))
+			UiKit.poly_line(c, UiKit.chamfer(r, 8.0), Color(1.0, 0.45, 0.45), 2.5)
+			UiKit.txt(c, UiKit.head(), Vector2(390, 666), String(e.def["name"]).to_upper(), 14, Color(1, 0.7, 0.7), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 3)
+
+
+func _paint_game_over(c: Control) -> void:
+	c.draw_rect(Rect2(0, 0, 1280, 720), Color(0, 0, 0, 0.6))
+	c.draw_set_transform_matrix(UiKit.italic(Vector2(640, 300), -0.03))
+	var col := Color(1.0, 0.4, 0.4)
+	for g in 3:
+		UiKit.txt(c, UiKit.head(), Vector2(-400, 0), _result, 72, Color(col.r, col.g, col.b, 0.14), HORIZONTAL_ALIGNMENT_CENTER, 800.0, 8 + g * 8, Color(col.r, col.g, col.b, 0.07))
+	UiKit.txt(c, UiKit.head(), Vector2(-400, 0), _result, 72, col, HORIZONTAL_ALIGNMENT_CENTER, 800.0, 6, Color(0.05, 0.0, 0.1))
+	c.draw_set_transform_matrix(Transform2D.IDENTITY)
+	UiKit.txt(c, UiKit.body(), Vector2(240, 360), "Best combo %d" % maxi(Coop.best_combo, RunState.best_combo), 26, UiKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER, 800.0, 4)
+	var prompt := "A  MAIN MENU   (RUN OVER)" if RunState.active else "A  TRY AGAIN      B  MAIN MENU"
+	UiKit.txt(c, UiKit.head(), Vector2(240, 430), prompt, 20, Color(1, 1, 1, 0.5 + 0.5 * sin(_result_t * 5.0)), HORIZONTAL_ALIGNMENT_CENTER, 800.0, 4)

@@ -4,9 +4,9 @@ extends Control
 
 const COLORS := {
 	"fight": Color(0.9, 0.9, 0.95), "elite": Color(1.0, 0.45, 0.2), "treasure": Color(1.0, 0.85, 0.3),
-	"rest": Color(1.0, 0.75, 0.85), "mystery": Color(0.75, 0.6, 1.0), "boss": Color(1.0, 0.2, 0.2),
+	"rest": Color(1.0, 0.75, 0.85), "mystery": Color(0.75, 0.6, 1.0), "boss": Color(1.0, 0.2, 0.2), "shop": Color(1.0, 0.72, 0.25),
 }
-const GLYPHS := {"fight": "X", "elite": "E", "treasure": "$", "rest": "+", "mystery": "?", "boss": "B"}
+const GLYPHS := {"fight": "X", "elite": "E", "treasure": "$", "rest": "+", "mystery": "?", "boss": "B", "shop": "S"}
 const DESCS := {
 	"fight": "A standard street fight. Reward: a new move or a level-up.",
 	"elite": "Tougher enemies. Reward: a new move AND a level-up.",
@@ -14,6 +14,7 @@ const DESCS := {
 	"rest": "Recover 60% health, then choose a level-up.",
 	"mystery": "Could be anything...",
 	"boss": "The Big Boss. Defeat him to clear the Streets.",
+	"shop": "Spend your shared coins on moves, upgrades and extra lives.",
 }
 
 var _sel := 0
@@ -66,6 +67,8 @@ func _enter(node: Dictionary) -> void:
 	if t == "rest":
 		RunState.rest_here()
 		get_tree().change_scene_to_file("res://scenes/reward.tscn")
+	elif t == "shop":
+		get_tree().change_scene_to_file("res://scenes/shop.tscn")
 	else:
 		get_tree().change_scene_to_file("res://scenes/streets.tscn")
 
