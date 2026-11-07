@@ -36,6 +36,13 @@ var limb_scale := 1.0
 var head_scale := 1.0
 var fill_torso := false
 var square_head := false
+## cosmetic eyes (players only): aim is the wanted look direction in figure-local space
+var eyes := false
+var aim := Vector2.ZERO
+var squint := 0.0  ## 0..1, set by the owner (e.g. on hit)
+var _eye_off := Vector2.ZERO
+var _blink_t := 2.0
+var _blink := 0.0
 
 var pose: Dictionary = NEUTRAL.duplicate()
 var target: Dictionary = NEUTRAL.duplicate()
@@ -65,6 +72,13 @@ func set_target(t: Dictionary, snap := false) -> void:
 
 
 func _process(delta: float) -> void:
+	if eyes:
+		_eye_off = _eye_off.lerp(aim, 1.0 - exp(-12.0 * delta))
+		_blink_t -= delta
+		if _blink_t <= 0.0:
+			_blink = 0.12
+			_blink_t = randf_range(2.0, 5.0)
+		_blink = maxf(0.0, _blink - delta)
 	if not frozen:
 		var dt := minf(delta, 1.0 / 30.0)
 		var w := follow_speed
@@ -217,10 +231,32 @@ func _render(halo: bool) -> void:
 		else:
 			draw_circle(head_c, hr - 1.0, Color(0.03, 0.02, 0.08))
 			draw_arc(head_c, hr, 0.0, TAU, 28, col_f, 3.5, true)
-			draw_circle(head_c + Vector2(5.0, -1.0).rotated(head_ang), 2.0, col_f)
+			if eyes:
+				_draw_eyes(head_c, hr, head_ang)
+			else:
+				draw_circle(head_c + Vector2(5.0, -1.0).rotated(head_ang), 2.0, col_f)
 		_accessory(head_c, col_f, hr)
 	# front arm
 	_limb(shoulder, arm_f_a, arm_f_b, 5.0 * ls, col_f, halo, float(p["fist_f"]))
+
+
+## Black half-circle eyes (flat side up, slight inward tilt = "cool, not angry"). They slide towards
+## the aim vector, clamped inside the head, close on a blink and flatten when squinting.
+func _draw_eyes(h: Vector2, hr: float, ang: float) -> void:
+	var off := _eye_off.limit_length(1.0) * hr * 0.28
+	var open := 0.12 if _blink > 0.0 else lerpf(1.0, 0.35, squint)
+	var r := hr * 0.2
+	for sx: float in [-1.0, 1.0]:
+		var c := Vector2(hr * 0.1 + sx * hr * 0.32, -hr * 0.05) + off
+		var tilt: float = -sx * 0.18
+		var pts := PackedVector2Array()
+		for i in range(9):
+			var a := PI * float(i) / 8.0  # lower half-circle, flat side on top
+			pts.append(Vector2(cos(a) * r, sin(a) * r * open).rotated(tilt))
+		var poly := PackedVector2Array()
+		for q in pts:
+			poly.append(h + (c + q).rotated(ang))
+		draw_colored_polygon(poly, Color(0, 0, 0, 1))
 
 
 func _accessory(h: Vector2, c: Color, hr: float) -> void:

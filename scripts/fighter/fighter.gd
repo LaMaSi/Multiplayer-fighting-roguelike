@@ -62,6 +62,7 @@ func _ready() -> void:
 	figure.color = PLAYER_COLORS[player_index % PLAYER_COLORS.size()]
 	figure.arm_scale = 1.22
 	figure.leg_scale = 1.2
+	figure.eyes = true
 	input = Inp.players[player_index]
 	spawn_point = global_position
 	loadout = MoveDB.STARTER.duplicate()
@@ -597,6 +598,10 @@ func _loco_pose() -> Dictionary:
 
 func _update_visuals(delta: float) -> void:
 	super._update_visuals(delta)
+	# eyes follow the stick (falling back to the facing direction); figure space is flipped by facing
+	var aim_w := input.dir if input.dir.length() > 0.2 else Vector2(facing, 0)
+	figure.aim = Vector2(aim_w.x * facing, aim_w.y)
+	figure.squint = 1.0 if (state == "hurt" or state == "launched") else 0.0
 	if held != null and is_instance_valid(held):
 		held.global_position = global_position + Vector2(facing * 4.0, -body_h - 22.0)
 	queue_redraw()
