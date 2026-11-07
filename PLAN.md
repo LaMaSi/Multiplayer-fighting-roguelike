@@ -152,7 +152,7 @@ tests/      headless smoke tests (run with godot --headless -s)
 ## 9. Milestones (each one is playable and committed separately)
 
 0. **Before M0**: **Git is not installed on this PC** (checked). The user wants a local repo with a commit per milestone, so first install Git for Windows (https://git-scm.com/download/win, or `winget install Git.Git`), then `git init` and commit this plan. Godot 4.5.1 console already verified to run headless on this project (it only reports "no main scene", as expected for an empty project).
-1. **M0 Skeleton**: project setup, input abstraction (2 pads + keyboard), one stickfigure per player with walk/jump on a test level with floor and one-way platforms, player-player body blocking, debug overlay.
+1. **M0 Skeleton** *(DONE, awaiting playtest)*: project setup, input abstraction (2 pads + keyboard), one stickfigure per player with walk/jump on a test level with floor and one-way platforms, player-player body blocking, debug overlay.
 2. **M1 Combat core**: skeleton poses, `MoveData`, the 5 starter moves, hit/hurt boxes, hit-stop/shake/flash, dummy enemy, first procedural SFX. **Stop and tune feel with the user before moving on**: this milestone decides if the game feels juicy.
 3. **M2 Co-op core**: shared camera, shared combo counter, juggle relay, revive, friendly-fire (damage + toggle), first team-up moves (Ally Toss, alley-oop spike) and the loadout-synergy hooks (buff-the-partner moves).
 4. **M3 Enemies and Streets**: 4 enemy types + boss, token AI, containers + pickups, a full Streets level with parallax.

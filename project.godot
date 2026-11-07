@@ -11,5 +11,30 @@ config_version=5
 [application]
 
 config/name="fighting rougelike"
+run/main_scene="res://scenes/test_level.tscn"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+Inp="*res://autoload/inp.gd"
+Dbg="*res://autoload/dbg.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[layer_names]
+
+2d_physics/layer_1="ground"
+2d_physics/layer_2="platforms"
+2d_physics/layer_3="players"
+2d_physics/layer_4="enemies"
+2d_physics/layer_5="props"
+
+[rendering]
+
+environment/defaults/default_clear_color=Color(0.03, 0.02, 0.07, 1)
+viewport/hdr_2d=true
