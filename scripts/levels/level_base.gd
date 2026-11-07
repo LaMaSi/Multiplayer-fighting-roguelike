@@ -341,7 +341,10 @@ func _paint_sky(c: CanvasItem) -> void:
 func _paint_ground(c: CanvasItem) -> void:
 	var ng: Color = theme["neon_ground"]
 	c.draw_rect(Rect2(-2500, ground_y, level_w + 5000, 700), theme["ground"])
-	c.draw_line(Vector2(-2500, ground_y), Vector2(level_w + 2500, ground_y), ng, 3.0, true)
+	# lit strip: a bright edge line with a soft glow fading down into the floor
+	for i in 7:
+		c.draw_rect(Rect2(-2500, ground_y + i * 3.0, level_w + 5000, 3.0), Color(ng.r, ng.g, ng.b, 0.30 * (1.0 - i / 7.0)))
+	c.draw_line(Vector2(-2500, ground_y), Vector2(level_w + 2500, ground_y), ng, 4.0, true)
 	var gx := -2500.0
 	while gx < level_w + 2500.0:
 		c.draw_line(Vector2(gx, ground_y), Vector2(gx - 40, ground_y + 200), Color(ng.r, ng.g, ng.b, 0.12), 1.5)
@@ -359,5 +362,7 @@ func _paint_ground(c: CanvasItem) -> void:
 	var np: Color = theme["neon_plat"]
 	for r: Rect2 in platforms:
 		c.draw_rect(r, Color(0.08, 0.03, 0.14))
-		c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, 3.5, true)
+		for i in 4:
+			c.draw_rect(Rect2(r.position.x, r.position.y + i * 3.0, r.size.x, 3.0), Color(np.r, np.g, np.b, 0.25 * (1.0 - i / 4.0)))
+		c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, 4.0, true)
 		c.draw_line(Vector2(r.position.x, r.end.y), r.end, Color(np.r, np.g, np.b, 0.3), 2.0, true)

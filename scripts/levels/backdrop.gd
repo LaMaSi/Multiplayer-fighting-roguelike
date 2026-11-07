@@ -33,6 +33,13 @@ var cam: Camera2D
 var _layers: Array[SkyLayer] = []
 
 
+## Desaturate towards grey (sat 1 = unchanged, 0 = grey) and scale brightness: anything bright in the
+## foreground then reads as gameplay.
+static func _mute(c: Color, k: float, sat: float) -> Color:
+	var g := (c.r + c.g + c.b) / 3.0
+	return Color(lerpf(g, c.r, sat) * k, lerpf(g, c.g, sat) * k, lerpf(g, c.b, sat) * k, c.a)
+
+
 func setup(theme: Dictionary, level_w: float, ground_y: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(theme.get("seed", 3))
@@ -44,9 +51,10 @@ func setup(theme: Dictionary, level_w: float, ground_y: float) -> void:
 	for s in specs:
 		var l := SkyLayer.new()
 		l.factor = s["f"]
-		l.fill = s["fill"]
-		l.edge = s["edge"]
-		l.win = theme["window"]
+		l.fill = _mute(s["fill"], 0.75, 0.7)
+		l.edge = _mute(s["edge"], 0.34, 0.5)  # below the bloom threshold, so the skyline never glows
+		l.win = _mute(theme["window"], 0.36, 0.45)
+		l.modulate.a = {0.25: 0.6, 0.5: 0.76, 0.78: 0.9}.get(s["f"], 0.8)  # atmospheric haze: far layers fade into the sky
 		l.windows = s["win"]
 		l.ground_y = ground_y
 		l.z_index = -50
