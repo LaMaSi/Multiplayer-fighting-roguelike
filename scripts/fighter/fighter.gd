@@ -13,6 +13,8 @@ const COYOTE := 0.09
 const JUMP_BUFFER := 0.12
 const DROP_MAX_TIME := 0.6
 const TURN_DELAY := 4
+const SPRINT_MULT := 1.5
+const SPRINT_TAP_WINDOW := 0.3  ## flick the stick the same way twice within this to start a sprint
 ## Reserved: cyan and lime appear nowhere else in the game (enemies are red/orange/amber/crimson).
 const PLAYER_COLORS := [Color(0.15, 1.0, 1.28), Color(0.55, 1.28, 0.15)]
 
@@ -98,7 +100,7 @@ func _ready() -> void:
 
 
 func get_run_speed() -> float:
-	return RUN_SPEED * class_speed * (1.3 if has_buff("speed") else 1.0) * (0.75 if held != null else 1.0) * crowd_mult()
+	return RUN_SPEED * (SPRINT_MULT if _sprint != 0 else 1.0) * class_speed * (1.3 if has_buff("speed") else 1.0) * (0.75 if held != null else 1.0) * crowd_mult()
 
 
 ## Weapon class: stats, weapon visual and base pose. "" = legacy (no class, plain fists).
@@ -178,7 +180,40 @@ func _control(delta: float) -> void:
 			_locomotion(delta)
 
 
+var _sprint := 0  ## 0 or the direction (-1/1) of a running sprint
+var _tap_dir := 0
+var _tap_t := 9.0
+var _stick_active := false
+
+
+## Flick the stick one way, let go, flick it again quickly: sprint until you let go or turn around.
+func _update_sprint(delta: float, on_floor: bool) -> void:
+	var raw := input.dir.x
+	_tap_t += delta
+	var active := absf(raw) > 0.6
+	var neutral := absf(raw) < 0.25
+	if active and not _stick_active:
+		var s := 1 if raw > 0.0 else -1
+		if _tap_dir == s and _tap_t <= SPRINT_TAP_WINDOW and on_floor:
+			_sprint = s
+		_stick_active = true
+	elif neutral and _stick_active:
+		_stick_active = false
+		_tap_dir = _last_raw_sign
+		_tap_t = 0.0
+		_sprint = 0
+	if _sprint != 0 and (neutral or signf(raw) != float(_sprint) or state == "attack" or held != null):
+		_sprint = 0
+	if absf(raw) > 0.25:
+		_last_raw_sign = 1 if raw > 0.0 else -1
+
+
+var _last_raw_sign := 1
+
+
 func _locomotion(delta: float) -> void:
+	var sprint_floor := is_on_floor()
+	_update_sprint(delta, sprint_floor)
 	var on_floor := is_on_floor() and _fling_grace <= 0.0  # right after a fling the stale floor flag must not cancel the launch
 	_ledge_cd = maxf(0.0, _ledge_cd - delta)
 	if not on_floor and _ledge_cd <= 0.0 and velocity.y > -120.0 and held == null and _try_ledge():

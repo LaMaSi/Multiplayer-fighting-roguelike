@@ -21,6 +21,7 @@ var relay := 0
 var combo_t := 0.0
 var hits_by: Array[int] = [0, 0]
 var best_combo := 0
+var _last_scorer := -1  ## player whose hit last raised the counter (the counter only rises on a hand-off)
 
 var revives_left := 3
 var revives_max := 3
@@ -54,6 +55,7 @@ func reset_run() -> void:
 	combo_t = 0.0
 	hits_by = [0, 0]
 	best_combo = 0
+	_last_scorer = -1
 	revives_max = 3 + (RunState.bonus_revives if RunState.active else 0)
 	revives_left = revives_max
 	stat_damage = 0.0
@@ -85,20 +87,21 @@ func _process(delta: float) -> void:
 			combo = 0
 			relay = 0
 			hits_by = [0, 0]
+			_last_scorer = -1
 			_pay_combo(c, r)
 			combo_ended.emit(c, r)
 			combo_changed.emit()
 
 
-## Damage multiplier of the running combo: +4 % per hit (up to 30 hits) and +25 % per relay (up to 4). Long team combos
+## Damage multiplier of the running combo: +8 % per team hand-off (up to 15) and +25 % per relay (up to 4). Long team combos
 ## are what kills the tanky enemies quickly.
 func combo_mult() -> float:
-	return 1.0 + 0.25 * minf(relay, 4) + 0.04 * minf(combo, 30)
+	return 1.0 + 0.25 * minf(relay, 4) + 0.08 * minf(combo, 15)
 
 
 ## Coins for a finished combo (paid into the shared wallet once its timer runs out).
 func combo_coins(count: int, relays: int) -> int:
-	return int(maxf(0.0, count - 8.0) * 0.75) + relays * 3
+	return int(maxf(0.0, count - 4.0) * 2.0) + relays * 3
 
 
 func _pay_combo(count: int, relays: int) -> void:
@@ -131,9 +134,7 @@ func post_hit(info: HitInfo, victim: Actor, dmg: float) -> void:
 	if info.no_combo or info.friendly or not (info.attacker is Fighter) or victim.team != "enemy":
 		return
 	var atk := info.attacker as Fighter
-	combo += 1
-	combo_t = COMBO_WINDOW
-	best_combo = maxi(best_combo, combo)
+	_count_hit(atk.player_index)
 	hits_by[atk.player_index] += 1
 	last_hit_pos = victim.global_position
 	atk.meter = minf(100.0, atk.meter + dmg * 0.7)
@@ -149,9 +150,7 @@ func post_hit(info: HitInfo, victim: Actor, dmg: float) -> void:
 ## Extra damage that should still feed the combo (wall bounce, pinball ...).
 func bonus_hit(attacker: Actor, victim: Actor, _dmg: float) -> void:
 	if attacker is Fighter and victim.team == "enemy":
-		combo += 1
-		combo_t = COMBO_WINDOW
-		best_combo = maxi(best_combo, combo)
+		_count_hit((attacker as Fighter).player_index)
 		hits_by[(attacker as Fighter).player_index] += 1
 		combo_changed.emit()
 
@@ -186,3 +185,13 @@ func check_game_over() -> void:
 			return
 	is_over = true
 	game_over.emit()
+
+
+## The counter is a TEAM counter: the first hit starts it, after that it only rises when a different player than the
+## last scorer lands a hit. Solo hits (fireball spam) just keep the window alive.
+func _count_hit(player: int) -> void:
+	combo_t = COMBO_WINDOW
+	if combo == 0 or player != _last_scorer:
+		combo += 1
+		_last_scorer = player
+		best_combo = maxi(best_combo, combo)

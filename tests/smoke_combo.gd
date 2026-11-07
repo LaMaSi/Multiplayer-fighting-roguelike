@@ -19,21 +19,31 @@ func _ready() -> void:
 	Coop.combo = 0
 	Coop.relay = 0
 	check("no combo: x1.0", is_equal_approx(Coop.combo_mult(), 1.0))
-	Coop.combo = 30
-	check("30-hit combo: x2.2", is_equal_approx(Coop.combo_mult(), 2.2))
+	Coop.combo = 15
+	check("15-hand-off combo: x2.2", is_equal_approx(Coop.combo_mult(), 2.2))
 	Coop.relay = 4
-	check("30 hits + 4 relays: x3.2", is_equal_approx(Coop.combo_mult(), 3.2))
+	check("15 hand-offs + 4 relays: x3.2", is_equal_approx(Coop.combo_mult(), 3.2))
 	Coop.combo = 0
 	Coop.relay = 0
-	check("short combo pays nothing", Coop.combo_coins(8, 0) == 0)
-	check("20-hit combo with 2 relays pays coins", Coop.combo_coins(20, 2) == 15)
+	check("short combo pays nothing", Coop.combo_coins(4, 0) == 0)
+	check("20-hit combo with 2 relays pays coins", Coop.combo_coins(10, 2) == 18)
 	# the combo ends -> coins
 	var before := RunState.coins
-	Coop.combo = 20
+	Coop.combo = 10
 	Coop.relay = 2
 	Coop.combo_t = 0.01
 	await frames(5)
-	check("coins are paid when the combo ends (+%d)" % (RunState.coins - before), RunState.coins - before == 15)
+	check("coins are paid when the combo ends (+%d)" % (RunState.coins - before), RunState.coins - before == 18)
+	# team counter
+	Coop.combo = 0
+	Coop._count_hit(0)
+	Coop._count_hit(0)
+	Coop._count_hit(0)
+	check("solo hits do not raise the counter", Coop.combo == 1)
+	Coop._count_hit(1)
+	check("a hit by the partner does", Coop.combo == 2)
+	Coop.combo = 0
+	Coop._last_scorer = -1
 	# tanky enemies
 	var tanks := 0
 	var small := 0
