@@ -5,12 +5,13 @@ extends RefCounted
 
 static func idle(t: float) -> Dictionary:
 	var b := sin(t * 7.5) * 0.035  # fast rhythmic breathing, not a slow sway
-	return level_feet({
-		"lean": 0.03 + b, "head": -0.02,
-		"th_f": 0.34, "kn_f": 0.45, "th_b": -0.30, "kn_b": 0.35,
+	var sh := sin(t * 7.5) * 3.0  # weight shift: hip slides over planted feet
+	var p := {
+		"lean": 0.03 + b + sh * 0.006, "head": -0.02, "root_x": sh,
 		"ua_f": 0.95 + b, "la_f": 1.55, "ua_b": 0.55 - b, "la_b": 1.85,
-		"root_y": sin(t * 15.0) * 1.2,  # light bounce on the toes, twice per breath
-	})
+	}
+	p.merge(stance(13.0 - sh, -13.0 - sh, 37.0), true)
+	return p
 
 
 ## Put both feet at the same height (standing poses only). The leg that would reach lower gets an
@@ -33,8 +34,11 @@ static func level_feet(p: Dictionary) -> Dictionary:
 
 ## True for the neutral idle pose (used to swap in the class base pose at the end of a move).
 static func is_idle(p: Dictionary) -> bool:
-	return absf(float(p.get("ua_f", -9.0)) - 0.95) < 0.001 and absf(float(p.get("la_f", -9.0)) - 1.55) < 0.001 \
-		and absf(float(p.get("th_b", -9.0)) + 0.30) < 0.001 and absf(float(p.get("th_f", -9.0)) - 0.34) < 0.001
+	var i0 := idle(0.0)
+	for k in ["ua_f", "la_f", "th_f", "th_b"]:
+		if absf(float(p.get(k, -9.0)) - float(i0[k])) > 0.001:
+			return false
+	return true
 
 
 ## Slouchy enemy stance.
