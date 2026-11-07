@@ -4,6 +4,27 @@ Status: review of `PLAN.md`, `ITERATION2.md`, `DESIGN.md` and `CLASS_MOVES.md`. 
 
 Decided in this session: upgrades are lost when a move is replaced.
 
+## 0. Resolution log (latest, after your answers)
+
+| # | Status | Outcome |
+|---|---|---|
+| 1 | **Moved** | Own session: `MARKS.md` |
+| 2 | Accepted | RB = interact/grab (see `DESIGN.md` §9 controller map); LB = Duo trigger |
+| 3 | **Solved** | Ghost can operate puzzles and cross gaps (`DESIGN.md` §9) |
+| 4 | **Decided** | Dead player becomes a ghost (`DESIGN.md` §9) |
+| 5 | **Decided** | Respawn at last safe ground; pits must be obvious and hard to fall in by accident |
+| 6 | **Decided** | Local hit-stop |
+| 7 | **Open** | Map nodes and shops: `ECONOMY.md` §2 |
+| 8 | **Decided** | Meta meter fills with level score (also on death); spend points on moves (one after another) and generic features: `ECONOMY.md` §1 |
+| 9 | Open | Duo Special content (class pair proposal stands); trigger decided: both press LB, needs the shared meter |
+| 10 | **Resolved** | Loadout is 3 random B + 1 random Y + 1 random X, no reroll at start; rerolls are a meta unlock |
+| 11 | **Decided** | Individual special meters plus one shared team meter (`DESIGN.md` §5) |
+| 12 | **Dropped** | Not an issue (like Street Fighter); the parser just needs a generous buffer |
+| 13 | Open | Pillar Smash vs RB throw: unchanged default |
+| 18 | **Dropped** | Effort estimates removed from all docs |
+
+(The detailed table below is the original audit text.)
+
 ## 1. Design holes that can break the game (fix before building)
 
 | # | Hole | Why it matters | Proposed default |

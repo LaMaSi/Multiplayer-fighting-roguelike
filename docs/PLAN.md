@@ -1,6 +1,6 @@
 # Co-op Stickfigure Brawler Roguelike: Project Plan (Godot 4.5)
 
-> **Note:** parts of this original plan are superseded. See `DESIGN.md` (co-op rules, rewards, meter), `CLASS_MOVES.md` (the 52-move pool: B/X/Y, classes, Magic marks) and `ITERATION2.md` (work plan). Superseded here: the 15-slot / 30-move pool, the "start with 15 moves unlocked" meta layer, the Duo Special trigger (now both players press LB) and the node-map reward types (every level gives both a shared X/Y choice and a personal level-up). See `AUDIT.md` for open holes.
+> **Note:** parts of this original plan are superseded. See `DESIGN.md` (co-op rules, rewards, meter), `CLASS_MOVES.md` (the 52-move pool: B/X/Y, classes, Magic marks) and `ITERATION2.md` (work plan). Superseded here: the 15-slot / 30-move pool, the "start with 15 moves unlocked" meta layer, the Duo Special trigger (now both players press LB) and the node-map reward types (every level gives both a shared X/Y choice and a personal level-up). See `AUDIT.md` for open holes, `MARKS.md` and `ECONOMY.md` for the two open planning sessions. Also superseded: the meta layer (now a score-filled meter, see `ECONOMY.md`).
 
 Status: proposal v1. It gets updated at the end of each milestone and is the source of truth.
 

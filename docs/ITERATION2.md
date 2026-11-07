@@ -8,7 +8,7 @@ Context: the first playtests ran fine. All 30 moves from `PLAN.md` are implement
 |---|---|
 | X / Y moves | Split: **X = universal** (identical for every class, exactly 10 moves), **Y = adaptive** (modified by class, exactly 10 moves). Biggest class difference lives in B moves. See `DESIGN.md` for the co-op philosophy that overrides everything here |
 | Class pick | Player chooses the class. Moves are random |
-| Start loadout | Only X, B, side+B and up+B are filled. No Y moves at start. The other slots are empty and get filled by rewards |
+| Start loadout | 3 random B moves (class), 1 random Y (adaptive) and 1 random X (universal), no reroll at start. Other slots get filled by rewards/shops. See `ECONOMY.md` |
 | B slots | Always weapon-specific. 5 B slots (B, up, side, down, back/other side), 8 moves per class; 3 are rolled at run start and 5 unlock through personal level-ups |
 | Magic resource | **No separate mana bar.** How Magic's heavy move cost works is decided in the super meter planning session (`DESIGN.md` §5). Do not implement mana. Magic is locked in meta progression |
 | Level goal | Objective banner, "GO" arrow, wave locks, end-of-level rank and score |
@@ -31,7 +31,7 @@ Context: the first playtests ran fine. All 30 moves from `PLAN.md` are implement
 
 ## 2. Phase B: goal, urgency, run start
 
-1. **Run start loadout screen** (after class pick): each player gets random moves for B, B+Forward and B+Up (from their class, ★ moves). X is the fixed Off-hand Jab. The screen shows both loadouts side by side with names and short descriptions, plus one joint re-roll per run (both players must press). Then it starts the first level.
+1. **Run start loadout screen** (after class pick): each player gets 3 random B moves (class, ★), 1 random Y (★) and 1 random X (★, an attack). The screen shows both loadouts side by side with names and short descriptions. No re-roll (re-rolls are a meta unlock, see `ECONOMY.md`). Then it starts the first level.
 2. **Objective banner**: at the start of a level a short line such as "Break through to the generator" fades in and then remains as a small HUD line.
 3. **Wave locks**: the camera locks at arena points. Enemies spawn in waves (2-3 waves per arena). When cleared, a blinking **GO >>** arrow appears and the camera unlocks. This gives pacing and the feeling of progress.
 4. **Level end rank**: S/A/B/C/D from combo peak, damage taken, time against a par time and containers broken. The rank influences the reward quality (e.g. S offers 4 move cards instead of 3, or an extra upgrade).
@@ -47,8 +47,8 @@ Yes, with three clear tiers, so the player always knows what a move does:
 | Tier | Slots | Behaviour | Marker |
 |---|---|---|---|
 | **Weapon** | B (5 slots) | Class-specific, 8 per class, strongest and defines the playstyle | class colour icon |
-| **Adaptive** | Y (5 slots, empty at start) | Same move for everyone, but a class modifier table changes reach, speed, damage, visual (fist, blade, hammer, glowing hand). 10 moves | "adapts" tag |
-| **Universal (off-hand)** | X (5 slots, X neutral filled at start with Off-hand Jab) | Never changes: punches, small projectile, block, grab, heal, co-op moves, Pocket Mine. Name/description says so (e.g. "Off-hand Jab"). 10 moves | "off-hand" tag |
+| **Adaptive** | Y (5 slots, one random Y at start) | Same move for everyone, but a class modifier table changes reach, speed, damage, visual (fist, blade, hammer, glowing hand). 10 moves | "adapts" tag |
+| **Universal (off-hand)** | X (5 slots, one random X at start) | Never changes: punches, small projectile, block, grab, heal, co-op moves, Pocket Mine. Name/description says so (e.g. "Off-hand Jab"). 10 moves | "off-hand" tag |
 
 Why this works: it solves the problem that the Hammer can't hit up close (an off-hand punch is the answer, so the dead zone becomes a choice rather than a handicap) and the Magic user always has a free attack while B moves are on cooldown. It also keeps the move reward pool large, because most rewards work for everyone.
 
@@ -123,26 +123,18 @@ The same base-pose system is used for **enemies**. Every enemy gets a weapon arc
 - Variants: elites reuse the base type with a different weapon pose (e.g. a Thug with a pipe becomes a Hammer-pose thug), giving variety without new rigs.
 - Later: mirror bosses that copy a player class (a Sword boss who parries) to test teamwork.
 
-## 4. Suggested order and effort
+## 4. Suggested order
 
-| Phase | Content | Estimated effort |
-|---|---|---|
-| A | quick wins | about 1.5-2.5 h |
-| B | goal, waves, rank, run-start screen | about 2-3 h |
-| C1 | class framework, move data refactor, tags | about 2 h |
-| C2 | Brawler B moves (3 new), Magic marks and cooldowns | about 2-3 h |
-| C3 | Sword (7 new) | about 2 h |
-| C4 | Hammer (8 new) | about 2 h |
-| D1 | Reward rework: shared X/Y choice with RPS, personal level-up, replacement flow | about 2-3 h |
-| D2 | Default grab/throw (RB), interact verb, revive on RB, fall/respawn rules | about 2 h |
-| D3 | Style meter, LT empower, motion-input supers (parser) | about 3-4 h |
-| D4 | Co-op level elements for Streets (4 types) and Duo Specials | about 3-4 h |
-(Estimates exclude your playtest and feedback rounds. Resolve the holes in `AUDIT.md` first.)
+1. Phase A: quick wins
+2. Phase B: goal, waves, rank, run-start screen
+3. Phase C: classes (C1 framework, C2 Brawler and Magic move pieces, C3 Sword, C4 Hammer)
+4. Phase D: rewards and economy (after `ECONOMY.md`), grab/throw and interact (RB), ghost, two meters and supers
+5. Marks and Magic: only after the `MARKS.md` session
 
 ## 5. Open questions with my default (change if you disagree)
 
 1. Magic is locked in meta progression (decided). Sword and Hammer: **Default: available from the start.**
-2. Starting X: **decided, Off-hand Jab (universal), so every class can hit up close.**
+2. Starting X: **decided: a random attack-type X move**, so every class can hit up close.
 3. Do both players have to be different classes? **Default: no restriction, but mixed classes get a small Duo Special flavour later.**
 4. B slot directions: forward/back relative to facing. **Default: yes.**
 5. Rank effect on reward quality: **Default: S gives an extra card, D gives one fewer.**

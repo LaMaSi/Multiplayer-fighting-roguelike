@@ -6,7 +6,7 @@ Status: proposal for review. The names of the existing moves (✔ = already impl
 
 - 5 B slots: **B, B+Up, B+Forward, B+Down, B+Back** (forward/back relative to facing). Every class has **8 B moves**, so 5 are unlocked later **through the personal level-up** (`DESIGN.md` §3.2), and B moves are never part of the shared X/Y card choice.
 - B slots accept only moves of the player's own class. The moves are slot-agnostic: any of the 8 can go in any of the 5 slots.
-- **Starter roll** (run start): B, B+Forward and B+Up are filled with random moves from the class marked ★ (starter-safe). Rules for the roll: no two moves with the same role, and at least one move must be usable at mid range.
+- **Starter roll** (run start): B, B+Forward and B+Up get 3 random ★ moves from the class, plus 1 random ★ Y and 1 random ★ X (an attack). Rules for the roll: no two B moves with the same role, and at least one B move must be usable at mid range.
 - **LT version:** holding LT during the move spends a little Style meter for a stronger/larger version (listed per move).
 - **Height:** H = high (crouch avoids it), M = mid, L = low. Applies to the hit and to projectiles.
 - **Co-op hook:** every move should pass the Co-op Test in `DESIGN.md`. The hook column says how the move creates something for the partner. A move without a clear hook gets one before it ships.
@@ -67,6 +67,8 @@ Identity: break guards, send things far. Cannot hit very close (the X moves and 
 
 ## 5. Magic (locked in meta progression): ranged, glowing hands. Role: **Primer and zoner**
 
+> **Pending:** all marks and detonation content here is a draft. It is being collected in `MARKS.md` for its own session.
+
 Identity: sets up the partner's big hits. Lowest HP, slow projectiles, no strong close-range tools (the X moves are the answer). No mana bar; B moves use **cooldowns** (visible on the player), and LT versions use Style meter. This is the **proposed** direction from `DESIGN.md` §5; it will change if you pick the other option.
 
 ### Mark system
@@ -93,11 +95,11 @@ Identity: sets up the partner's big hits. Lowest HP, slow projectiles, no strong
 
 ## 6. X moves: Universal (10), identical for every class
 
-X has 5 slots (X, X+Up, X+Forward, X+Down, X+Back) and a pool of **10** moves, so 5 are spares for rewards. Slot-agnostic. Only **Off-hand Jab** is equipped at run start. The names make clear that X moves are *the same for everyone* (off-hand actions, not weapon actions).
+X has 5 slots (X, X+Up, X+Forward, X+Down, X+Back) and a pool of **10** moves, so 5 are spares for rewards. Slot-agnostic. One random ★ X move is equipped at run start (an attack: Off-hand Jab, Spark Shot or Grab & Throw). The names make clear that X moves are *the same for everyone* (off-hand actions, not weapon actions).
 
 | # | Move | Speed | H | What it does | LT version | Co-op hook |
 |---|---|---|---|---|---|---|
-| 1 | NEW Off-hand Jab ★ (start) | F | M | Quick 2-hit jab with the free hand; low damage, tiny knockback. Always available, always close range | third hit | Fast combo filler that keeps the shared combo alive |
+| 1 | NEW Off-hand Jab ★ | F | M | Quick 2-hit jab with the free hand; low damage, tiny knockback. Always available, always close range | third hit | Fast combo filler that keeps the shared combo alive |
 | 2 | NEW Spark Shot ★ | M | M | Small straight projectile, not affected by the weapon | larger, slightly pierces | Pokes enemies off a **channeling or reviving** partner |
 | 3 | ✔ Guard Block | F | H/M | Hold to block high and mid hits (not low); chip damage | perfect-block window fills Style meter | **Back-to-back:** when blocking within about 1.5 m of the partner, damage taken by both is reduced |
 | 4 | ✔ Grab & Throw ★ | M | M | Grab a close enemy and throw it as a projectile that bowls over others | longer throw | A thrown enemy is a **relay hit** target for the partner |
@@ -112,7 +114,7 @@ Cut from the pool (decision to confirm): **Reflect Shield** (covered by the Swor
 
 ## 7. Y moves: Adaptive (10), changed by the class
 
-Y has 5 slots and a pool of **10** moves, so 5 spares for rewards. **Y is empty at run start.** Every Y move is built once, then modified by the class's multiplier table. This keeps the content cost low (10 moves, not 40).
+Y has 5 slots and a pool of **10** moves, so 5 spares for rewards. **One random ★ Y move is equipped at run start.** Every Y move is built once, then modified by the class's multiplier table. This keeps the content cost low (10 moves, not 40).
 
 ### Class modifier table (starting values, tune in the Move Lab)
 
@@ -128,15 +130,15 @@ Y has 5 slots and a pool of **10** moves, so 5 spares for rewards. **Y is empty 
 | # | Move | Base (speed, height) | What it does | Co-op hook | Magic mark |
 |---|---|---|---|---|---|
 | 1 | ✔ Uppercut ★ | M, M | Launcher | Launches for the partner's juggle | Flame |
-| 2 | ✔ Leg Sweep | M, L | Low trip | Trips for the partner's smash | Frost |
+| 2 | ✔ Leg Sweep ★ | M, L | Low trip | Trips for the partner's smash | Frost |
 | 3 | ✔ Spin Kick | M, M | 360 multi-hit | Pushes enemies away from a channeling partner | Volt |
 | 4 | ✔ Cyclone | M, M | Moving whirlwind that drags enemies | Carries enemies to the partner's position | Volt |
 | 5 | ✔ Shockwave Stomp | S, L | Ground AoE shockwave | Stuns a group the partner can then hit | Frost |
 | 6 | ✔ Dive Kick | M, H | Air-only downward spike | The spike half of the **alley-oop** (launcher + spike) | Flame |
 | 7 | ✔ Anti-air Hook | F, M | Hits upwards in front | Catches an enemy the partner launched (relay hit) | Volt |
 | 8 | ✔ Pillar Smash | S, M | Smashes crates/props and throws them | Throws crates through enemy lines; partner's relay hit on the crate | none (telekinesis lift) |
-| 9 | ✔ Flurry | F, M | Rapid low-knockback hits | Keeps the shared combo alive | Flame |
-| 10 | NEW Slide Strike | F, L | Low slide that ends in a crouch | Slides under attacks, carries an enemy to the partner | Frost |
+| 9 | ✔ Flurry ★ | F, M | Rapid low-knockback hits | Keeps the shared combo alive | Flame |
+| 10 | NEW Slide Strike ★ | F, L | Low slide that ends in a crouch | Slides under attacks, carries an enemy to the partner | Frost |
 
 Per-class look of the same move (the Uppercut as an example): Brawler = quick fist, Sword = rising arc slash, Hammer = slow, huge upward swing (dead zone at the base), Magic = palm burst with a Flame mark. (Marks detonate on finisher hits only, see `AUDIT.md` #1.) Other Y moves follow the same rule.
 
@@ -149,14 +151,14 @@ Design guards:
 
 | Button | Slots | Pool | Start equipped | Nature |
 |---|---|---|---|---|
-| **X** | X, X+Up, X+Fwd, X+Down, X+Back | 10 universal | X (Off-hand Jab) | same for everyone |
-| **Y** | Y, Y+Up, Y+Fwd, Y+Down, Y+Back | 10 adaptive | none | modified by the class |
-| **B** | B, B+Up, B+Fwd, B+Down, B+Back | 8 per class (32 total) | B, B+Fwd, B+Up (random ★ from class) | class-specific, strongest |
+| **X** | X, X+Up, X+Fwd, X+Down, X+Back | 10 universal | 1 random ★ X | same for everyone |
+| **Y** | Y, Y+Up, Y+Fwd, Y+Down, Y+Back | 10 adaptive | 1 random ★ Y | modified by the class |
+| **B** | B, B+Up, B+Fwd, B+Down, B+Back | 8 per class (32 total) | 3 random ★ from the class | class-specific, strongest |
 | **A** | - | - | - | jump |
 | **RT** | - | - | - | dash |
-| **LT (hold)** | - | - | - | empowered version, spends Style meter |
+| **LT (hold)** | - | - | - | empowered version, spends the individual special meter |
 
-Start loadout: **4 moves** (X, B, B+Fwd, B+Up). Down-forward x2 + X/B = generic or weapon super.
+Start loadout: **5 moves** (3 B, 1 X, 1 Y). Down-forward x2 + X/B = generic or weapon super.
 
 ### Totals
 - B: 32 moves (11 existing, 21 new). X: 10 moves (7 existing, 3 new). Y: 10 moves (9 existing, 1 new).
