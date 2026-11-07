@@ -59,6 +59,9 @@ var _down_t := 0.0
 var _getup_t := 0.0
 var _tumble := 1.0
 var _bumped: Dictionary = {}
+var _pinball_gen := 0  ## how many enemy-into-enemy bounces deep this launch is (a throw or a hit by a player = 0)
+var _pinball_t := 0.0  ## seconds during which this enemy cannot be pinballed again
+const PINBALL_MAX_GEN := 2
 var _bounced := false
 var _wallbounce := false
 var _victim_freeze := false
@@ -228,6 +231,8 @@ func take_hit(info: HitInfo) -> bool:
 		hit_chain += 1
 		_chain_t = 0.7
 	Coop.pre_hit(info, self)
+	if info.source != "pinball" and info.source != "thrown":
+		_pinball_gen = 0  # a real hit starts a fresh chain
 	var atk := info.attacker as Actor
 	var dmg := info.dmg * take_mult()
 	apply_infusion(info)
@@ -427,6 +432,7 @@ func _tick_timers(delta: float) -> void:
 	invuln = maxf(0.0, invuln - delta)
 	armor_t = maxf(0.0, armor_t - delta)
 	flash_t = maxf(0.0, flash_t - delta)
+	_pinball_t = maxf(0.0, _pinball_t - delta)
 	_chain_t = maxf(0.0, _chain_t - delta)
 	_tick_burn(delta)
 	shock_t = maxf(0.0, shock_t - delta)
@@ -525,13 +531,20 @@ func _launch_collisions() -> void:
 	var credit: Actor = thrown_by if thrown_by != null else last_hitter
 	if credit == null:
 		return
+	if _pinball_gen >= PINBALL_MAX_GEN:
+		return  # enemies knocked into each other stop knocking each other after a couple of bounces
 	for t in get_tree().get_nodes_in_group("hurt_enemy"):
 		if t == self or _bumped.has(t.get_instance_id()) or not t.has_method("take_hit"):
 			continue
 		if t.has_method("is_targetable") and not t.is_targetable():
 			continue
+		if t is Actor and (t as Actor)._pinball_t > 0.0:
+			continue
 		if get_hurt_rect().intersects(t.get_hurt_rect()):
 			_bumped[t.get_instance_id()] = true
+			if t is Actor:
+				(t as Actor)._pinball_t = 1.2
+				(t as Actor)._pinball_gen = _pinball_gen + 1
 			var info := HitInfo.new()
 			info.attacker = credit
 			info.team = "player"

@@ -90,6 +90,26 @@ func _ready() -> void:
 	check("the enemy breaks out of a 14-hit chain (hit %d)" % broke_at, broke_at == 14)
 	check("hitstun shrinks along the chain (%d -> %d frames)" % [stun_first, stun_late], stun_late < stun_first)
 	check("the breaker leaves it briefly invulnerable", t.invuln > 0.3)
+	# enemies knocked into each other stop bouncing around after a couple of hits
+	var pe: Array = []
+	for i in 4:
+		var q: Enemy = lv.spawn_enemy("brute", Vector2(2400 + i * 70, 599))
+		q.max_hp = 99999.0
+		q.hp = 99999.0
+		pe.append(q)
+	await frames(90)
+	for q: Enemy in pe:
+		q.invuln = 0.0
+		q.last_hitter = Coop.fighters[0]
+	var total_pin := 0
+	pe[0].thrown(Vector2(900, -200), Coop.fighters[0])
+	for i in 400:
+		await get_tree().physics_frame
+	var still := 0
+	for q: Enemy in pe:
+		if q.state in ["launched", "hurt"]:
+			still += 1
+	check("a knocked-around group settles instead of pinballing forever (%d still airborne)" % still, still == 0)
 	# explosive crates
 	var tn: Prop = lv.spawn_prop("explosive", Vector2(1100, 599))
 	var tn2: Prop = lv.spawn_prop("explosive", Vector2(1200, 599))
