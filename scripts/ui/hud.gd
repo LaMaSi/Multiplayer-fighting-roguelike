@@ -338,11 +338,10 @@ func _paint_combo(c: Control) -> void:
 
 
 func _paint_lives(c: Control) -> void:
-	UiKit.txt(c, UiKit.body(), Vector2(540, 24), "LIVES", 14, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_CENTER, 200.0, 3)
 	var n := Coop.revives_max
-	var x0 := 640.0 - (n - 1) * 15.0
+	var x0 := 640.0 - (n - 1) * 17.0
 	for h in n:
-		UiKit.head_icon(c, Vector2(x0 + h * 30.0, 44), 9.0, UiKit.TEXT, h < Coop.revives_left)
+		UiKit.heart(c, Vector2(x0 + h * 34.0, 46), 13.0, h < Coop.revives_left)
 
 
 func _paint_boss(c: Control) -> void:

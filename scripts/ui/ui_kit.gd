@@ -11,6 +11,7 @@ const INK := Color(0.03, 0.02, 0.07)
 const TEXT := Color(0.95, 0.95, 1.0)
 const DIM_TEXT := Color(0.8, 0.8, 0.95)
 const GLOW_PINK := Color(2.0, 0.7, 1.2)
+const HEART := Color(1.0, 0.25, 0.48)
 
 static var _head: Font
 static var _body: Font
@@ -85,6 +86,28 @@ static func head_icon(c: CanvasItem, pos: Vector2, r: float, col: Color, on := t
 		c.draw_arc(pos, r, 0.0, TAU, 20, Color(col.r, col.g, col.b, 0.25), 2.0, true)
 		c.draw_line(pos + Vector2(-r * 0.4, -r * 0.4), pos + Vector2(r * 0.4, r * 0.4), Color(1, 0.3, 0.3, 0.5), 2.0)
 		c.draw_line(pos + Vector2(r * 0.4, -r * 0.4), pos + Vector2(-r * 0.4, r * 0.4), Color(1, 0.3, 0.3, 0.5), 2.0)
+
+
+## Neon heart for shared lives: a bright filled heart with a soft halo; a lost life is a dark
+## empty outline. r is roughly the half width.
+static func heart(c: CanvasItem, pos: Vector2, r: float, on := true) -> void:
+	var pts := PackedVector2Array()
+	var k := r / 17.0
+	for i in 40:
+		var t := TAU * float(i) / 40.0
+		var x := 16.0 * pow(sin(t), 3.0)
+		var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
+		pts.append(pos + Vector2(x, y + 1.0) * k)
+	if on:
+		for g in 3:
+			var o := Geometry2D.offset_polygon(pts, (2.0 + g * 3.5) * maxf(k, 0.6))
+			if o.size() > 0:
+				c.draw_colored_polygon(o[0], Color(HEART.r, HEART.g, HEART.b, 0.16 - g * 0.04))
+		c.draw_colored_polygon(pts, HEART)
+		poly_line(c, pts, Color(1.0, 0.7, 0.8), 2.0)
+	else:
+		c.draw_colored_polygon(pts, Color(INK.r, INK.g, INK.b, 0.6))
+		poly_line(c, pts, Color(HEART.r, HEART.g, HEART.b, 0.3), 2.0)
 
 
 static func check(c: CanvasItem, pos: Vector2, col: Color) -> void:
