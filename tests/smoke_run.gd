@@ -130,19 +130,19 @@ func _run() -> void:
 	var node: Dictionary = RunState.map[0][0]
 	RunState.choose(node)
 	await load_level("res://scenes/streets.tscn")
-	check(level.level_w == 3800.0 and level.exit_x > 0.0 and level.encounters.size() == 2, "fight level: width %d, exit at %d, %d encounters" % [level.level_w, level.exit_x, level.encounters.size()])
+	check(level.level_w == 6200.0 and level.exit_x > 0.0 and level.encounters.size() == 2, "fight level: width %d, exit at %d, %d encounters" % [level.level_w, level.exit_x, level.encounters.size()])
 	var lf1: Fighter = level.fighters[0]
 	var lf2: Fighter = level.fighters[1]
-	lf1.global_position = Vector2(1250, 599)
-	lf2.global_position = Vector2(1200, 599)
+	lf1.global_position = Vector2(float(level.encounters[0]["x"]) + 50.0, 599)
+	lf2.global_position = Vector2(float(level.encounters[0]["x"]), 599)
 	await frames(10)
 	check(level._locked and level.alive_enemies() > 0, "first encounter locks the arena and spawns enemies")
 	for i in 4:
 		kill_all_enemies()
 		await frames(25)
 	check(not level._locked and level._enc_idx == 1, "arena unlocks after both waves")
-	lf1.global_position = Vector2(2450, 599)
-	lf2.global_position = Vector2(2400, 599)
+	lf1.global_position = Vector2(float(level.encounters[1]["x"]) + 50.0, 599)
+	lf2.global_position = Vector2(float(level.encounters[1]["x"]), 599)
 	await frames(10)
 	for i in 4:
 		kill_all_enemies()

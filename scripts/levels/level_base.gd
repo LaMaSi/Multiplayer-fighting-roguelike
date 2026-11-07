@@ -9,6 +9,7 @@ const PLAT_H := 16.0
 var level_w := 3200.0
 var ground_y := 600.0
 var platforms: Array = []  ## Rect2 (top-left, size)
+var ground_segs: Array = []  ## Rect2 (x, top_y, width, depth) pieces of ground; empty = one flat ground. Gaps between pieces are pits.
 var props_spec: Array = []  ## [x, kind, (y)]
 var encounters: Array = []  ## {x, waves: [[["thug", 2], ...], ...], boss: bool}
 var enemy_hp_mult := 1.0
@@ -116,12 +117,48 @@ func _make_body(rect: Rect2, layer: int, one_way := false) -> StaticBody2D:
 
 
 func _build_world() -> void:
-	_make_body(Rect2(-300, ground_y, level_w + 600, 400), 1)
+	for g: Rect2 in _ground_rects():
+		_make_body(Rect2(g.position.x, g.position.y, g.size.x, 400.0), 1)
 	_make_body(Rect2(-100, -1500, 100, 3000), 1)
 	_make_body(Rect2(level_w, -1500, 100, 3000), 1)
 	for r: Rect2 in platforms:
 		var b := _make_body(r, 2, true)
 		b.set_meta("bottom_y", r.end.y)
+
+
+## The ground pieces, with the first and last stretched past the level edges. Legacy levels: one flat slab.
+func _ground_rects() -> Array:
+	if ground_segs.is_empty():
+		return [Rect2(-2500, ground_y, level_w + 5000, 700)]
+	var out: Array = []
+	for i in ground_segs.size():
+		var g: Rect2 = ground_segs[i]
+		var x0 := g.position.x - (2500.0 if i == 0 else 0.0)
+		var x1 := g.end.x + (2500.0 if i == ground_segs.size() - 1 else 0.0)
+		out.append(Rect2(x0, g.position.y, x1 - x0, 700.0))
+	return out
+
+
+## Top of the ground at x, or INF over a pit.
+func ground_at(x: float) -> float:
+	for g: Rect2 in _ground_rects():
+		if x >= g.position.x and x <= g.end.x:
+			return g.position.y
+	return INF
+
+
+## Ground top for placing things: over a pit falls back to the base ground line.
+func ground_top(x: float) -> float:
+	var y := ground_at(x)
+	return ground_y if y == INF else y
+
+
+## True on solid ground at least 60 px in from a pit edge: where a fallen player respawns.
+func is_safe_ground(p: Vector2) -> bool:
+	for g: Rect2 in _ground_rects():
+		if p.x >= g.position.x + 60.0 and p.x <= g.end.x - 60.0 and absf(p.y - g.position.y) < 4.0:
+			return true
+	return false
 
 
 func _spawn_players() -> void:
@@ -137,7 +174,7 @@ func _spawn_players() -> void:
 func _build_camera() -> void:
 	cam = CameraRig.new()
 	cam.limit_top = -500
-	cam.limit_bottom = int(ground_y + 130.0)
+	cam.limit_bottom = int(ground_y + (300.0 if not ground_segs.is_empty() else 130.0))  # pits and sunken ground need room below
 	cam.set_bounds(0.0, level_w)
 	cam.min_zoom = 0.45
 	for f in fighters:
@@ -150,7 +187,7 @@ func _build_camera() -> void:
 
 func _spawn_props() -> void:
 	for s in props_spec:
-		var y: float = s[2] if s.size() > 2 else ground_y
+		var y: float = s[2] if s.size() > 2 else ground_top(float(s[0]))
 		spawn_prop(String(s[1]), Vector2(float(s[0]), y - 1.0))
 
 
@@ -362,14 +399,20 @@ func _paint_sky(c: CanvasItem) -> void:
 
 func _paint_ground(c: CanvasItem) -> void:
 	var ng: Color = theme["neon_ground"]
-	c.draw_rect(Rect2(-2500, ground_y, level_w + 5000, 700), Pal.BG_GROUND if Backdrop.variant >= 4 else theme["ground"])
-	c.draw_line(Vector2(-2500, ground_y), Vector2(level_w + 2500, ground_y), ng, 3.0, true)
-	var gx := -2500.0
-	while gx < level_w + 2500.0:
-		c.draw_line(Vector2(gx, ground_y), Vector2(gx - 40, ground_y + 200), Color(ng.r, ng.g, ng.b, 0.12), 1.5)
-		gx += 80.0
-	for dy in [28.0, 70.0, 130.0]:
-		c.draw_line(Vector2(-2500, ground_y + dy), Vector2(level_w + 2500, ground_y + dy), Color(ng.r, ng.g, ng.b, 0.10), 1.5)
+	var gcol: Color = Pal.BG_GROUND if Backdrop.variant >= 4 else theme["ground"]
+	for g: Rect2 in _ground_rects():
+		c.draw_rect(g, gcol)
+		c.draw_line(g.position, Vector2(g.end.x, g.position.y), ng, 3.0, true)
+		var gx := g.position.x - fmod(g.position.x, 80.0)
+		while gx < g.end.x:
+			c.draw_line(Vector2(maxf(gx, g.position.x), g.position.y), Vector2(gx - 40, g.position.y + 200), Color(ng.r, ng.g, ng.b, 0.12), 1.5)
+			gx += 80.0
+		for dy in [28.0, 70.0, 130.0]:
+			c.draw_line(Vector2(g.position.x, g.position.y + dy), Vector2(g.end.x, g.position.y + dy), Color(ng.r, ng.g, ng.b, 0.10), 1.5)
+		if not ground_segs.is_empty():
+			# lit side walls: pit edges and steps read clearly
+			c.draw_line(g.position, Vector2(g.position.x, g.position.y + 700.0), Color(ng.r, ng.g, ng.b, 0.55), 3.0, true)
+			c.draw_line(Vector2(g.end.x, g.position.y), Vector2(g.end.x, g.position.y + 700.0), Color(ng.r, ng.g, ng.b, 0.55), 3.0, true)
 	c.draw_line(Vector2(0, -1500), Vector2(0, ground_y), ng, 3.0)
 	c.draw_line(Vector2(level_w, -1500), Vector2(level_w, ground_y), ng, 3.0)
 	if exit_x > 0.0:

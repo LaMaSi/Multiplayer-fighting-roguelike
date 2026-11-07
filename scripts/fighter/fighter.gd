@@ -32,6 +32,7 @@ var _jumping := false
 var _drop_t := 0.0
 var _drop_clear_y := 0.0
 var _floor_collider: Object = null
+var last_safe := Vector2.ZERO  ## last solid ground (>= 60 px from a pit edge) stood on: where a fall respawns
 var _was_on_floor := false
 var _land_t := 0.0
 var _turn_t := 0
@@ -189,6 +190,9 @@ func _locomotion(delta: float) -> void:
 
 	if on_floor:
 		_coyote = COYOTE
+		var lvl := get_parent()
+		if lvl != null and lvl.has_method("is_safe_ground") and lvl.is_safe_ground(global_position):
+			last_safe = global_position
 		_jumping = false
 		_air_dash_used = false
 		_air_jump_ready = true
@@ -311,7 +315,11 @@ func respawn() -> void:
 
 
 func _fell_out() -> void:
+	hp = maxf(1.0, hp - 8.0)  # a fall stings a little but never kills
 	respawn()
+	if last_safe != Vector2.ZERO:
+		global_position = last_safe + Vector2(0, -2)  # back to the last solid ground, not beside the partner
+	Fx.number(get_parent(), global_position + Vector2(0, -110), "-8", Color(1.0, 0.8, 0.4), 20)
 
 
 # ------------------------------------------------------------------ attacks
