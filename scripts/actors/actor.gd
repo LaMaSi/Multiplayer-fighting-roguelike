@@ -11,6 +11,9 @@ const NO_GRAB_STATES := ["launched", "down", "dead", "grabbed", "tossed", "getup
 var team := "enemy"
 var max_hp := 100.0
 var hp := 100.0
+var burn_t := 0.0  ## seconds of burning left: ticks damage, and burning targets take BURN_BONUS more from everything
+var _burn_tick := 0.0
+const BURN_BONUS := 1.3
 var facing := 1
 var state := "idle"
 var freeze := 0
@@ -210,11 +213,16 @@ func take_hit(info: HitInfo) -> bool:
 	Coop.pre_hit(info, self)
 	var atk := info.attacker as Actor
 	var dmg := info.dmg * take_mult()
+	if burn_t > 0.0:
+		dmg *= BURN_BONUS
+		Fx.sparks(get_parent(), global_position + Vector2(0, -50), Color(2.2, 0.9, 0.2), 4)
 	if info.friendly:
 		dmg *= Coop.ff_scale
 	hp = maxf(hp - dmg, 1.0 if info.friendly else 0.0)
 	if self is Fighter:
 		Coop.stat_damage += dmg
+	if info.ignite > 0.0 and hp > 0.0:
+		burn_t = maxf(burn_t, info.ignite)
 	if atk != null and atk.team != team:
 		last_hitter = atk
 	var lethal := hp <= 0.0
@@ -384,6 +392,7 @@ func _tick_timers(delta: float) -> void:
 	invuln = maxf(0.0, invuln - delta)
 	armor_t = maxf(0.0, armor_t - delta)
 	flash_t = maxf(0.0, flash_t - delta)
+	_tick_burn(delta)
 	if guard_t > 0 and guard_t < 99999:
 		guard_t -= 1
 	parry_t = maxi(0, parry_t - 1)
@@ -585,3 +594,17 @@ func _update_visuals(delta: float) -> void:
 	squash = squash.lerp(Vector2.ONE, 1.0 - exp(-14.0 * delta))
 	figure.scale = Vector2(facing * squash.x * body_scale, squash.y * body_scale)
 	figure.self_modulate = Color(2.6, 2.6, 2.6) if flash_t > 0.0 else Color.WHITE
+
+
+## Burning: a little damage over time, flames on the body, and +30% damage from every source (synergy hook).
+func _tick_burn(delta: float) -> void:
+	if burn_t <= 0.0:
+		return
+	burn_t = maxf(0.0, burn_t - delta)
+	_burn_tick -= delta
+	if randf() < delta * 14.0:
+		Fx.sparks(get_parent(), global_position + Vector2(randf_range(-10.0, 10.0), randf_range(-70.0, -10.0)), Color(2.2, 0.8, 0.15), 2, Vector2(0, -1))
+	if _burn_tick <= 0.0:
+		_burn_tick = 0.5
+		if not dying and hp > 0.0:
+			apply_direct_damage(2.0, "")

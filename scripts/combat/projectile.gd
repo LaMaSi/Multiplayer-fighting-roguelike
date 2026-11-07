@@ -19,6 +19,7 @@ var gravity := 0.0
 var returns := 0.0
 var reflected := false
 var height := "mid"
+var ignite := 0.0
 
 var _age := 0.0
 var _done: Dictionary = {}
@@ -42,6 +43,7 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.pierce = bool(e.get("pierce", false))
 	p.ground = bool(e.get("ground", false))
 	p.returns = float(e.get("returns", 0.0))
+	p.ignite = float(e.get("ignite", 0.0))
 	p.height = String(e.get("height", "low" if p.ground else ("high" if p.shape == "bottle" else "mid")))
 	var off: Vector2 = e["pos"]
 	p.global_position = a.global_position + Vector2(off.x * a.facing, off.y)
@@ -142,6 +144,7 @@ func _explode(group: String) -> void:
 		info.kb = Vector2((away if away != 0.0 else 1.0) * absf(kb.x), kb.y)
 		info.stop = 6
 		info.source = "proj"
+		info.ignite = ignite
 		info.color = col
 		info.pos = global_position
 		info.shake = 0.3
@@ -205,6 +208,7 @@ func _check_hits() -> void:
 			info.kb = Vector2(kb.x * signf(vel.x if vel.x != 0.0 else 1.0), kb.y)
 			info.stop = 3
 			info.source = "proj"
+			info.ignite = ignite
 			info.color = col
 			info.pos = global_position
 			info.shake = 0.1

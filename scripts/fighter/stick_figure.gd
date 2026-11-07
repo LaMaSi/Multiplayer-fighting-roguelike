@@ -12,7 +12,7 @@ extends Node2D
 ## Fast limb tips leave a fading swoosh trail while `trail_on`.
 
 const HEAD_R := 11.0
-const NECK := 7.0
+const NECK := 2.0
 const TORSO := 30.0
 const UARM := 17.0
 const LARM := 17.0
@@ -62,6 +62,7 @@ var hand_f_pos := Vector2(20, -50)
 var hand_b_pos := Vector2(10, -50)
 var foot_f_pos := Vector2(10, 0)
 var foot_b_pos := Vector2(-10, 0)
+var weapon_tip := Vector2.ZERO  ## tip of the sword / head of the hammer (the swoosh trail follows it instead of the fist)
 
 var _vel: Dictionary = {}
 var _trail: Array = []
@@ -94,11 +95,11 @@ func _process(delta: float) -> void:
 			_vel[key] = v
 			pose[key] = p + v * dt
 		if trail_on:
-			_trail.push_back([to_global(hand_f_pos), to_global(hand_b_pos), to_global(foot_f_pos), to_global(foot_b_pos)])
+			_trail.push_back([to_global(weapon_tip if weapon in ["sword", "hammer"] else hand_f_pos), to_global(hand_b_pos), to_global(foot_f_pos), to_global(foot_b_pos)])
 			if _trail.size() > 8:
 				_trail.pop_front()
 		elif not _trail.is_empty():
-			_trail.pop_front()
+			_trail.clear()  # no swoosh without an active hit
 	queue_redraw()
 
 
@@ -123,6 +124,7 @@ func _draw() -> void:
 	foot_f_pos = m + foot_f_pos.rotated(rot)
 	foot_b_pos = m + foot_b_pos.rotated(rot)
 	head_pos = m + head_pos.rotated(rot)
+	weapon_tip = m + weapon_tip.rotated(rot)
 	_draw_trails()
 
 
@@ -261,6 +263,8 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 			var blade := 62.0 * ws * maxf(arm_scale, 1.0)
 			var base := hand_f + wd * 5.0
 			var tip := base + wd * blade
+			if not halo:
+				weapon_tip = tip
 			if halo:
 				draw_line(hand_f - wd * 7.0, tip + wd * 3.0, dark, 11.0 * ws)
 				draw_line(base - n * 11.0, base + n * 11.0, dark, 8.0)
@@ -275,6 +279,8 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 			var hd := Vector2.from_angle(float(pose["wp_rot"]))
 			var shaft := 74.0 * ws * maxf(arm_scale, 1.0)
 			var head_c := hand_f + hd * shaft
+			if not halo:
+				weapon_tip = head_c
 			var tail := hand_f - hd * 24.0
 			var sd := (head_c - tail).normalized()
 			var sn := Vector2(-sd.y, sd.x)
@@ -360,3 +366,23 @@ func _seg(a: Vector2, b: Vector2, w: float, col: Color, halo: bool) -> void:
 		draw_line(a, b, col, w, true)
 		draw_circle(a, w * 0.5, col)
 		draw_circle(b, w * 0.5, col)
+
+
+## Global rects along every limb tip that is currently drawing a swoosh ribbon (the weapon tip stands in for the
+## front hand when a sword / hammer is held). The attack runner turns these into hit areas: a swoosh always hurts.
+func swoosh_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var n := _trail.size()
+	if not trail_on or n < 3:
+		return out
+	for tip in 4:
+		var total := 0.0
+		for i in range(1, n):
+			total += (_trail[i - 1][tip] as Vector2).distance_to(_trail[i][tip])
+		if total < 30.0 or total > 900.0:
+			continue
+		var r := Rect2(_trail[n - 1][tip], Vector2.ZERO)
+		for i in range(maxi(0, n - 4), n):
+			r = r.expand(_trail[i][tip])
+		out.append(r.grow(16.0))
+	return out

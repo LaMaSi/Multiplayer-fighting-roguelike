@@ -20,6 +20,7 @@ var guard_break := false
 var friendly := false
 var no_combo := false
 var heal_self := 0.0
+var ignite := 0.0  ## seconds of burning to apply (burning targets take extra damage)
 var color := Color(1.6, 1.6, 1.6)
 var shake := 0.12
 var punch := 0.0

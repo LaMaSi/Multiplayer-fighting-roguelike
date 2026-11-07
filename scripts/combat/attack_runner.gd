@@ -295,7 +295,7 @@ func world_rect(box: Rect2) -> Rect2:
 func _hits() -> void:
 	var swoosh := false
 	for h2 in move.hits:
-		if frame >= int(h2["at"]) - 1 and frame < int(h2["at"]) + int(h2["dur"]) + 4:
+		if frame >= int(h2["at"]) and frame < int(h2["at"]) + int(h2["dur"]):  # a swoosh exists only while a hit is active
 			swoosh = true
 	actor.figure.trail_on = swoosh
 	for i in move.hits.size():
@@ -311,7 +311,11 @@ func _hits() -> void:
 		if frame < at or frame >= at + int(h["dur"]):
 			continue
 		var rect := world_rect(h["box"])
-		actor.debug_hit_rect = rect
+		var crects: Array = _contact_rects() if not bool(h.get("radial", false)) else []
+		var all_r := rect
+		for cr: Rect2 in crects:
+			all_r = all_r.merge(cr)
+		actor.debug_hit_rect = all_r
 		var targets: Array = actor.hit_targets()
 		if bool(h.get("partner_safe", false)):
 			# Home Run: the partner can be batted too, even with friendly fire off (no damage to them)
@@ -322,7 +326,16 @@ func _hits() -> void:
 			var key := "%d:%d" % [i, t.get_instance_id()]
 			if _hit_done.has(key):
 				continue
-			if rect.intersects(t.get_hurt_rect()):
+			var hurt: Rect2 = t.get_hurt_rect()
+			var src := Rect2()
+			for cr: Rect2 in crects:  # the swoosh, weapon head or blade: impacts come from there
+				if cr.intersects(hurt):
+					src = cr
+					break
+			if src.has_area():
+				_hit_done[key] = true
+				_connect(h, t, src)
+			elif rect.intersects(hurt):
 				_hit_done[key] = true
 				_connect(h, t, rect)
 
@@ -356,6 +369,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.prop_power = float(h.get("prop_power", 1.0))
 	info.wallbounce = bool(h.get("wallbounce", false))
 	info.heal_self = float(h.get("heal_self", 0.0))
+	info.ignite = float(h.get("ignite", 0.0))
 	info.color = h.get("color", a.figure.color)
 	if a.team == "enemy" and info.height == "high":
 		info.color = Color(2.4, 2.0, 0.3)  # high attacks spark amber
@@ -378,3 +392,23 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 			a.heal(info.heal_self)
 			Fx.number(a.get_parent(), a.global_position + Vector2(0, -105), "+%d" % int(info.heal_self), Color(2.0, 1.7, 1.9), 18)
 		a.on_hit_landed(info, t)
+
+
+## World rects that actually strike while a hit is active, so hits and impact effects come from what the player
+## sees: the weapon head / blade (weapon and adaptive moves) and every limb tip that is drawing a swoosh.
+## Only for players; enemies keep their authored boxes.
+func _contact_rects() -> Array:
+	var out: Array = []
+	var f := actor.figure
+	if f == null or actor.team != "player":
+		return out
+	if f.weapon in ["sword", "hammer"] and move.tier in ["weapon", "adaptive"]:
+		var tip: Vector2 = f.to_global(f.weapon_tip)
+		if f.weapon == "hammer":
+			var s := 46.0 * f.weapon_scale
+			out.append(Rect2(tip - Vector2(s, s) * 0.5, Vector2(s, s)))
+		else:
+			var r := Rect2(f.to_global(f.hand_f_pos), Vector2.ZERO).expand(tip)
+			out.append(r.grow_individual(0.0, maxf(0.0, 11.0 - r.size.y * 0.5), 0.0, maxf(0.0, 11.0 - r.size.y * 0.5)))
+	out.append_array(f.swoosh_rects())
+	return out

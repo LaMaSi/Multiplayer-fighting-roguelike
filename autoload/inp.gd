@@ -12,6 +12,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	ThemeDB.fallback_font = UiKit.body()  # no engine default font anywhere: every draw_string using the fallback gets Rajdhani
 
 
 func _physics_process(_delta: float) -> void:
