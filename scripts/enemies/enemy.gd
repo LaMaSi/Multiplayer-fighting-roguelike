@@ -7,13 +7,13 @@ signal defeated(e: Enemy)
 
 const DEFS := {
 	"dummy": {"name": "Training Dummy", "hp": 99999.0, "speed": 0.0, "color": Color(1.6, 1.6, 1.8), "style": "", "ai": "dummy", "attacks": []},
-	"thug": {"name": "Thug", "hp": 55.0, "speed": 150.0, "color": Color(2.0, 0.8, 0.3), "style": "cap", "ai": "melee",
+	"thug": {"name": "Thug", "hp": 55.0, "speed": 150.0, "color": Color(2.1, 0.45, 0.12), "style": "cap", "ai": "melee", "build": {"limb": 1.55, "head": 1.05, "fill": true, "square": true},
 		"attacks": ["e_punch", "e_double"], "range": 62.0, "cd": 1.5},
-	"biker": {"name": "Biker", "hp": 75.0, "speed": 200.0, "color": Color(1.9, 1.8, 0.3), "style": "helmet", "ai": "charger",
+	"biker": {"name": "Biker", "hp": 75.0, "speed": 200.0, "color": Color(2.1, 1.6, 0.1), "style": "helmet", "ai": "charger", "build": {"limb": 1.3, "head": 1.3, "fill": true, "square": false},
 		"attacks": ["e_charge"], "range": 0.0, "cd": 2.2},
-	"thrower": {"name": "Bottle Thrower", "hp": 40.0, "speed": 130.0, "color": Color(1.7, 0.6, 2.0), "style": "hood", "ai": "ranged",
+	"thrower": {"name": "Bottle Thrower", "hp": 40.0, "speed": 130.0, "color": Color(2.0, 0.2, 0.75), "style": "hood", "ai": "ranged", "build": {"limb": 0.8, "head": 0.9, "fill": false, "square": true},
 		"attacks": ["e_throw"], "range": 0.0, "cd": 2.4},
-	"boss_street": {"name": "Big Boss", "hp": 750.0, "speed": 120.0, "color": Color(2.2, 0.4, 0.4), "style": "crown", "ai": "boss",
+	"boss_street": {"name": "Big Boss", "hp": 750.0, "speed": 120.0, "color": Color(2.3, 0.12, 0.12), "style": "crown", "ai": "boss", "build": {"limb": 1.9, "head": 1.1, "fill": true, "square": true},
 		"attacks": ["boss_swing", "boss_slam", "boss_charge"], "range": 100.0, "cd": 1.0, "scale": 1.5, "resist": true, "boss": true},
 }
 
@@ -49,6 +49,11 @@ func _ready() -> void:
 	set_collision_layer_value(4, true)
 	figure.color = def["color"]
 	figure.style = String(def["style"])
+	var bd: Dictionary = def.get("build", {})
+	figure.limb_scale = float(bd.get("limb", 1.0))
+	figure.head_scale = float(bd.get("head", 1.0))
+	figure.fill_torso = bool(bd.get("fill", false))
+	figure.square_head = bool(bd.get("square", false))
 	figure.set_target(PoseLib.idle_enemy(0.0), true)
 	if def["ai"] != "dummy":
 		invuln = 0.5

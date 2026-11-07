@@ -231,7 +231,8 @@ func take_hit(info: HitInfo) -> bool:
 	freeze = info.stop
 	_victim_freeze = true
 	flash_t = 0.12
-	squash = Vector2(1.25, 0.78)
+	var sq := clampf(dmg / 40.0, 0.2, 0.5)
+	squash = Vector2(1.0 + sq, 1.0 - sq * 0.9)  # squashed by the blow
 	_hit_feedback(info, dmg)
 	Coop.post_hit(info, self, dmg)
 	_on_damaged(info)
@@ -281,8 +282,14 @@ func _hit_feedback(info: HitInfo, dmg: float) -> void:
 	elif info.friendly:
 		Fx.number(parent, global_position + Vector2(0, -body_h - 6.0), "%d" % int(round(dmg)), Color(0.7, 0.7, 0.7), 16)
 	Juice.shake(info.shake * (1.4 if info.relay else 1.0))
-	if info.punch > 0.0 or info.relay:
-		Juice.zoom_punch(maxf(info.punch, 0.04 if info.relay else 0.0))
+	# camera: directional kick toward the blow, zoom punch and a flash of slow motion on heavy hits
+	if not info.friendly:
+		Juice.kick(dir * clampf(dmg * 1.6, 6.0, 34.0))
+		var zp := clampf((dmg - 6.0) / 160.0, 0.0, 0.07)
+		if info.punch > 0.0 or info.relay or zp > 0.0:
+			Juice.zoom_punch(maxf(maxf(info.punch, zp), 0.05 if info.relay else 0.0))
+		if (dmg >= 18.0 or hp <= 0.0 or info.relay) and Engine.time_scale > 0.9:
+			Juice.slowmo(0.3, 0.09 if hp > 0.0 else 0.16)
 
 
 func apply_direct_damage(amount: float, label := "") -> void:
@@ -334,10 +341,12 @@ func thrown(vel: Vector2, by: Actor) -> void:
 func _physics_process(delta: float) -> void:
 	if freeze > 0:
 		freeze -= 1
+		figure.frozen = true  # hold the pose on impact
 		figure.jitter = 3.0 if _victim_freeze else 0.0
 		figure.self_modulate = Color(2.6, 2.6, 2.6) if flash_t > 0.0 else Color.WHITE
 		return
 	figure.jitter = 0.0
+	figure.frozen = false
 	_victim_freeze = false
 	_tick_timers(delta)
 	match state:
@@ -531,6 +540,8 @@ func _loco_pose() -> Dictionary:
 
 
 func _update_visuals(delta: float) -> void:
+	if not attack.active:
+		figure.zeta = 0.45 if (state == "hurt" or state == "launched" or state == "getup") else 1.0
 	match state:
 		"hurt":
 			figure.set_target(PoseLib.hurt())

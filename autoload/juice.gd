@@ -1,8 +1,9 @@
 extends Node
-## Autoload "Juice": camera trauma-shake and zoom punch, plus brief slow motion.
+## Autoload "Juice": camera trauma-shake, directional kick, zoom punch, and brief slow motion.
 
 var trauma := 0.0
 var punch := 0.0
+var kick_vec := Vector2.ZERO  ## camera offset pushed toward the blow, decays quickly
 var _slow_token := 0
 
 
@@ -12,6 +13,12 @@ func shake(amount: float) -> void:
 
 func zoom_punch(amount: float) -> void:
 	punch = maxf(punch, amount)
+
+
+func kick(v: Vector2) -> void:
+	kick_vec += v
+	if kick_vec.length() > 44.0:
+		kick_vec = kick_vec.normalized() * 44.0
 
 
 func slowmo(scale: float, real_seconds: float) -> void:
@@ -27,3 +34,4 @@ func _process(delta: float) -> void:
 	var d := delta / maxf(Engine.time_scale, 0.05)
 	trauma = maxf(0.0, trauma - 1.6 * d)
 	punch = maxf(0.0, punch - 0.9 * d)
+	kick_vec = kick_vec.lerp(Vector2.ZERO, 1.0 - exp(-12.0 * d))

@@ -3,8 +3,8 @@ extends CharacterBody2D
 ## Health / power-up dropped by containers. Walk into it to collect.
 
 const COLORS := {
-	"hp_s": Color(0.5, 2.0, 0.8), "hp_m": Color(0.5, 2.0, 0.8), "dmg": Color(2.2, 0.8, 0.3),
-	"speed": Color(0.5, 1.8, 2.2), "shield": Color(0.6, 1.5, 2.2), "meter": Color(2.0, 1.8, 0.5),
+	"hp_s": Color(2.0, 1.7, 1.9), "hp_m": Color(2.0, 1.7, 1.9), "dmg": Color(2.2, 0.8, 0.3),
+	"speed": Color(1.7, 1.0, 2.2), "shield": Color(1.9, 1.9, 2.2), "meter": Color(2.0, 1.8, 0.5),
 }
 const GLYPH := {"hp_s": "+", "hp_m": "+", "dmg": "!", "speed": ">", "shield": "O", "meter": "*"}
 

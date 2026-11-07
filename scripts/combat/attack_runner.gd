@@ -38,7 +38,9 @@ func start(m: MoveData, btn := -1) -> void:
 	_wait_frames = 0
 	_tilt = 0.0
 	_spun = false
-	actor.figure.follow_speed = 38.0
+	actor.figure.follow_speed = 46.0
+	actor.figure.zeta = 0.5  # under-damped spring: overshoot + settle
+	actor.squash = Vector2(0.88, 1.12)  # anticipation: coil up before the strike
 
 
 func can_cancel() -> bool:
@@ -89,7 +91,9 @@ func interrupt() -> void:
 func _cleanup() -> void:
 	actor.figure.rot = 0.0
 	actor.figure.modulate = Color.WHITE
-	actor.figure.follow_speed = 24.0
+	actor.figure.follow_speed = 28.0
+	actor.figure.zeta = 1.0
+	actor.figure.trail_on = false
 	actor.guard_t = 0
 	actor.parry_t = 0
 	if grabbed != null and is_instance_valid(grabbed) and grabbed.has_method("release"):
@@ -209,13 +213,13 @@ func _do_event(e: Dictionary) -> void:
 				Sfx.play("throw", 0.8)
 				grabbed = null
 		"heal_pulse":
-			Fx.ring(parent, a.global_position + Vector2(0, -50), Color(0.5, 2.0, 0.8), float(e["radius"]), 0.4)
+			Fx.ring(parent, a.global_position + Vector2(0, -50), Color(2.0, 1.7, 1.9), float(e["radius"]), 0.4)
 			Sfx.play("heal")
 			a.heal(float(e["amount"]) * 0.5)
 			var p2 := Coop.partner_of(a)
 			if p2 != null and p2.is_alive() and p2.global_position.distance_to(a.global_position) < float(e["radius"]) + 40.0:
 				p2.heal(float(e["amount"]))
-				Fx.number(parent, p2.global_position + Vector2(0, -100), "+%d" % int(e["amount"]), Color(0.5, 2.0, 0.8), 24)
+				Fx.number(parent, p2.global_position + Vector2(0, -100), "+%d" % int(e["amount"]), Color(2.0, 1.7, 1.9), 24)
 		"rage":
 			a.add_buff("rage", float(e["dur"]))
 			Fx.ring(parent, a.global_position + Vector2(0, -45), Color(2.2, 0.3, 0.2), 120.0, 0.4)
@@ -263,9 +267,21 @@ func world_rect(box: Rect2) -> Rect2:
 
 
 func _hits() -> void:
+	var swoosh := false
+	for h2 in move.hits:
+		if frame >= int(h2["at"]) - 1 and frame < int(h2["at"]) + int(h2["dur"]) + 4:
+			swoosh = true
+	actor.figure.trail_on = swoosh
 	for i in move.hits.size():
 		var h: Dictionary = move.hits[i]
 		var at: int = h["at"]
+		if frame == at and not _ev_done.has(1000 + i):
+			# strike: stretch the body along the attack, ghost on heavy blows
+			_ev_done[1000 + i] = true
+			var heavy := float(h["dmg"]) >= 14.0
+			actor.squash = Vector2(1.3, 0.78) if heavy else Vector2(1.16, 0.9)
+			if float(h["dmg"]) >= 10.0:
+				Fx.afterimage(actor.get_parent(), actor.figure, actor.figure.color)
 		if frame < at or frame >= at + int(h["dur"]):
 			continue
 		var rect := world_rect(h["box"])
@@ -295,7 +311,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.dmg = float(h["dmg"]) * a.dmg_mult()
 	info.stun = int(h["stun"])
 	info.kind = String(h["kind"])
-	info.stop = int(h["stop"])
+	info.stop = int(h["stop"]) + (2 if float(h["dmg"]) >= 18.0 else (1 if float(h["dmg"]) >= 10.0 else 0))
 	info.low = bool(h["low"])
 	info.shake = float(h["shake"])
 	info.punch = float(h.get("punch", 0.0))
@@ -317,5 +333,5 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		a.freeze = maxi(a.freeze, info.stop)
 		if info.heal_self > 0.0:
 			a.heal(info.heal_self)
-			Fx.number(a.get_parent(), a.global_position + Vector2(0, -105), "+%d" % int(info.heal_self), Color(0.5, 2.0, 0.8), 18)
+			Fx.number(a.get_parent(), a.global_position + Vector2(0, -105), "+%d" % int(info.heal_self), Color(2.0, 1.7, 1.9), 18)
 		a.on_hit_landed(info, t)

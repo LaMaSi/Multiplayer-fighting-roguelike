@@ -37,7 +37,7 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.kind = String(e.get("pkind", "normal"))
 	p.life = float(e["life"])
 	p.radius = float(e["radius"])
-	p.col = e["color"]
+	p.col = a.figure.color if a.team == "player" else e["color"]  # player shots wear their owner's colour
 	p.pierce = bool(e.get("pierce", false))
 	p.ground = bool(e.get("ground", false))
 	p.returns = float(e.get("returns", 0.0))
@@ -127,7 +127,7 @@ func _check_reflect() -> void:
 				gravity = 0.0
 				dmg *= 1.6
 				kb = Vector2(absf(kb.x) * f.facing, kb.y)
-				col = Color(1.2, 2.0, 2.4)
+				col = f.figure.color
 				pierce = true
 				_done.clear()
 				life = _age + 1.6

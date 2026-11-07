@@ -134,7 +134,7 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 	c.draw_rect(bar, Color(0.12, 0.05, 0.08))
 	c.draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(_trail[i] / f.max_hp, 0, 1), bar.size.y)), Color(1, 1, 1, 0.8))
 	var frac := clampf(f.hp / f.max_hp, 0.0, 1.0)
-	c.draw_rect(Rect2(bar.position, Vector2(bar.size.x * frac, bar.size.y)), Color(1.0 - frac * 0.7, 0.3 + frac * 0.6, 0.3))
+	c.draw_rect(Rect2(bar.position, Vector2(bar.size.x * frac, bar.size.y)), Color(1.0, 0.25 + frac * 0.7, 0.25 + frac * 0.7))
 	_text(c, bar.position + Vector2(4, 12), "%d" % int(f.hp), 12, Color(1, 1, 1), 60.0)
 	# meter
 	var m := Rect2(x0 + 42, 32, 236, 7)

@@ -24,7 +24,7 @@ const SLOTS: Array[String] = [
 
 const ORANGE := Color(2.2, 1.0, 0.3)
 const CYAN := Color(0.4, 1.6, 2.2)
-const GREEN := Color(0.6, 2.0, 0.8)
+const GREEN := Color(2.0, 1.7, 1.9)  ## heal colour: warm white (green/cyan are reserved for the players)
 const RED := Color(2.2, 0.4, 0.4)
 const GOLD := Color(2.2, 1.8, 0.5)
 
@@ -58,8 +58,33 @@ static func _mk(d: Dictionary) -> MoveData:
 		m.set(k, d[k])
 	if m.short == "":
 		m.short = m.name.substr(0, 6).to_upper()
+	for i in m.kf.size():
+		m.kf[i][1] = _exaggerate(m.kf[i][1])
 	_db[m.id] = m
 	return m
+
+
+## Animation principles, applied automatically to every keyframe:
+## extended limbs get a big fist/foot and stretch (exaggeration, "smear"),
+## cocked limbs contract (anticipation). The spring in StickFigure adds overshoot.
+static func _exaggerate(p: Dictionary) -> Dictionary:
+	var q := p.duplicate()
+	for s in ["f", "b"]:
+		var ua: float = q.get("ua_" + s, StickFigure.NEUTRAL["ua_" + s])
+		var la: float = q.get("la_" + s, StickFigure.NEUTRAL["la_" + s])
+		if la < 0.55 and (ua > 1.0 or ua < -0.9):
+			q["fist_" + s] = q.get("fist_" + s, 2.6)
+			q["reach_" + s] = q.get("reach_" + s, 1.3)
+		elif la > 1.6 and ua > 0.3:
+			q["reach_" + s] = q.get("reach_" + s, 0.86)
+		var th: float = q.get("th_" + s, StickFigure.NEUTRAL["th_" + s])
+		var kn: float = q.get("kn_" + s, StickFigure.NEUTRAL["kn_" + s])
+		if absf(th) > 1.1 and kn < 0.5:
+			q["foot_" + s] = q.get("foot_" + s, 2.3)
+			q["legr_" + s] = q.get("legr_" + s, 1.25)
+		elif kn > 1.4:
+			q["legr_" + s] = q.get("legr_" + s, 0.9)
+	return q
 
 
 static func _idle() -> Dictionary:
@@ -283,8 +308,9 @@ static func _build_player() -> void:
 	_mk({"id": "haymaker", "name": "Heavy Haymaker", "short": "HAYMKR", "desc": "Slow, huge knockback, armoured windup.",
 		"total": 60,
 		"kf": [[0, {"lean": -0.5, "ua_f": -1.0, "la_f": 0.5, "ua_b": 0.5, "la_b": 1.0, "th_f": 0.5, "kn_f": 0.8, "th_b": -0.6, "kn_b": 0.5}],
-			[22, {"lean": -0.7, "ua_f": -1.3, "la_f": 0.4, "th_f": 0.6, "kn_f": 0.9}],
-			[24, {"lean": 0.85, "ua_f": 1.57, "la_f": 0.0, "ua_b": -0.4, "th_f": 1.0, "kn_f": 0.2, "th_b": -0.9, "kn_b": 0.3}],
+			[12, {"lean": -0.95, "ua_f": -1.7, "la_f": 0.6, "th_f": 0.7, "kn_f": 1.1, "th_b": -0.9, "kn_b": 0.9, "root_x": -6.0}],
+			[22, {"lean": -1.0, "ua_f": -1.8, "la_f": 0.6, "th_f": 0.7, "kn_f": 1.1, "root_x": -8.0}],
+			[24, {"lean": 1.05, "ua_f": 1.57, "la_f": 0.0, "ua_b": -0.4, "th_f": 1.0, "kn_f": 0.2, "th_b": -0.9, "kn_b": 0.3}],
 			[44, _idle()]],
 		"events": [{"at": 6, "type": "armor", "dur": 20}, {"at": 24, "type": "vel", "vx": 220.0}, {"at": 23, "type": "sfx", "name": "whoosh"}],
 		"hits": [_hit(24, 4, Rect2(5, -92, 86, 50), 24, 40, Vector2(780, -200), {"kind": "launch", "stop": 10, "shake": 0.6, "punch": 0.06})]})

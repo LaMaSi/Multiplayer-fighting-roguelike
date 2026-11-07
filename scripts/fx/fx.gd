@@ -117,6 +117,11 @@ static func afterimage(parent: Node, figure: StickFigure, col: Color) -> void:
 		return
 	var g := StickFigure.new()
 	g.color = col
+	g.style = figure.style
+	g.limb_scale = figure.limb_scale
+	g.head_scale = figure.head_scale
+	g.fill_torso = figure.fill_torso
+	g.square_head = figure.square_head
 	g.pose = figure.pose.duplicate()
 	g.target = g.pose.duplicate()
 	g.follow_speed = 0.0

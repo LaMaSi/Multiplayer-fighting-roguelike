@@ -15,7 +15,7 @@ var enemy_hp_mult := 1.0
 var level_name := "Level"
 var theme := {
 	"sky_top": Color(0.10, 0.05, 0.28), "sky_bottom": Color(0.85, 0.28, 0.62),
-	"ground": Color(0.05, 0.03, 0.10), "neon_ground": Color(0.5, 1.4, 2.0), "neon_plat": Color(2.0, 0.6, 1.3),
+	"ground": Color(0.05, 0.03, 0.10), "neon_ground": Color(1.5, 0.6, 2.2), "neon_plat": Color(2.0, 0.6, 1.3),
 	"bld_far": Color(0.34, 0.14, 0.50), "edge_far": Color(0.9, 0.35, 1.2),
 	"bld_mid": Color(0.17, 0.07, 0.30), "edge_mid": Color(1.4, 0.5, 1.5),
 	"bld_near": Color(0.08, 0.03, 0.16), "edge_near": Color(1.6, 0.5, 1.4), "window": Color(1.8, 1.3, 0.5), "seed": 3,
@@ -242,7 +242,7 @@ func _end_encounter(enc: Dictionary) -> void:
 	Sfx.play("pickup", 1.2)
 	if _boss_fight or _enc_idx >= encounters.size():
 		_cleared = true
-		hud.banner("LEVEL CLEAR!", Color(0.6, 2.0, 0.8))
+		hud.banner("LEVEL CLEAR!", Color(2.0, 1.7, 1.9))
 		hud.show_result("LEVEL CLEAR", true)
 		Coop.level_cleared.emit()
 	else:

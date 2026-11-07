@@ -13,7 +13,8 @@ const COYOTE := 0.09
 const JUMP_BUFFER := 0.12
 const DROP_MAX_TIME := 0.6
 const TURN_DELAY := 4
-const PLAYER_COLORS := [Color(0.25, 1.4, 1.9), Color(1.9, 0.35, 1.5)]
+## Reserved: cyan and lime appear nowhere else in the game (enemies are red/orange/amber/crimson).
+const PLAYER_COLORS := [Color(0.2, 1.5, 2.3), Color(0.75, 2.2, 0.25)]
 
 @export var player_index := 0
 
@@ -454,7 +455,7 @@ func _st_downed(delta: float) -> void:
 	if reviving:
 		revive_progress += delta / 2.0
 		if randf() < 0.3:
-			Fx.sparks(get_parent(), global_position + Vector2(0, -20), Color(0.5, 2.0, 0.8), 2, Vector2(0, -1))
+			Fx.sparks(get_parent(), global_position + Vector2(0, -20), Color(2.0, 1.7, 1.9), 2, Vector2(0, -1))
 	else:
 		revive_progress = maxf(0.0, revive_progress - delta * 0.5)
 	if revive_progress >= 1.0:
@@ -469,8 +470,8 @@ func revive() -> void:
 	_getup_t = 0.5
 	invuln = 2.0
 	Sfx.play("revive")
-	Fx.ring(get_parent(), global_position + Vector2(0, -40), Color(0.5, 2.0, 0.8), 140.0, 0.5)
-	Fx.number(get_parent(), global_position + Vector2(0, -100), "REVIVED!", Color(0.5, 2.0, 0.8), 28)
+	Fx.ring(get_parent(), global_position + Vector2(0, -40), Color(2.0, 1.7, 1.9), 140.0, 0.5)
+	Fx.number(get_parent(), global_position + Vector2(0, -100), "REVIVED!", Color(2.0, 1.7, 1.9), 28)
 	Coop.is_over = false
 
 
@@ -488,7 +489,7 @@ func _filter_hit(info: HitInfo) -> bool:
 		freeze = 3
 		flash_t = 0.06
 		Sfx.play("block")
-		Fx.impact(get_parent(), global_position + Vector2(facing * 28.0, -60.0), Color(1.4, 1.8, 2.2), 0.7, Vector2(-facing, 0))
+		Fx.impact(get_parent(), global_position + Vector2(facing * 28.0, -60.0), Color(1.9, 1.9, 2.2), 0.7, Vector2(-facing, 0))
 		Juice.shake(0.08)
 		meter = minf(100.0, meter + 3.0)
 		if atk is Actor:
@@ -497,7 +498,7 @@ func _filter_hit(info: HitInfo) -> bool:
 	if shield_hits > 0:
 		shield_hits -= 1
 		Sfx.play("block")
-		Fx.ring(get_parent(), global_position + Vector2(0, -45), Color(0.5, 1.6, 2.2), 80.0, 0.3)
+		Fx.ring(get_parent(), global_position + Vector2(0, -45), Color(1.9, 1.9, 2.2), 80.0, 0.3)
 		return true
 	return false
 
@@ -539,19 +540,19 @@ func apply_pickup(kind: String) -> void:
 	match kind:
 		"hp_s":
 			heal(20.0)
-			Fx.number(parent, global_position + Vector2(0, -100), "+20", Color(0.5, 2.0, 0.8), 24)
+			Fx.number(parent, global_position + Vector2(0, -100), "+20", Color(2.0, 1.7, 1.9), 24)
 		"hp_m":
 			heal(50.0)
-			Fx.number(parent, global_position + Vector2(0, -100), "+50", Color(0.5, 2.0, 0.8), 28)
+			Fx.number(parent, global_position + Vector2(0, -100), "+50", Color(2.0, 1.7, 1.9), 28)
 		"dmg":
 			add_buff("dmg", 12.0)
 			Fx.number(parent, global_position + Vector2(0, -100), "DAMAGE UP", Color(2.2, 0.8, 0.3), 22)
 		"speed":
 			add_buff("speed", 12.0)
-			Fx.number(parent, global_position + Vector2(0, -100), "SPEED UP", Color(0.5, 1.8, 2.2), 22)
+			Fx.number(parent, global_position + Vector2(0, -100), "SPEED UP", Color(1.7, 1.0, 2.2), 22)
 		"shield":
 			shield_hits = 3
-			Fx.number(parent, global_position + Vector2(0, -100), "SHIELD", Color(0.6, 1.6, 2.2), 22)
+			Fx.number(parent, global_position + Vector2(0, -100), "SHIELD", Color(1.9, 1.9, 2.2), 22)
 		"meter":
 			meter = minf(100.0, meter + 50.0)
 			Fx.number(parent, global_position + Vector2(0, -100), "+METER", Color(2.0, 1.8, 0.5), 22)
@@ -595,12 +596,18 @@ func _update_visuals(delta: float) -> void:
 func _draw() -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	var a0 := 0.0 if facing > 0 else PI
+	# player marker: a coloured arrow + number above the head
+	if state != "downed" and state != "dead":
+		var mc := figure.color
+		var my := -body_h - 26.0 + sin(t * 4.0) * 2.0
+		draw_colored_polygon(PackedVector2Array([Vector2(-7, my - 9), Vector2(7, my - 9), Vector2(0, my)]), mc)
+		draw_string(ThemeDB.fallback_font, Vector2(-14, my - 12), "P%d" % (player_index + 1), HORIZONTAL_ALIGNMENT_CENTER, 28.0, 13, mc)
 	if guard_t > 0:
-		draw_arc(Vector2(facing * 18.0, -48.0), 46.0, a0 - 1.1, a0 + 1.1, 20, Color(0.6, 1.6, 2.2, 0.9), 4.0, true)
+		draw_arc(Vector2(facing * 18.0, -48.0), 46.0, a0 - 1.1, a0 + 1.1, 20, Color(1.9, 1.9, 2.2, 0.9), 4.0, true)
 	if reflect_t > 0:
-		draw_arc(Vector2(facing * 26.0, -50.0), 56.0, a0 - 1.5, a0 + 1.5, 24, Color(1.0, 1.8, 2.4, 0.9), 5.0, true)
+		draw_arc(Vector2(facing * 26.0, -50.0), 56.0, a0 - 1.5, a0 + 1.5, 24, Color(2.0, 2.0, 2.4, 0.9), 5.0, true)
 	if shield_hits > 0:
-		draw_arc(Vector2(0, -45), 55.0, 0.0, TAU, 32, Color(0.5, 1.4, 2.0, 0.55 + 0.2 * sin(t * 8.0)), 3.0, true)
+		draw_arc(Vector2(0, -45), 55.0, 0.0, TAU, 32, Color(1.9, 1.9, 2.2, 0.55 + 0.2 * sin(t * 8.0)), 3.0, true)
 	if has_buff("rage"):
 		draw_arc(Vector2(0, -45), 50.0 + 4.0 * sin(t * 14.0), 0.0, TAU, 32, Color(2.2, 0.3, 0.2, 0.6), 3.0, true)
 	if has_buff("boost"):
@@ -613,7 +620,7 @@ func _draw() -> void:
 		var c := Vector2(0, -50)
 		draw_arc(c, 34.0, 0.0, TAU, 32, Color(1, 1, 1, 0.2), 4.0, true)
 		if revive_progress > 0.0:
-			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * revive_progress, 32, Color(0.5, 2.0, 0.8), 5.0, true)
+			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * revive_progress, 32, Color(2.0, 1.7, 1.9), 5.0, true)
 		var f := ThemeDB.fallback_font
 		var txt := "HOLD RT" if Coop.revives_left > 0 else "NO REVIVES"
 		draw_string(f, Vector2(-34, -92), txt, HORIZONTAL_ALIGNMENT_CENTER, 70.0, 13, Color(1, 1, 1, 0.8))
