@@ -74,6 +74,17 @@ func _ready() -> void:
 	var x0 := f.global_position.x
 	await frames(30)
 	check("a moving platform carries its rider (%.0f -> %.0f)" % [x0, f.global_position.x], absf(f.global_position.x - x0) > 15.0 and f.is_on_floor())
+	# partner-aimed knockback
+	var hi := HitInfo.new()
+	hi.attacker = f
+	hi.kb = Vector2(300, -500)
+	f.global_position = Vector2(400, 599)
+	o.global_position = Vector2(1000, 599)
+	Coop._aim_at_partner(hi)
+	check("knockback toward the partner is scaled to land near them (%.0f)" % hi.kb.x, hi.kb.x != 300.0 and hi.kb.x >= 225.0 and hi.kb.x <= 405.0)
+	hi.kb = Vector2(-300, -500)
+	Coop._aim_at_partner(hi)
+	check("knockback away from the partner is untouched", hi.kb.x == -300.0)
 	# LT cancel that finds no move must not leave the fighter frozen
 	f.global_position = Vector2(500, 599)
 	f.meter = 100.0

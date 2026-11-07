@@ -243,10 +243,12 @@ func _run() -> void:
 	f1.loadout["X"] = "guard"
 	var th := level.spawn_enemy("thug", Vector2(1075, 599))
 	th.invuln = 0.0
+	th._cd = 999.0  # keep it from attacking on its own: this block tests the guard with scripted hits
 	await frames(2)
 	p1.script_set(Vector2.ZERO, [X])
 	await frames(30)
 	check(f1.guard_t > 0, "guard active while held")
+	th.global_position = Vector2(1075, 599)  # it may have wandered (enemies walk through players); the guard only covers the front
 	var gh := f1.hp
 	var info := HitInfo.new()
 	info.attacker = th

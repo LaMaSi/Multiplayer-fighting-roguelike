@@ -128,6 +128,7 @@ func pre_hit(info: HitInfo, victim: Actor) -> void:
 			info.dmg *= 1.5
 			info.shake += 0.2
 	info.dmg *= combo_mult()
+	_aim_at_partner(info)
 
 
 func post_hit(info: HitInfo, victim: Actor, dmg: float) -> void:
@@ -195,3 +196,25 @@ func _count_hit(player: int) -> void:
 		combo += 1
 		_last_scorer = player
 		best_combo = maxi(best_combo, combo)
+
+
+## Predictable set-ups: a hit that knocks an enemy toward the other player is nudged (never more than -25 % / +35 %) so
+## the enemy lands close in front of the partner. Position yourself so the partner is on the knockback side.
+func _aim_at_partner(info: HitInfo) -> void:
+	if info.kind == "pull" or absf(info.kb.x) < 60.0:
+		return
+	var p := partner_of(info.attacker as Actor)
+	if p == null or not p.is_alive() or p.state == "downed":
+		return
+	var atk := info.attacker as Actor
+	var d := p.global_position.x - atk.global_position.x
+	if signf(d) != signf(info.kb.x) or absf(d) < 220.0 or absf(d) > 1100.0:
+		return
+	var air := 0.25
+	if info.kb.y < -200.0:
+		air = 2.0 * absf(info.kb.y) / 2300.0
+	var travel := absf(info.kb.x) * air
+	if travel < 40.0:
+		return
+	var want := absf(d) - 110.0  # land just in front of the partner
+	info.kb.x *= clampf(want / travel, 0.75, 1.35)
