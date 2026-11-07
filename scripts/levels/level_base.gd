@@ -23,6 +23,8 @@ var theme := {
 	"bld_near": Color(0.08, 0.03, 0.16), "edge_near": Color(1.6, 0.5, 1.4), "window": Color(1.8, 1.3, 0.5), "seed": 3,
 }
 
+var par_time := 120.0  ## seconds for an S on the time stat
+var result_stats: Dictionary = {}
 var fighters: Array[Fighter] = []
 var cam: CameraRig
 var hud: Hud
@@ -45,6 +47,7 @@ func _setup() -> void:
 func _ready() -> void:
 	Coop.reset_run()
 	_setup()
+	par_time = 45.0 + level_w / 70.0
 	Coop.enemy_hp_mult = enemy_hp_mult
 	Coop.enemy_dmg_mult = enemy_dmg_mult
 	Coop.bounds = Rect2(0, -1200, level_w, 2400)
@@ -174,9 +177,10 @@ func alive_enemies() -> int:
 
 # ------------------------------------------------------------------ encounters
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if _cleared:
 		return
+	Coop.stat_time += delta
 	if not _locked and exit_x > 0.0 and _enc_idx >= encounters.size():
 		var sum := 0.0
 		var n := 0
@@ -265,7 +269,10 @@ func _complete() -> void:
 	_cleared = true
 	hud.set_go(false)
 	hud.banner("LEVEL CLEAR!", Color(2.0, 1.8, 0.6))
-	hud.show_result("LEVEL CLEAR", true)
+	result_stats = LevelStats.compute(fighters, par_time)
+	if RunState.active:
+		RunState.coins += int(result_stats["coins"])
+	hud.show_result("LEVEL CLEAR", true, result_stats)
 	Sfx.play("relay")
 	Coop.level_cleared.emit()
 
@@ -274,7 +281,7 @@ func _complete() -> void:
 func finish_level() -> void:
 	if RunState.active:
 		RunState.save_from(fighters)
-		RunState.level_cleared()
+		RunState.level_cleared(float(result_stats.get("heal_bonus", 0.0)))
 		get_tree().paused = false
 		Engine.time_scale = 1.0
 		get_tree().change_scene_to_file("res://scenes/reward.tscn")
@@ -326,18 +333,7 @@ func _paint_sky(c: CanvasItem) -> void:
 	var horizon: Color = theme["sky_bottom"]
 	var y0 := -300.0
 	if Backdrop.variant == 5:
-		var span5 := ground_y - y0
-		c.draw_rect(Rect2(-2500, -1800, level_w + 5000, 1800 + y0 + 2), Pal.SYNTH_SKY[0])
-		var n := 48
-		for i in n:
-			var t := float(i) / float(n - 1)
-			var col := Color(Pal.SYNTH_SKY[0])
-			for k in range(3):
-				var a: float = Pal.SYNTH_SKY_AT[k]
-				var b: float = Pal.SYNTH_SKY_AT[k + 1]
-				if t >= a and t <= b:
-					col = (Pal.SYNTH_SKY[k] as Color).lerp(Pal.SYNTH_SKY[k + 1], (t - a) / (b - a))
-			c.draw_rect(Rect2(-2500, y0 + span5 / n * i, level_w + 5000, span5 / n + 1.0), col)
+		Backdrop.paint_synth_sky(c, -2500.0, level_w + 5000.0, y0, ground_y)
 		c.draw_rect(Rect2(-2500, -1800, 2500, 3200), Color(0.01, 0.0, 0.03))
 		c.draw_rect(Rect2(level_w, -1800, 2500, 3200), Color(0.01, 0.0, 0.03))
 		return

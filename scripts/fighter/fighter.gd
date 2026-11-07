@@ -474,6 +474,7 @@ func _st_downed(delta: float) -> void:
 
 func revive() -> void:
 	Coop.revives_left = maxi(0, Coop.revives_left - 1)
+	Coop.stat_rescues += 1
 	hp = max_hp * 0.3
 	revive_progress = 0.0
 	state = "getup"

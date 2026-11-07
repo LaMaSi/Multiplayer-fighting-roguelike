@@ -1,6 +1,6 @@
 # Style Guide: colour
 
-Status: **proposal, first draft** (decision needed on §3). Written from an audit of every `Color(...)` in `scripts/` and `autoload/`. The goal is that a player can tell what a thing *is* from its colour alone, at a glance and at phone size.
+Status: **implemented in the game** (HUD, level complete, shop, synthwave backdrop). Terrain = pink and interactables = amber were used for the build; §3 lists what is still open. Written from an audit of every `Color(...)` in `scripts/` and `autoload/`. The goal is that a player can tell what a thing *is* from its colour alone, at a glance and at phone size.
 
 ## 1. Principles
 
@@ -55,3 +55,14 @@ Status: **proposal, first draft** (decision needed on §3). Written from an audi
 - Terrain pink vs amber (§3).
 - Should interactables get a thin white rim on top of amber for extra separation?
 - Per-biome terrain hue (Wasteland, Ruins): same role, different hue, or the same pink everywhere?
+
+
+## 7. As built (UI iteration)
+
+- **Shared kit:** `scripts/ui/ui_kit.gd` holds the colour roles, fonts and drawing helpers; every screen uses it.
+- **Fonts (OFL, in `assets/fonts/`):** Orbitron (headings, big numbers), Rajdhani Bold (labels, body).
+- **UI colour rule:** flat colours at or below 1.0, so UI does not glow. Only three things glow on purpose: the combo counter, the rank letter, and a usable or full super meter.
+- **Player colours:** P1 cyan `(0.2, 0.9, 1.0)`, P2 lime `(0.55, 0.98, 0.2)`. Coins and prices amber `(1.0, 0.72, 0.25)`. Titles and accents pink `(1.0, 0.4, 0.72)`.
+- **Backdrop (variant 5, "synthwave"):** striped sun, one purple-magenta-orange gradient, three building layers that get darker toward the front with rim light, lit window columns, setbacks and antennas. Colours are in `scripts/levels/pal.gd`. Older variants (0 to 4) are kept for comparison; `Backdrop.variant` selects.
+- **Screens:** HUD (`scripts/ui/hud.gd`), level complete (`scripts/ui/level_complete_view.gd`, data from `scripts/run/level_stats.gd`), shop (`scripts/ui/shop_screen.gd`).
+- **Mockups and screenshot tests:** `tests/mock_hud.gd`, `tests/mock_screens.gd`, `tests/shot_bg.gd`, `tests/ui_real_test.gd`, `tests/shop_test.gd`.

@@ -41,6 +41,7 @@ func setup(k: String) -> Prop:
 
 func _ready() -> void:
 	add_to_group("props")
+	Coop.stat_containers_total += 1
 	add_to_group("hurt_enemy")
 	collision_layer = 0
 	collision_mask = 0
@@ -163,6 +164,7 @@ func _break(by: Actor) -> void:
 	if state == "dead":
 		return
 	state = "dead"
+	Coop.stat_containers += 1
 	var parent := get_parent()
 	var pos := global_position + Vector2(0, -h * 0.5)
 	Fx.shatter(parent, pos, col, 18)

@@ -4,12 +4,14 @@ extends Node
 ## the map position and the queue of reward picks. Reward card creation / application lives here
 ## too so it can be tested without any UI.
 
-const TYPE_NAMES := {"fight": "FIGHT", "elite": "ELITE", "treasure": "LOOT", "rest": "REST", "mystery": "???", "boss": "BOSS"}
+const TYPE_NAMES := {"fight": "FIGHT", "elite": "ELITE", "treasure": "LOOT", "rest": "REST", "mystery": "???", "boss": "BOSS", "shop": "SHOP"}
 const LAYER_SIZES := [2, 3, 3, 3, 2, 1]  ## the last layer is the boss
 const UP_MULT := {"dmg": 1.25, "spd": 1.2, "kb": 1.3}
 const UP_TEXT := {"dmg": "+25% damage", "spd": "+20% attack speed (shorter recovery)", "kb": "+30% knockback"}
 
 var active := false
+var coins := 0  ## one shared wallet for the whole run
+var bonus_revives := 0  ## extra shared lives bought in shops (added to every level)
 var map: Array = []  ## layers of node dictionaries {layer, idx, type, seed, next: [idx], done}
 var pos := Vector2i(-1, 0)  ## (-1, 0) = before the first layer
 var current: Dictionary = {}
@@ -31,6 +33,8 @@ func start_run(seed_value := -1) -> void:
 	finished = false
 	won = false
 	levels_cleared = 0
+	coins = 0
+	bonus_revives = 0
 	pos = Vector2i(-1, 0)
 	current = {}
 	loadouts = [MoveDB.STARTER.duplicate(), MoveDB.STARTER.duplicate()]
@@ -54,7 +58,7 @@ func end_run() -> void:
 # ------------------------------------------------------------------ map
 
 func _roll_type(layer: int) -> String:
-	var weights := {"fight": 5.0, "treasure": 1.5, "rest": 1.2, "mystery": 1.5, "elite": 1.4 if layer >= 2 else 0.0}
+	var weights := {"fight": 5.0, "treasure": 1.5, "rest": 1.2, "mystery": 1.5, "elite": 1.4 if layer >= 2 else 0.0, "shop": 1.6 if layer >= 1 else 0.0}
 	var total := 0.0
 	for k in weights:
 		total += weights[k]
@@ -154,15 +158,21 @@ func save_from(fighters: Array) -> void:
 
 
 ## Called when a level is cleared: partial heal, queue the rewards, alternate the first picker.
-func level_cleared() -> void:
+func level_cleared(bonus_heal := 0.0) -> void:
 	levels_cleared += 1
 	current["done"] = true
 	for i in 2:
-		hp[i] = minf(max_hp[i], hp[i] + max_hp[i] * 0.25)
+		hp[i] = minf(max_hp[i], hp[i] + max_hp[i] * 0.25 + bonus_heal)
 	_queue_rewards(String(current["type"]))
 	if current["type"] == "boss":
 		finished = true
 		won = true
+
+
+## Leaving a shop: the node is done and no reward queue follows.
+func shop_done() -> void:
+	current["done"] = true
+	queue.clear()
 
 
 func rest_here() -> void:

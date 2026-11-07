@@ -131,6 +131,33 @@ class SunLayer extends Node2D:
 			yy += 1.0
 
 
+## Theme with the keys the backdrop needs (used by screens outside a level, e.g. the shop).
+static func default_theme() -> Dictionary:
+	return {
+		"sky_top": Color(0.12, 0.04, 0.26), "sky_bottom": Color(1.0, 0.36, 0.30),
+		"bld_far": Color(0.45, 0.15, 0.40), "edge_far": Color(0.9, 0.35, 1.2),
+		"bld_mid": Color(0.17, 0.07, 0.30), "edge_mid": Color(2.0, 0.6, 0.3),
+		"bld_near": Color(0.08, 0.03, 0.16), "edge_near": Color(2.0, 0.4, 1.2),
+		"window": Color(1.8, 1.3, 0.5), "seed": 3,
+	}
+
+
+## Synthwave sky gradient (variant 5), shared by levels and menu screens.
+static func paint_synth_sky(c: CanvasItem, x0: float, width: float, y0: float, ground_y: float) -> void:
+	var span := ground_y - y0
+	c.draw_rect(Rect2(x0, -1800, width, 1800 + y0 + 2), Pal.SYNTH_SKY[0])
+	var n := 48
+	for i in n:
+		var t := float(i) / float(n - 1)
+		var col := Color(Pal.SYNTH_SKY[0])
+		for k in range(3):
+			var a: float = Pal.SYNTH_SKY_AT[k]
+			var b: float = Pal.SYNTH_SKY_AT[k + 1]
+			if t >= a and t <= b:
+				col = (Pal.SYNTH_SKY[k] as Color).lerp(Pal.SYNTH_SKY[k + 1], (t - a) / (b - a))
+		c.draw_rect(Rect2(x0, y0 + span / n * i, width, span / n + 1.0), col)
+
+
 var cam: Camera2D
 var _layers: Array[SkyLayer] = []
 var _sun: SunLayer

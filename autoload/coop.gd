@@ -23,6 +23,15 @@ var hits_by: Array[int] = [0, 0]
 var best_combo := 0
 
 var revives_left := 3
+var revives_max := 3
+
+## per-level stats for the level complete screen
+var stat_damage := 0.0
+var stat_relay_hits := 0
+var stat_rescues := 0
+var stat_containers := 0
+var stat_containers_total := 0
+var stat_time := 0.0
 var is_over := false
 
 var enemy_hp_mult := 1.0
@@ -42,7 +51,14 @@ func reset_run() -> void:
 	combo_t = 0.0
 	hits_by = [0, 0]
 	best_combo = 0
-	revives_left = 3
+	revives_max = 3 + (RunState.bonus_revives if RunState.active else 0)
+	revives_left = revives_max
+	stat_damage = 0.0
+	stat_relay_hits = 0
+	stat_rescues = 0
+	stat_containers = 0
+	stat_containers_total = 0
+	stat_time = 0.0
 	is_over = false
 	enemy_hp_mult = 1.0
 	enemy_dmg_mult = 1.0
@@ -101,6 +117,7 @@ func post_hit(info: HitInfo, victim: Actor, dmg: float) -> void:
 	atk.meter = minf(100.0, atk.meter + dmg * 0.7)
 	if info.relay:
 		relay += 1
+		stat_relay_hits += 1
 		atk.meter = minf(100.0, atk.meter + 8.0)
 		say("ALLEY-OOP!" if info.alley_oop else "RELAY x%d" % relay, RELAY_COLOR, victim.global_position + Vector2(0, -130))
 		Juice.shake(0.25)
