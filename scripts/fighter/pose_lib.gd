@@ -5,17 +5,35 @@ extends RefCounted
 
 static func idle(t: float) -> Dictionary:
 	var b := sin(t * 2.6) * 0.03
-	return {
-		"lean": 0.10 + b, "head": -0.05,
-		"th_f": 0.30, "kn_f": 0.45, "th_b": -0.25, "kn_b": 0.35,
+	return level_feet({
+		"lean": 0.03 + b, "head": -0.02,
+		"th_f": 0.34, "kn_f": 0.45, "th_b": -0.30, "kn_b": 0.35,
 		"ua_f": 0.95 + b, "la_f": 1.55, "ua_b": 0.55 - b, "la_b": 1.85,
-	}
+	})
+
+
+## Put both feet at the same height (standing poses only). The leg that would reach lower gets an
+## extra knee bend, so neither foot floats and the stance reads as stable.
+static func level_feet(p: Dictionary) -> Dictionary:
+	const T := StickFigure.THIGH
+	const S := StickFigure.SHIN
+	var th_f: float = p["th_f"]
+	var th_b: float = p["th_b"]
+	var drop_f := T * cos(th_f) + S * cos(th_f - float(p["kn_f"]))
+	var drop_b := T * cos(th_b) + S * cos(th_b - float(p["kn_b"]))
+	var d := minf(drop_f, drop_b)
+	var out := p.duplicate()
+	if drop_f > d + 0.01:
+		out["kn_f"] = th_f + acos(clampf((d - T * cos(th_f)) / S, -1.0, 1.0))
+	elif drop_b > d + 0.01:
+		out["kn_b"] = th_b + acos(clampf((d - T * cos(th_b)) / S, -1.0, 1.0))
+	return out
 
 
 ## True for the neutral idle pose (used to swap in the class base pose at the end of a move).
 static func is_idle(p: Dictionary) -> bool:
 	return absf(float(p.get("ua_f", -9.0)) - 0.95) < 0.001 and absf(float(p.get("la_f", -9.0)) - 1.55) < 0.001 \
-		and absf(float(p.get("kn_f", -9.0)) - 0.45) < 0.001 and absf(float(p.get("th_b", -9.0)) + 0.25) < 0.001
+		and absf(float(p.get("th_b", -9.0)) + 0.30) < 0.001 and absf(float(p.get("th_f", -9.0)) - 0.34) < 0.001
 
 
 ## Slouchy enemy stance.

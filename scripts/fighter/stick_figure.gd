@@ -62,6 +62,7 @@ var hand_f_pos := Vector2(20, -50)
 var hand_b_pos := Vector2(10, -50)
 var foot_f_pos := Vector2(10, 0)
 var foot_b_pos := Vector2(-10, 0)
+var weapon_tip := Vector2.ZERO  ## tip of the sword / head of the hammer (the swoosh trail follows it instead of the fist)
 
 var _vel: Dictionary = {}
 var _trail: Array = []
@@ -94,7 +95,7 @@ func _process(delta: float) -> void:
 			_vel[key] = v
 			pose[key] = p + v * dt
 		if trail_on:
-			_trail.push_back([to_global(hand_f_pos), to_global(hand_b_pos), to_global(foot_f_pos), to_global(foot_b_pos)])
+			_trail.push_back([to_global(weapon_tip if weapon in ["sword", "hammer"] else hand_f_pos), to_global(hand_b_pos), to_global(foot_f_pos), to_global(foot_b_pos)])
 			if _trail.size() > 8:
 				_trail.pop_front()
 		elif not _trail.is_empty():
@@ -123,6 +124,7 @@ func _draw() -> void:
 	foot_f_pos = m + foot_f_pos.rotated(rot)
 	foot_b_pos = m + foot_b_pos.rotated(rot)
 	head_pos = m + head_pos.rotated(rot)
+	weapon_tip = m + weapon_tip.rotated(rot)
 	_draw_trails()
 
 
@@ -261,6 +263,8 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 			var blade := 62.0 * ws * maxf(arm_scale, 1.0)
 			var base := hand_f + wd * 5.0
 			var tip := base + wd * blade
+			if not halo:
+				weapon_tip = tip
 			if halo:
 				draw_line(hand_f - wd * 7.0, tip + wd * 3.0, dark, 11.0 * ws)
 				draw_line(base - n * 11.0, base + n * 11.0, dark, 8.0)
@@ -275,6 +279,8 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 			var hd := Vector2.from_angle(float(pose["wp_rot"]))
 			var shaft := 74.0 * ws * maxf(arm_scale, 1.0)
 			var head_c := hand_f + hd * shaft
+			if not halo:
+				weapon_tip = head_c
 			var tail := hand_f - hd * 24.0
 			var sd := (head_c - tail).normalized()
 			var sn := Vector2(-sd.y, sd.x)

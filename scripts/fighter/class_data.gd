@@ -35,9 +35,9 @@ static func _build() -> void:
 		"b_pool": ["jab", "dash_punch", "rising_dragon", "haymaker", "wall_elbow", "counter_palm", "shoulder_rush", "popup_kick"],
 		"b_stars": ["jab", "dash_punch", "wall_elbow", "shoulder_rush"],
 		"base": {
-			"lean": 0.14, "head": -0.05,
-			"th_f": 0.45, "kn_f": 0.75, "th_b": -0.35, "kn_b": 0.6,
-			"ua_f": 2.3, "la_f": 1.9, "ua_b": 1.1, "la_b": 1.7,
+			"lean": 0.03, "head": -0.02,
+			"th_f": 0.34, "kn_f": 0.45, "th_b": -0.30, "kn_b": 0.35,
+			"ua_f": 0.95, "la_f": 1.55, "ua_b": 0.55, "la_b": 1.85,
 			"wp_rot": 0.0,
 		},
 		"bob": 0.04, "hover": 0.0,
@@ -50,10 +50,10 @@ static func _build() -> void:
 		"b_pool": ["long_slash", "thrust_lunge", "rising_slash", "low_cut", "wind_slash", "parry", "deflect_stance", "riposte_step"],
 		"b_stars": ["long_slash", "thrust_lunge", "parry"],
 		"base": {
-			"lean": 0.2, "head": -0.05,
-			"th_f": 0.7, "kn_f": 0.9, "th_b": -0.6, "kn_b": 0.5,
-			"ua_f": 1.45, "la_f": 0.1, "ua_b": 0.3, "la_b": 0.5,
-			"wp_rot": -0.95,
+			"lean": 0.04, "head": -0.02,
+			"th_f": 0.4, "kn_f": 0.6, "th_b": -0.35, "kn_b": 0.4,
+			"ua_f": 0.55, "la_f": 1.05, "ua_b": 1.55, "la_b": 1.0,  # sword hand (front arm) low at the hip, empty hand guards high
+			"wp_rot": -1.05,
 		},
 		"bob": 0.02, "hover": 0.0,
 	}
@@ -65,8 +65,8 @@ static func _build() -> void:
 		"b_pool": ["overhead_smash", "side_sweep", "sky_launcher", "quake_line", "whirlwind_haul", "guard_breaker", "home_run", "bulwark_plant"],
 		"b_stars": ["overhead_smash", "side_sweep", "home_run"],
 		"base": {
-			"lean": 0.32, "head": 0.1,
-			"th_f": 0.75, "kn_f": 0.95, "th_b": -0.75, "kn_b": 0.95,
+			"lean": 0.12, "head": 0.0,
+			"th_f": 0.45, "kn_f": 0.55, "th_b": -0.45, "kn_b": 0.55,
 			"ua_f": 0.7, "la_f": 0.5, "ua_b": 0.45, "la_b": 0.6,
 			"wp_rot": 2.8,
 		},
@@ -113,7 +113,7 @@ static func base_pose(id: String, t: float = 0.0) -> Dictionary:
 		p["root_y"] = float(p.get("root_y", 0.0)) - float(c["hover"]) * (0.5 + 0.5 * sin(t * 2.2))
 	if String(c["weapon"]) == "sword":
 		p["wp_rot"] = float(p["wp_rot"]) + sin(t * 1.7) * 0.07  # the blade tip drifts
-	return p
+	return PoseLib.level_feet(p)
 
 
 ## Which pools a slot letter draws from for a class.

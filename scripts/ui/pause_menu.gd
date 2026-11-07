@@ -13,6 +13,7 @@ class Canvas extends Control:
 
 var level: LevelBase
 var open := false
+var _held_prev := {}
 
 var _canvas: Canvas
 var _page := "main"
@@ -75,8 +76,16 @@ func _items() -> Array:
 
 
 func _process(_delta: float) -> void:
+	# edge detection here (per rendered frame): PlayerInput.pressed() is per physics tick and is missed
+	# whenever two physics ticks run in one slow frame
+	var ed := {}
 	for p in Inp.players:
-		if p.pressed(PlayerInput.Btn.START):
+		var e: Array = _held_prev.get(p.index, [false, false, false])
+		var now := [p.is_held(PlayerInput.Btn.START), p.is_held(PlayerInput.Btn.JUMP), p.is_held(PlayerInput.Btn.B)]
+		ed[p.index] = [now[0] and not e[0], now[1] and not e[1], now[2] and not e[2]]
+		_held_prev[p.index] = now
+	for p in Inp.players:
+		if ed[p.index][0]:
 			_toggle()
 	if open:
 		for p in Inp.players:
@@ -84,9 +93,9 @@ func _process(_delta: float) -> void:
 			if d != _last_dir[p.index] and d != Vector2i.ZERO:
 				_nav(d)
 			_last_dir[p.index] = d
-			if p.pressed(PlayerInput.Btn.JUMP):
+			if ed[p.index][1]:
 				_activate()
-			elif p.pressed(PlayerInput.Btn.B):
+			elif ed[p.index][2]:
 				if _page != "main":
 					_page = "testing" if _page == "lab" else "main"
 					_sel = 0

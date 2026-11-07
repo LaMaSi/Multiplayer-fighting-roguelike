@@ -108,7 +108,9 @@ static func _make_variant(m: MoveData, class_id: String) -> MoveData:
 			v.kf[i][1] = base.duplicate()
 		else:
 			if weapon == "sword" and not pose.has("wp_rot"):
-				pose["wp_rot"] = float(base["wp_rot"])
+				# arm strikes (extended arm) run along the blade, so the hit visibly leaves the sword tip
+				var extended: bool = pose.has("ua_f") and float(pose.get("la_f", 1.0)) < 0.8
+				pose["wp_rot"] = 0.0 if extended else float(base["wp_rot"])
 			if weapon == "hammer" and not pose.has("wp_rot"):
 				# adaptive moves: the head extends along the front forearm
 				var fa: float = float(pose.get("ua_f", 0.95)) + float(pose.get("la_f", 1.55))
