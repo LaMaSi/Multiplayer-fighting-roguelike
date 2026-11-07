@@ -69,7 +69,7 @@ func _ready() -> void:
 	collision_mask = 0
 	set_collision_mask_value(1, true)
 	set_collision_mask_value(2, true)
-	set_collision_mask_value(4, true)  # barriers (Bulwark Plant) block bodies but not projectiles
+	set_collision_mask_value(5, true)  # barriers (Bulwark Plant) block bodies but not projectiles; actors never block each other (see crowd_mult)
 	floor_snap_length = 8.0
 	var cs := CollisionShape2D.new()
 	var cap := CapsuleShape2D.new()
@@ -608,3 +608,21 @@ func _tick_burn(delta: float) -> void:
 		_burn_tick = 0.5
 		if not dying and hp > 0.0:
 			apply_direct_damage(2.0, "")
+
+
+## Characters never block each other: they walk through, but are slowed while their bodies overlap
+## (the cost of squeezing past a crowd). 1.0 = free, CROWD_SLOW = overlapping another body.
+const CROWD_SLOW := 0.5
+
+
+func crowd_mult() -> float:
+	var me := get_hurt_rect().grow(-6.0)
+	for o in get_tree().get_nodes_in_group("actors"):
+		if o == self or not (o is Actor):
+			continue
+		var a := o as Actor
+		if not a.is_alive() or a.state == "downed" or a.state == "dead" or a.state == "grabbed":
+			continue
+		if me.intersects(a.get_hurt_rect().grow(-6.0)):
+			return CROWD_SLOW
+	return 1.0

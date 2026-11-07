@@ -25,7 +25,7 @@ func _ready() -> void:
 	z_index = 4
 	_body = StaticBody2D.new()
 	_body.collision_layer = 0
-	_body.set_collision_layer_value(4, true)  # actors collide with layer 4; projectile rays (layer 1) pass through
+	_body.set_collision_layer_value(5, true)  # actors collide with layer 5; projectile rays (layer 1) pass through
 	var cs := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
 	r.size = Vector2(w, h)

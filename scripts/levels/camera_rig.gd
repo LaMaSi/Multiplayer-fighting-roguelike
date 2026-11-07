@@ -3,10 +3,12 @@ extends Camera2D
 ## Shared camera: follows the midpoint of all targets, zooms out to keep both in view,
 ## shakes with Juice.trauma and punches in on heavy hits. set_bounds() locks it to an arena.
 
-const MAX_ZOOM := 1.15
+## The game is about movement: the camera stays wide. Zoom is 1.0 = 1280 px of world across the screen.
+const MAX_ZOOM := 0.85  # closest the camera ever gets (players standing together)
+const MARGIN := Vector2(1100.0, 650.0)  # extra world shown around the two players
 
 var targets: Array[Node2D] = []
-var min_zoom := 0.62
+var min_zoom := 0.45
 
 
 func _ready() -> void:
@@ -18,7 +20,7 @@ func _ready() -> void:
 func set_bounds(left: float, right: float) -> void:
 	limit_left = int(left)
 	limit_right = int(right)
-	min_zoom = clampf(1280.0 / maxf(right - left, 1.0), 0.5, 1.0)
+	min_zoom = clampf(1280.0 / maxf(right - left, 1.0), 0.4, 1.0)
 
 
 func snap() -> void:
@@ -47,8 +49,8 @@ func _update(delta: float, instant: bool) -> void:
 		mn = mn.min(p)
 		mx = mx.max(p)
 	var span := mx - mn
-	var fit := minf(1280.0 / (span.x + 700.0), 720.0 / (span.y + 420.0))
-	var z := clampf(fit, min_zoom, MAX_ZOOM) * (1.0 + Juice.punch)
+	var fit := minf(1280.0 / (span.x + MARGIN.x), 720.0 / (span.y + MARGIN.y))
+	var z := clampf(fit, min_zoom, maxf(MAX_ZOOM, min_zoom)) * (1.0 + Juice.punch)
 	var target_zoom := Vector2(z, z)
 	zoom = target_zoom if instant else zoom.lerp(target_zoom, 1.0 - exp(-5.0 * delta))
 	global_position = (mn + mx) * 0.5 + Vector2(0, -60)

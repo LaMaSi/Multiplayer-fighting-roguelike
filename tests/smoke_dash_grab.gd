@@ -30,7 +30,7 @@ func _ready() -> void:
 	await frames(6)
 	await frames(24)
 	check("dash phases through an enemy (x %.0f > %.0f)" % [f.global_position.x, dx], f.global_position.x > dx + 5.0)
-	check("collisions restored afterwards", f.get_collision_mask_value(4) and f.get_collision_mask_value(3))
+	check("collisions restored afterwards", f.get_collision_mask_value(5))
 	# grab with LB
 	f.facing = 1
 	await frames(30)

@@ -139,7 +139,7 @@ func _build_camera() -> void:
 	cam.limit_top = -500
 	cam.limit_bottom = int(ground_y + 130.0)
 	cam.set_bounds(0.0, level_w)
-	cam.min_zoom = 0.62
+	cam.min_zoom = 0.45
 	for f in fighters:
 		cam.targets.append(f)
 	add_child(cam)

@@ -46,7 +46,6 @@ func _configure() -> void:
 
 func _ready() -> void:
 	super._ready()
-	set_collision_layer_value(4, true)
 	figure.color = def["color"]
 	figure.style = String(def["style"])
 	var bd: Dictionary = def.get("build", {})
@@ -203,11 +202,7 @@ func _control(delta: float) -> void:
 				global_position.y += 2.0
 	if state == "attack":
 		return
-	# separation from other enemies
-	for o in get_tree().get_nodes_in_group("hurt_enemy"):
-		if o != self and o is Enemy and absf(o.global_position.x - global_position.x) < 46.0 and absf(o.global_position.y - global_position.y) < 40.0:
-			want_x += signf(global_position.x - o.global_position.x + 0.01) * run_speed * 0.6
-	want_x = clampf(want_x, -run_speed, run_speed)
+	want_x = clampf(want_x, -run_speed, run_speed) * crowd_mult()  # enemies pass each other (and the players), slowed while overlapping
 	velocity.x = move_toward(velocity.x, want_x, 2200.0 * delta)
 	if is_on_floor():
 		velocity.y = 50.0

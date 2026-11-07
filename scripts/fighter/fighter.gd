@@ -64,7 +64,6 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("fighters")
 	set_collision_layer_value(3, true)
-	set_collision_mask_value(3, true)
 	figure.color = PLAYER_COLORS[player_index % PLAYER_COLORS.size()]
 	figure.arm_scale = 1.22
 	figure.leg_scale = 1.2
@@ -84,7 +83,7 @@ func _ready() -> void:
 
 
 func get_run_speed() -> float:
-	return RUN_SPEED * class_speed * (1.3 if has_buff("speed") else 1.0) * (0.75 if held != null else 1.0)
+	return RUN_SPEED * class_speed * (1.3 if has_buff("speed") else 1.0) * (0.75 if held != null else 1.0) * crowd_mult()
 
 
 ## Weapon class: stats, weapon visual and base pose. "" = legacy (no class, plain fists).
@@ -134,22 +133,15 @@ func _tick_timers(delta: float) -> void:
 	super._tick_timers(delta)
 	_dash_cd = maxf(0.0, _dash_cd - delta)
 	if _ghost and state != "dash":
-		# the dash phases through players, enemies and barriers; solid again only once nothing overlaps
+		# actors never block each other any more; the dash only phases through barriers, solid again once clear
 		var me := get_hurt_rect()
 		var overlap := false
-		for f in Coop.fighters:
-			if f != self and me.intersects(f.get_hurt_rect()):
-				overlap = true
-		for n in get_tree().get_nodes_in_group("hurt_enemy"):
-			if n is Actor and (n as Actor).is_alive() and me.intersects((n as Actor).get_hurt_rect()):
-				overlap = true
 		for n in get_tree().get_nodes_in_group("barriers"):
 			if n.has_method("get_rect") and me.intersects(n.get_rect()):
 				overlap = true
 		if not overlap:
 			_ghost = false
-			set_collision_mask_value(3, true)
-			set_collision_mask_value(4, true)
+			set_collision_mask_value(5, true)
 
 
 func _control(delta: float) -> void:
@@ -408,8 +400,7 @@ func _start_dash() -> void:
 	velocity = Vector2(dir * 640.0, 0.0)
 	invuln = maxf(invuln, 0.12)  # a few i-frames at the start only
 	_ghost = true
-	set_collision_mask_value(3, false)  # phase: players
-	set_collision_mask_value(4, false)  # enemies and barriers
+	set_collision_mask_value(5, false)  # phase through barriers
 	Sfx.play("whoosh", 1.2)
 	Fx.dust(get_parent(), global_position, 6)
 	figure.set_target({"lean": 0.9, "th_f": 1.1, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.4, "ua_f": 1.4, "la_f": 0.2, "ua_b": 1.2, "la_b": 0.2})
