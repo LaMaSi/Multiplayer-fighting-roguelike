@@ -4,13 +4,14 @@ extends RefCounted
 
 
 static func idle(t: float) -> Dictionary:
-	var b := sin(t * 7.5) * 0.035  # fast rhythmic breathing, not a slow sway
-	var sh := sin(t * 7.5) * 3.0  # weight shift: hip slides over planted feet
+	var br := breath(t)
+	var b: float = br["b"]
+	var sh: float = br["x"]
 	var p := {
-		"lean": 0.03 + b + sh * 0.006, "head": -0.02, "root_x": sh,
+		"lean": 0.03 + float(br["down"]) * 0.03 + sh * 0.006, "head": -0.02, "root_x": sh,
 		"ua_f": 0.95 + b, "la_f": 1.55, "ua_b": 0.55 - b, "la_b": 1.85,
 	}
-	p.merge(stance(13.0 - sh, -13.0 - sh, 37.0), true)
+	p.merge(stance(13.0 - sh, -13.0 - sh, 37.0 - float(br["dip"])), true)
 	return p
 
 
@@ -183,3 +184,11 @@ static func stance(front_x: float, back_x: float, drop: float) -> Dictionary:
 		out["th_" + leg[0]] = phi + alpha
 		out["kn_" + leg[0]] = 2.0 * alpha
 	return out
+
+
+## Four-beat idle loop on planted feet: breathe in (up), out (down + weight to the RIGHT), in (up),
+## out (down + weight to the LEFT). x = hip shift (px), dip = hip lowering (px, knees bend), b = chest / arm lift.
+static func breath(t: float) -> Dictionary:
+	var ph := t * 10.0  # one breath = PI of phase, ~0.31 s
+	var down := (1.0 - cos(ph)) * 0.5  # 0 = in / up, 1 = out / down
+	return {"x": sin(ph * 0.5) * 4.0, "dip": down * 3.5, "b": cos(ph) * 0.04, "down": down}

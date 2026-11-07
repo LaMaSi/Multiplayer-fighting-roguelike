@@ -111,12 +111,13 @@ static func base_pose(id: String, t: float = 0.0) -> Dictionary:
 	var p: Dictionary = (c["base"] as Dictionary).duplicate()
 	if c.has("stance"):
 		var s: Vector3 = c["stance"]
-		# weight shift: the hip slides side to side over planted feet (feet x stay fixed, legs re-solved by IK)
-		var sh := sin(t * 7.5) * 3.0
-		p.merge(PoseLib.stance(s.x - sh, s.y - sh, s.z), true)
+		# four-beat breathing on planted feet (in: up, out: down + weight right, in: up, out: down + weight left)
+		var br := PoseLib.breath(t)
+		var sh: float = br["x"]
+		p.merge(PoseLib.stance(s.x - sh, s.y - sh, s.z - float(br["dip"])), true)
 		p["root_x"] = sh
-		p["lean"] = float(p["lean"]) + sh * 0.006
-	var b := sin(t * 7.5) * float(c["bob"]) * 0.9  # fast rhythmic breathing
+		p["lean"] = float(p["lean"]) + sh * 0.006 + float(br["down"]) * 0.03
+	var b := cos(t * 10.0) * float(c["bob"]) * 1.0  # arms lift on the in-breath
 	p["lean"] = float(p["lean"]) + b
 	p["ua_f"] = float(p["ua_f"]) + b
 	p["ua_b"] = float(p["ua_b"]) - b
