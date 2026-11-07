@@ -4,11 +4,12 @@ extends RefCounted
 
 
 static func idle(t: float) -> Dictionary:
-	var b := sin(t * 2.6) * 0.03
+	var b := sin(t * 7.5) * 0.035  # fast rhythmic breathing, not a slow sway
 	return level_feet({
 		"lean": 0.03 + b, "head": -0.02,
 		"th_f": 0.34, "kn_f": 0.45, "th_b": -0.30, "kn_b": 0.35,
 		"ua_f": 0.95 + b, "la_f": 1.55, "ua_b": 0.55 - b, "la_b": 1.85,
+		"root_y": sin(t * 15.0) * 1.2,  # light bounce on the toes, twice per breath
 	})
 
 
