@@ -238,6 +238,7 @@ static func _build() -> void:
 	_build_player()
 	_build_enemy()
 	MoveDBWeapons.build()
+	_apply_status()
 	# tiers (weapon / adaptive / universal), owning class and the height of the first hit
 	for id in _db:
 		var m: MoveData = _db[id]
@@ -612,3 +613,25 @@ static func _build_enemy() -> void:
 	_mk({"id": "boss_summon", "name": "Call Backup", "enemy": true, "tele": true, "total": 90, "color": RED,
 		"kf": [[0, {"lean": -0.3, "ua_f": 2.8, "la_f": 0.2, "ua_b": 2.8, "la_b": 0.2}], [60, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 34, "type": "summon", "count": 2}]})
+
+
+## Moves that set targets on fire (seconds). Burning targets take +30% damage from everything, so these are
+## the setup half of a synergy; the rest of the kit can pay it off.
+const IGNITE := {
+	"fireball": 3.0, "spread_shot": 2.0, "rising_dragon": 2.5, "quake_line": 3.0,
+	"arcane_beam": 3.0, "wind_slash": 1.5, "boost_spark": 1.5, "spark_shot": 1.0,
+}
+
+
+static func _apply_status() -> void:
+	for id in IGNITE:
+		var m: MoveData = _db.get(id)
+		if m == null:
+			continue
+		for h in m.hits:
+			h["ignite"] = float(IGNITE[id])
+		for e in m.events:
+			if String(e.get("type", "")) == "proj":
+				e["ignite"] = float(IGNITE[id])
+		if not m.desc.contains("Ignites"):
+			m.desc += " Ignites."

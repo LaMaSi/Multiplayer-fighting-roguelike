@@ -12,7 +12,7 @@ extends Node2D
 ## Fast limb tips leave a fading swoosh trail while `trail_on`.
 
 const HEAD_R := 11.0
-const NECK := 7.0
+const NECK := 2.0
 const TORSO := 30.0
 const UARM := 17.0
 const LARM := 17.0

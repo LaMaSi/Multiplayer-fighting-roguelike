@@ -65,8 +65,9 @@ static func _build() -> void:
 		"b_pool": ["overhead_smash", "side_sweep", "sky_launcher", "quake_line", "whirlwind_haul", "guard_breaker", "home_run", "bulwark_plant"],
 		"b_stars": ["overhead_smash", "side_sweep", "home_run"],
 		"base": {
-			"lean": 0.12, "head": 0.0,
-			"th_f": 0.45, "kn_f": 0.55, "th_b": -0.45, "kn_b": 0.55,
+			"lean": 0.04, "head": 0.0,
+			# planted stance: both shins vertical on the ground (kn = th), thighs splayed, hip solved from there
+			"th_f": 0.5, "kn_f": 0.5, "th_b": -0.5, "kn_b": -0.5,
 			"ua_f": 0.7, "la_f": 0.5, "ua_b": 0.45, "la_b": 0.6,
 			"wp_rot": 2.8,
 		},

@@ -311,7 +311,8 @@ func _hits() -> void:
 		if frame < at or frame >= at + int(h["dur"]):
 			continue
 		var rect := world_rect(h["box"])
-		actor.debug_hit_rect = rect
+		var wrect := _weapon_rect() if not bool(h.get("radial", false)) else Rect2()
+		actor.debug_hit_rect = rect.merge(wrect) if wrect.has_area() else rect
 		var targets: Array = actor.hit_targets()
 		if bool(h.get("partner_safe", false)):
 			# Home Run: the partner can be batted too, even with friendly fire off (no damage to them)
@@ -322,7 +323,11 @@ func _hits() -> void:
 			var key := "%d:%d" % [i, t.get_instance_id()]
 			if _hit_done.has(key):
 				continue
-			if rect.intersects(t.get_hurt_rect()):
+			var hurt: Rect2 = t.get_hurt_rect()
+			if wrect.has_area() and wrect.intersects(hurt):
+				_hit_done[key] = true
+				_connect(h, t, wrect)  # the impact comes from the weapon head / blade
+			elif rect.intersects(hurt):
 				_hit_done[key] = true
 				_connect(h, t, rect)
 
@@ -356,6 +361,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.prop_power = float(h.get("prop_power", 1.0))
 	info.wallbounce = bool(h.get("wallbounce", false))
 	info.heal_self = float(h.get("heal_self", 0.0))
+	info.ignite = float(h.get("ignite", 0.0))
 	info.color = h.get("color", a.figure.color)
 	if a.team == "enemy" and info.height == "high":
 		info.color = Color(2.4, 2.0, 0.3)  # high attacks spark amber
@@ -378,3 +384,18 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 			a.heal(info.heal_self)
 			Fx.number(a.get_parent(), a.global_position + Vector2(0, -105), "+%d" % int(info.heal_self), Color(2.0, 1.7, 1.9), 18)
 		a.on_hit_landed(info, t)
+
+
+## World rect of the held weapon (hammer head, or the blade's bounding box) while a weapon / adaptive move is
+## active, so hits and impact effects come from the weapon itself. Empty Rect2 when there is none.
+func _weapon_rect() -> Rect2:
+	var f := actor.figure
+	if f == null or not (f.weapon in ["sword", "hammer"]) or not (move.tier in ["weapon", "adaptive"]):
+		return Rect2()
+	var tip: Vector2 = f.to_global(f.weapon_tip)
+	if f.weapon == "hammer":
+		var s := 46.0 * f.weapon_scale
+		return Rect2(tip - Vector2(s, s) * 0.5, Vector2(s, s))
+	var hand: Vector2 = f.to_global(f.hand_f_pos)
+	var r := Rect2(hand, Vector2.ZERO).expand(tip)
+	return r.grow_individual(0.0, 0.0, 0.0, 0.0) if r.size.y >= 22.0 else r.grow_individual(0.0, 11.0 - r.size.y * 0.5, 0.0, 11.0 - r.size.y * 0.5)
