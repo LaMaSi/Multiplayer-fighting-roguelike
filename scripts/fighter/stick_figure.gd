@@ -229,7 +229,9 @@ func _render(halo: bool) -> void:
 			# angry visor
 			draw_line(head_c + rx * 0.9 - ry * 0.1, head_c - rx * 0.1 + ry * 0.2, col_f, 3.0, true)
 		else:
-			draw_circle(head_c, hr - 1.0, Color(0.03, 0.02, 0.08))
+			# players: a tinted face so the black eyes are visible; enemies keep the dark fill
+			var face := Color(color.r * 0.5, color.g * 0.5, color.b * 0.5, 1.0) if eyes else Color(0.03, 0.02, 0.08)
+			draw_circle(head_c, hr - 1.0, face)
 			draw_arc(head_c, hr, 0.0, TAU, 28, col_f, 3.5, true)
 			if eyes:
 				_draw_eyes(head_c, hr, head_ang)

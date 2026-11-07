@@ -41,6 +41,8 @@ var _buf_t := 0.0
 var _dash_t := 0.0
 var _dash_cd := 0.0
 var _air_dash_used := false  ## one dash per air time; reset on landing
+var double_jump := false  ## unlocked by a level-up card
+var _air_jump_ready := true
 var _crouch := 0.0  ## 0..1, eases in over ~7 frames while holding down on the ground
 var _ghost := false
 var _toss_t := 0.0
@@ -157,6 +159,7 @@ func _locomotion(delta: float) -> void:
 		_coyote = COYOTE
 		_jumping = false
 		_air_dash_used = false
+		_air_jump_ready = true
 		velocity.y = 50.0
 	else:
 		_coyote -= delta
@@ -179,6 +182,14 @@ func _locomotion(delta: float) -> void:
 			squash = Vector2(0.8, 1.25)
 			Sfx.play("jump")
 			Fx.dust(get_parent(), global_position, 6)
+		elif double_jump and _air_jump_ready and not on_floor:
+			velocity.y = JUMP_V * 0.92
+			_air_jump_ready = false
+			_jump_buf = 0.0
+			_jumping = true
+			squash = Vector2(0.8, 1.25)
+			Sfx.play("jump", 1.25)
+			Fx.ring(get_parent(), global_position + Vector2(0, -10), figure.color, 36.0, 0.2)
 	if input.released(PlayerInput.Btn.JUMP) and _jumping and velocity.y < 0.0:
 		velocity.y *= 0.45
 		_jumping = false

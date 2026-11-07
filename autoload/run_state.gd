@@ -18,6 +18,7 @@ var loadouts: Array = [{}, {}]
 var max_hp: Array = [100.0, 100.0]
 var hp: Array = [100.0, 100.0]
 var upgrades: Array = [{}, {}]  ## per player: move_id -> {dmg, spd, kb}
+var perks: Array = [{}, {}]  ## per player: perk id -> true (e.g. "double_jump")
 var picker := 0  ## who picks first this round (alternates every level)
 var queue: Array = []  ## [{player, kind: "move" | "level"}]
 var finished := false
@@ -37,6 +38,7 @@ func start_run(seed_value := -1) -> void:
 	max_hp = [100.0, 100.0]
 	hp = [100.0, 100.0]
 	upgrades = [{}, {}]
+	perks = [{}, {}]
 	picker = 0
 	queue.clear()
 	best_combo = 0
@@ -143,6 +145,7 @@ func apply_to(f: Fighter) -> void:
 	f.max_hp = max_hp[i]
 	f.hp = clampf(hp[i], 1.0, max_hp[i])
 	f.upgrades = (upgrades[i] as Dictionary).duplicate(true)
+	f.double_jump = bool((perks[i] as Dictionary).get("double_jump", false))
 
 
 func save_from(fighters: Array) -> void:
@@ -219,6 +222,8 @@ func make_cards(player: int, kind: String) -> Array:
 	_shuffle(eq)
 	var kinds := ["hp", "dmg", "spd", "kb", "mend"]
 	_shuffle(kinds)
+	if not bool((perks[player] as Dictionary).get("double_jump", false)):
+		kinds.insert(_rng.randi_range(0, 2), "djump")  # always among the first three candidates
 	var eq_i := 0
 	for k in kinds:
 		if cards.size() >= 3:
@@ -228,6 +233,8 @@ func make_cards(player: int, kind: String) -> Array:
 				cards.append({"kind": "hp", "tag": "LEVEL UP", "title": "+20 MAX HP", "desc": "Your health bar grows and you heal 20.", "extra": ""})
 			"mend":
 				cards.append({"kind": "mend", "tag": "RECOVER", "title": "FULL HEAL", "desc": "Restore all of your health.", "extra": ""})
+			"djump":
+				cards.append({"kind": "djump", "tag": "ABILITY", "title": "DOUBLE JUMP", "desc": "Press jump again in the air.", "extra": ""})
 			_:
 				if eq.is_empty():
 					continue
@@ -247,6 +254,8 @@ func apply_card(player: int, card: Dictionary, slot := "") -> void:
 			hp[player] = minf(max_hp[player], hp[player] + 20.0)
 		"mend":
 			hp[player] = max_hp[player]
+		"djump":
+			(perks[player] as Dictionary)["double_jump"] = true
 		"up":
 			var u: Dictionary = upgrades[player]
 			if not u.has(card["id"]):
