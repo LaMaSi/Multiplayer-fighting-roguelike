@@ -124,7 +124,10 @@ func _side(dx: int) -> void:
 		var f := Coop.fighters[_lo_player]
 		var slot: String = PlayerSlots[_sel]
 		var list: Array = [""]
-		list.append_array(MoveDB.POOL)
+		if f.class_id == "":
+			list.append_array(MoveDB.POOL)  # legacy fighter: the original pool, any slot
+		else:
+			list.append_array(ClassData.pool_for_slot(slot, f.class_id))  # X universal, Y adaptive, B own class
 		var cur: String = f.loadout.get(slot, "")
 		var i2 := list.find(cur)
 		f.set_move(slot, list[posmod(i2 + dx, list.size())])

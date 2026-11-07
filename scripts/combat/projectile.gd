@@ -104,6 +104,12 @@ func _physics_process(delta: float) -> void:
 		_mine_tick()
 		queue_redraw()
 		return
+	for b in get_tree().get_nodes_in_group("barriers"):
+		if team != b.team and b.get_rect().intersects(_rect()):
+			Fx.sparks(get_parent(), global_position, col, 8)
+			Sfx.play("block", 1.2)
+			queue_free()
+			return
 	_check_reflect()
 	_check_hits()
 	queue_redraw()
@@ -218,6 +224,13 @@ func _draw() -> void:
 			draw_rect(Rect2(-radius, -5, radius * 2.0, 8), Color(0.15, 0.1, 0.1))
 			draw_rect(Rect2(-radius, -5, radius * 2.0, 8), col, false, 2.0)
 			draw_circle(Vector2(0, -7), 4.0, Color(col.r, col.g, col.b, 0.3 + 0.7 * blink) if armed else Color(0.5, 0.5, 0.5))
+		"crescent":
+			# a thin curved blade of wind, pointed at both ends
+			var ang := atan2(vel.y, vel.x)
+			draw_set_transform(Vector2.ZERO, ang)
+			draw_arc(Vector2(-radius * 0.6, 0), radius * 1.4, -0.95, 0.95, 14, Color(col.r, col.g, col.b, 0.25), 9.0, true)
+			draw_arc(Vector2(-radius * 0.6, 0), radius * 1.4, -0.95, 0.95, 14, col, 4.0, true)
+			draw_set_transform(Vector2.ZERO, 0.0)
 		"disc":
 			draw_circle(Vector2.ZERO, radius + 5.0, Color(col.r, col.g, col.b, 0.15))
 			for i in 3:

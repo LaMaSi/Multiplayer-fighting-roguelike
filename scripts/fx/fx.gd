@@ -156,6 +156,7 @@ static func afterimage(parent: Node, figure: StickFigure, col: Color) -> void:
 	g.leg_scale = figure.leg_scale
 	g.head_scale = figure.head_scale
 	g.fill_torso = figure.fill_torso
+	g.weapon = figure.weapon
 	g.square_head = figure.square_head
 	g.pose = figure.pose.duplicate()
 	g.target = g.pose.duplicate()

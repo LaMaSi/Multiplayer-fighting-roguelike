@@ -19,6 +19,10 @@ var max_hp: Array = [100.0, 100.0]
 var hp: Array = [100.0, 100.0]
 var upgrades: Array = [{}, {}]  ## per player: move_id -> {dmg, spd, kb}
 var perks: Array = [{}, {}]  ## per player: perk id -> true (e.g. "double_jump")
+## Chosen weapon class per player ("brawler" / "sword" / "hammer" / "magic", "" = legacy fists). Set on the main
+## menu and kept across runs; it is not reset by start_run.
+var classes: Array = ["", ""]
+var magic_unlocked := false  ## Magic is locked in meta progression (not built yet); toggled on the main menu for testing
 var picker := 0  ## who picks first this round (alternates every level)
 var queue: Array = []  ## [{player, kind: "move" | "level"}]
 var finished := false
@@ -46,6 +50,13 @@ func start_run(seed_value := -1) -> void:
 		_rng.seed = seed_value
 	else:
 		_rng.randomize()
+	# classes: 3 random starred B moves + 1 random X + 1 random Y each, no reroll; class HP
+	for i in 2:
+		var cid: String = classes[i]
+		if cid != "":
+			loadouts[i] = ClassData.roll_loadout(cid, _rng)
+			max_hp[i] = float(ClassData.get_class_data(cid)["hp"])
+			hp[i] = max_hp[i]
 	_generate()
 
 
@@ -202,17 +213,22 @@ func _queue_rewards(type: String) -> void:
 
 func make_cards(player: int, kind: String) -> Array:
 	var cards: Array = []
+	var cid: String = classes[player]
 	if kind == "move":
 		var owned: Array = (loadouts[player] as Dictionary).values()
 		var pool: Array = []
-		for id in MoveDB.POOL:
-			if not (id in owned):
-				pool.append(id)
+		if cid == "":
+			for id in MoveDB.POOL:
+				if not (id in owned):
+					pool.append(id)
+		else:
+			# shared pick: off-hand (X, universal) and adaptive (Y) moves. B moves come from personal level-ups.
+			for id in ClassData.X_POOL + ClassData.Y_POOL:
+				if not (id in owned):
+					pool.append(id)
 		_shuffle(pool)
 		for id in pool.slice(0, 3):
-			var m := MoveDB.get_move(id)
-			cards.append({"kind": "move", "id": id, "tag": "NEW MOVE", "title": m.name, "desc": m.desc,
-				"extra": ", ".join(m.tags) if m.tags.size() > 0 else "melee"})
+			cards.append(_move_card(id, cid))
 		return cards
 	# level-up cards
 	var eq: Array = []
@@ -224,6 +240,15 @@ func make_cards(player: int, kind: String) -> Array:
 	_shuffle(kinds)
 	if not bool((perks[player] as Dictionary).get("double_jump", false)):
 		kinds.insert(_rng.randi_range(0, 2), "djump")  # always among the first three candidates
+	if cid != "":
+		var owned_b: Array = (loadouts[player] as Dictionary).values()
+		var left: Array = []
+		for id in (ClassData.get_class_data(cid)["b_pool"] as Array):
+			if not (id in owned_b):
+				left.append(id)
+		if not left.is_empty():
+			_shuffle(left)
+			cards.append(_move_card(left[0], cid))  # a new weapon move is always on offer in the personal level-up
 	var eq_i := 0
 	for k in kinds:
 		if cards.size() >= 3:
@@ -243,6 +268,29 @@ func make_cards(player: int, kind: String) -> Array:
 				var m2 := MoveDB.get_move(id)
 				cards.append({"kind": "up", "stat": k, "id": id, "tag": "EMPOWER", "title": m2.name, "desc": String(UP_TEXT[k]), "extra": ""})
 	return cards
+
+
+## A move reward card. Tier decides the slot row: universal -> X, adaptive -> Y, weapon -> B.
+func _move_card(id: String, class_id: String) -> Dictionary:
+	var m := MoveDB.get_move_for(id, class_id)
+	var tier := ClassData.tier_of(id)
+	var tag := "NEW MOVE"
+	var row := -1
+	match tier:
+		"universal":
+			tag = "OFF-HAND  (same for all)"
+			row = 0
+		"adaptive":
+			tag = "ADAPTS TO YOUR WEAPON"
+			row = 1
+		"weapon":
+			tag = "WEAPON MOVE"
+			row = 2
+	var card := {"kind": "move", "id": id, "tag": tag, "title": m.name, "desc": m.desc,
+		"extra": ", ".join(m.tags) if m.tags.size() > 0 else "melee"}
+	if row >= 0:
+		card["row"] = row
+	return card
 
 
 func apply_card(player: int, card: Dictionary, slot := "") -> void:

@@ -12,6 +12,12 @@ static func idle(t: float) -> Dictionary:
 	}
 
 
+## True for the neutral idle pose (used to swap in the class base pose at the end of a move).
+static func is_idle(p: Dictionary) -> bool:
+	return absf(float(p.get("ua_f", -9.0)) - 0.95) < 0.001 and absf(float(p.get("la_f", -9.0)) - 1.55) < 0.001 \
+		and absf(float(p.get("kn_f", -9.0)) - 0.45) < 0.001 and absf(float(p.get("th_b", -9.0)) + 0.25) < 0.001
+
+
 ## Slouchy enemy stance.
 static func idle_enemy(t: float) -> Dictionary:
 	var b := sin(t * 2.2) * 0.04

@@ -12,6 +12,20 @@ const POOL: Array[String] = [
 	"ally_toss", "heal_pulse", "rage_taunt", "boost_spark", "pillar_smash",
 ]
 
+## Every move a player can equip (legacy 30-move POOL plus the weapon-class moves).
+static func all_player_moves() -> Array:
+	var out: Array = []
+	for id in ClassData.X_POOL:
+		out.append(id)
+	for id in ClassData.Y_POOL:
+		out.append(id)
+	for cid in ClassData.IDS:
+		for id in (ClassData.get_class_data(cid)["b_pool"] as Array):
+			if not (id in out):
+				out.append(id)
+	return out
+
+
 ## 12 slots per character: X / Y / B  x  neutral, up, down, side (left and right are the same move;
 ## pressing a side direction also turns the fighter that way).
 const STARTER := {
@@ -43,6 +57,119 @@ static func has_move(id: String) -> bool:
 	if _db.is_empty():
 		_build()
 	return _db.has(id)
+
+
+static var _variants: Dictionary = {}
+
+
+## The move as `class_id` performs it. Weapon / universal moves are returned unchanged (apart from the
+## class base pose in the recovery); adaptive (Y) moves go through the class modifier table once and are cached.
+static func get_move_for(id: String, class_id: String) -> MoveData:
+	var m := get_move(id)
+	if m == null or class_id == "" or m.enemy:
+		return m
+	var key := id + "@" + class_id
+	if _variants.has(key):
+		return _variants[key]
+	var v := _make_variant(m, class_id)
+	_variants[key] = v
+	return v
+
+
+static func _clone(m: MoveData) -> MoveData:
+	var c := MoveData.new()
+	for p in m.get_property_list():
+		if int(p["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			var val = m.get(p["name"])
+			c.set(p["name"], val.duplicate(true) if (val is Array or val is Dictionary) else val)
+	return c
+
+
+## Piecewise time warp: the wind-up scales by `st`, the active part is untouched, the recovery scales by `rc`.
+static func _warp(f: float, first: float, last: float, st: float, rc: float) -> int:
+	if f <= first:
+		return int(round(f * st))
+	if f <= last:
+		return int(round(first * st + (f - first)))
+	return int(round(first * st + (last - first) + (f - last) * rc))
+
+
+static func _make_variant(m: MoveData, class_id: String) -> MoveData:
+	var cd := ClassData.get_class_data(class_id)
+	var mods: Dictionary = cd["mods"]
+	var v := _clone(m)
+	v.class_id = class_id
+	var base := ClassData.base_pose(class_id, 0.0)
+	var weapon := String(cd["weapon"])
+	# recovery returns to the class silhouette; weapon keys get sensible defaults
+	for i in v.kf.size():
+		var pose: Dictionary = v.kf[i][1]
+		if PoseLib.is_idle(pose):
+			v.kf[i][1] = base.duplicate()
+		else:
+			if weapon == "sword" and not pose.has("wp_rot"):
+				pose["wp_rot"] = float(base["wp_rot"])
+			if weapon == "hammer" and not pose.has("wp_rot"):
+				# adaptive moves: the head extends along the front forearm
+				var fa: float = float(pose.get("ua_f", 0.95)) + float(pose.get("la_f", 1.55))
+				pose["wp_rot"] = PI * 0.5 - fa
+			if weapon in ["sword", "hammer"]:
+				pose["fist_f"] = pose.get("fist_f", 1.0)
+				pose["fist_b"] = pose.get("fist_b", 1.0)
+				pose["fist_f"] = minf(float(pose["fist_f"]), 1.5)  # no oversized fists around a weapon
+				pose["fist_b"] = minf(float(pose["fist_b"]), 1.5)
+	if m.tier != "adaptive":
+		return v
+	var st: float = mods["startup"]
+	var rc: float = mods["recovery"]
+	var first := 9999.0
+	var last := 0.0
+	for h in v.hits:
+		first = minf(first, float(h["at"]))
+		last = maxf(last, float(h["at"]) + float(h["dur"]))
+	if v.hits.is_empty():
+		first = float(v.total) * 0.3
+		last = first
+	for k in v.kf:
+		k[0] = _warp(float(k[0]), first, last, st, rc)
+	for e in v.events:
+		e["at"] = _warp(float(e["at"]), first, last, st, rc)
+		if e.has("to"):
+			e["to"] = _warp(float(e["to"]), first, last, st, rc)
+	var reach: float = mods["reach"]
+	var dz: float = mods.get("dead_zone", 0.0)
+	for h in v.hits:
+		var b: Rect2 = h["box"]
+		var d := float(h["dur"])
+		h["at"] = _warp(float(h["at"]), first, last, st, rc)
+		h["dur"] = maxi(1, int(d))
+		if not bool(h.get("radial", false)):
+			var left := b.position.x * reach
+			var right := (b.position.x + b.size.x) * reach
+			if dz > 0.0 and left < dz and right > dz + 24.0 and b.position.x >= 0.0:
+				left = dz  # dead zone: nothing connects at point-blank range
+			h["box"] = Rect2(left, b.position.y, maxf(right - left, 12.0), b.size.y)
+		else:
+			h["box"] = Rect2(b.position.x * reach, b.position.y, b.size.x * reach, b.size.y)
+		h["dmg"] = float(h["dmg"]) * float(mods["dmg"])
+		h["kb"] = (h["kb"] as Vector2) * float(mods["kb"])
+		if bool(mods.get("guard_break", false)):
+			h["guard_break"] = true
+	for d in v.drive:
+		d["from"] = _warp(float(d["from"]), first, last, st, rc)
+		d["to"] = _warp(float(d["to"]), first, last, st, rc)
+	if not v.spin.is_empty():
+		v.spin["at"] = _warp(float(v.spin["at"]), first, last, st, rc)
+	v.total = _warp(float(v.total), first, last, st, rc)
+	if v.cancel_from >= 0:
+		v.cancel_from = _warp(float(v.cancel_from), first, last, st, rc)
+	if v.chain_from > 0:
+		v.chain_from = _warp(float(v.chain_from), first, last, st, rc)
+	if v.hold_frame > 0:
+		v.hold_frame = _warp(float(v.hold_frame), first, last, st, rc)
+	if v.land_wait >= 0:
+		v.land_wait = _warp(float(v.land_wait), first, last, st, rc)
+	return v
 
 
 # ---------------------------------------------------------------- helpers
@@ -108,6 +235,21 @@ static func _proj(at: int, d: Dictionary) -> Dictionary:
 static func _build() -> void:
 	_build_player()
 	_build_enemy()
+	MoveDBWeapons.build()
+	# tiers (weapon / adaptive / universal), owning class and the height of the first hit
+	for id in _db:
+		var m: MoveData = _db[id]
+		if m.enemy:
+			continue
+		var head := String(id).rstrip("0123456789")
+		var t := ClassData.tier_of(head)
+		if m.tier == "" and t != "":
+			m.tier = t
+		if m.tier == "weapon" and m.class_id == "":
+			m.class_id = ClassData.class_of_weapon_move(head)
+		if not m.hits.is_empty():
+			var h0: Dictionary = m.hits[0]
+			m.height = String(h0.get("height", "low" if bool(h0.get("low", false)) else "mid"))
 
 
 static func _build_player() -> void:

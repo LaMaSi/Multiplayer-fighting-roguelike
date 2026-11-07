@@ -66,6 +66,7 @@ func _ready() -> void:
 	collision_mask = 0
 	set_collision_mask_value(1, true)
 	set_collision_mask_value(2, true)
+	set_collision_mask_value(4, true)  # barriers (Bulwark Plant) block bodies but not projectiles
 	floor_snap_length = 8.0
 	var cs := CollisionShape2D.new()
 	var cap := CapsuleShape2D.new()

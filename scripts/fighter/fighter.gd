@@ -41,6 +41,8 @@ var _buf_t := 0.0
 var _dash_t := 0.0
 var _dash_cd := 0.0
 var _air_dash_used := false  ## one dash per air time; reset on landing
+var class_id := ""  ## "brawler" / "sword" / "hammer" / "magic", "" = legacy
+var class_speed := 1.0
 var double_jump := false  ## unlocked by a level-up card
 var _air_jump_ready := true
 var _crouch := 0.0  ## 0..1, eases in over ~7 frames while holding down on the ground
@@ -70,6 +72,11 @@ func _ready() -> void:
 	input = Inp.players[player_index]
 	spawn_point = global_position
 	loadout = MoveDB.STARTER.duplicate()
+	var cid: String = RunState.classes[player_index % 2]
+	if cid != "":
+		apply_class(cid)
+		if not RunState.active:
+			loadout = ClassData.training_loadout(cid)
 	if RunState.active:
 		RunState.apply_to(self)
 	Coop.fighters.append(self)
@@ -77,7 +84,29 @@ func _ready() -> void:
 
 
 func get_run_speed() -> float:
-	return RUN_SPEED * (1.3 if has_buff("speed") else 1.0) * (0.75 if held != null else 1.0)
+	return RUN_SPEED * class_speed * (1.3 if has_buff("speed") else 1.0) * (0.75 if held != null else 1.0)
+
+
+## Weapon class: stats, weapon visual and base pose. "" = legacy (no class, plain fists).
+func apply_class(id: String) -> void:
+	class_id = id
+	if id == "":
+		class_speed = 1.0
+		figure.weapon = ""
+		return
+	var c := ClassData.get_class_data(id)
+	class_speed = float(c["speed"])
+	figure.weapon = String(c["weapon"])
+	if not RunState.active:
+		max_hp = float(c["hp"])
+		hp = max_hp
+
+
+## Class base pose (the silhouette idle, walk arms and recovery return to), or {} for the legacy fighter.
+func _base_pose() -> Dictionary:
+	if class_id == "":
+		return {}
+	return ClassData.base_pose(class_id, Time.get_ticks_msec() / 1000.0 + player_index)
 
 
 func is_btn_held(b: int) -> bool:
@@ -301,7 +330,7 @@ func _try_slot(slot: String, btn: int) -> bool:
 	var id: String = loadout.get(slot, "")
 	if id == "":
 		return false
-	var m := MoveDB.get_move(id)
+	var m := MoveDB.get_move_for(id, class_id)
 	if m == null:
 		return false
 	if m.ground_only and not is_on_floor():
@@ -330,7 +359,7 @@ func _attack_extra(_delta: float) -> void:
 			var head := cur.id.rstrip("0123456789")
 			if attack.can_chain() and id == head:
 				_buf_t = 0.0
-				start_attack(MoveDB.get_move(cur.chain_next), _buf_btn)
+				start_attack(MoveDB.get_move_for(cur.chain_next, class_id), _buf_btn)
 				return
 			if attack.can_cancel() and id != head and _try_slot(_buf_slot, _buf_btn):
 				_buf_t = 0.0
@@ -607,6 +636,15 @@ func _dodges(info: HitInfo) -> bool:
 
 func _loco_pose() -> Dictionary:
 	var p := _loco_pose_base()
+	var base := _base_pose()
+	if not base.is_empty() and not p.is_empty():
+		if state == "idle" or state == "land":
+			p = base.duplicate() if state == "idle" else PoseLib.blend(p, base, 0.5)
+		else:
+			# walk, jump, fall: legs animate, the arms (and weapon) keep the class guard
+			for k in ["ua_f", "la_f", "ua_b", "la_b", "wp_rot", "root_y"]:
+				if base.has(k):
+					p[k] = base[k]
 	if _crouch > 0.01 and not p.is_empty():
 		p = PoseLib.blend(p, PoseLib.crouch(), _crouch)
 	return p

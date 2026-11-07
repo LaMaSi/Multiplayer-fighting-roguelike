@@ -163,3 +163,11 @@ tests/      headless smoke tests (run with godot --headless -s)
 - **Pose animation looks stiff**: use eased pose tweens and springs for secondary motion; tune in M1 before building 25 more moves.
 - **Moves balance**: tune using the data files, not scripts.
 - **Scope**: the milestones are ordered so the game is fun and complete after M3 even if later milestones take long.
+
+## As built: weapon classes (Phase C1)
+
+- **Data**: `scripts/fighter/class_data.gd` (ClassData) holds the four classes (Brawler, Sword, Hammer, Magic): speed, HP, the adaptive modifier table, base pose, and the X / Y / B pools. `MoveData` has `tier`, `class_id`, `height`, `meter_cost`.
+- **Tiers**: X = universal (10), Y = adaptive (10, reshaped per class by `MoveDB.get_move_for`: reach, startup, recovery, damage, knockback; Hammer also gets a dead zone and guard break), B = weapon (8 per class). The new moves are in `scripts/moves/move_db_weapons.gd`.
+- **Visuals**: weapons are drawn from the hands in `stick_figure.gd` (sword = blade relative to the forearm, hammer = absolute head angle `wp_rot`, Magic = glowing hands). Each class has a base pose; recovery returns to it.
+- **Run**: pick a class per player on the main menu (Magic is locked, with a testing toggle). A run rolls 3 starred B moves, 1 X and 1 Y per player. The shared move pick offers X / Y moves, and the personal level-up always offers a new weapon move; cards carry the slot `row` (X / Y / B).
+- **Not built yet**: the 5th slot (B+Back), LT empowered versions, the Magic mark system (see `MARKS.md`), weapon supers, class-pair Duo Specials, and Home Run's flying-kick behaviour (the partner is launched but cannot steer or attack). The Gravity Well pulls toward the caster instead of leaving a zone.
