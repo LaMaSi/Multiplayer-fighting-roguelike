@@ -100,7 +100,7 @@ func _ready() -> void:
 	await frames(60)
 	p1.script_set(Vector2.ZERO)
 	await frames(30)
-	check(f1.is_on_floor() and absf(f1.global_position.y - 470.0) < 3.0, "lands on platform top (y=%.1f)" % f1.global_position.y)
+	check(f1.is_on_floor() and absf(f1.global_position.y - 510.0) < 3.0, "lands on platform top (y=%.1f)" % f1.global_position.y)
 
 	print("[platform: drop through]")
 	p1.script_set(Vector2(0, 1), [A])
@@ -137,6 +137,47 @@ func _ready() -> void:
 	await frames(100)
 	check(f1.is_on_floor() and absf(f1.global_position.y - 600.0) < 3.0, "P1 ended on the ground (y=%.1f)" % f1.global_position.y)
 	check(absf(f1.global_position.x - f2.global_position.x) > 30.0, "P1 slid off P2")
+
+	print("[platforms reachable with a single jump]")
+	var worst := 0.0
+	for r: Rect2 in level.platforms:
+		worst = maxf(worst, 600.0 - r.position.y)
+	check(worst > 0.0 and worst <= rise - 8.0, "highest platform is %.0f px up, jump reaches %.0f" % [worst, rise])
+	for sc in ["res://scenes/streets.tscn"]:
+		var lv: LevelBase = load(sc).instantiate()
+		lv._setup()  # fills platforms without building the level
+		var w2 := 0.0
+		for r: Rect2 in lv.platforms:
+			w2 = maxf(w2, 600.0 - r.position.y)
+		check(w2 <= rise - 8.0, "%s: highest platform %.0f px up" % [sc, w2])
+		lv.free()
+
+	print("[double jump]")
+	place(f2, Vector2(100, 599))
+	place(f1, Vector2(3050, 599))  # clear of every platform
+	await frames(10)
+	f1.double_jump = false
+	p1.script_set(Vector2.ZERO, [A])
+	await frames(30)
+	p1.script_set(Vector2.ZERO)
+	await frames(2)
+	p1.script_set(Vector2.ZERO, [A])  # second press in the air: nothing without the perk
+	await frames(2)
+	p1.script_set(Vector2.ZERO)
+	var vy_no := f1.velocity.y
+	check(vy_no > -300.0, "no double jump without the perk (vy=%.0f)" % vy_no)
+	await frames(80)
+	f1.double_jump = true
+	p1.script_set(Vector2.ZERO, [A])
+	await frames(30)
+	p1.script_set(Vector2.ZERO)
+	await frames(2)
+	p1.script_set(Vector2.ZERO, [A])
+	await frames(3)
+	check(f1.velocity.y < -300.0, "second jump in the air with the perk (vy=%.0f)" % f1.velocity.y)
+	p1.script_set(Vector2.ZERO)
+	await frames(60)
+	check(f1._air_jump_ready, "air jump recharges on landing")
 
 	print("[kill plane]")
 	place(f1, Vector2(1200, 2500))

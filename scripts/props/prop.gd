@@ -4,6 +4,8 @@ extends CharacterBody2D
 ## picked up (RT) and thrown. Drops pickups when broken; more combo = better drops.
 
 const GRAVITY := 2300.0
+## The one colour used only for things you can interact with (containers, pickups, the exit).
+const RIM := Color(2.0, 1.75, 0.25)
 
 var kind := "crate"  ## crate, barrel, vase
 var hp := 24.0
@@ -206,18 +208,28 @@ func _draw() -> void:
 	var wob := sin(_wobble * 50.0) * 0.12 * _wob_dir if _wobble > 0.0 else 0.0
 	draw_set_transform(Vector2(0, -h * 0.5), wob)
 	var r := Rect2(-w * 0.5, -h * 0.5, w, h)
-	draw_rect(r, Color(0.06, 0.03, 0.1))
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 3.0 + global_position.x * 0.01)
+	var rim := Color(RIM.r, RIM.g, RIM.b, 0.35 + 0.25 * pulse)
 	match kind:
+		"vase":
+			# a vase-shaped silhouette with a transparent surround (no filled rectangle behind it)
+			var pts := PackedVector2Array([
+				Vector2(-w * 0.3, -h * 0.5), Vector2(-w * 0.45, 0.0), Vector2(-w * 0.42, h * 0.3), Vector2(-w * 0.28, h * 0.5),
+				Vector2(w * 0.28, h * 0.5), Vector2(w * 0.42, h * 0.3), Vector2(w * 0.45, 0.0), Vector2(w * 0.3, -h * 0.5)])
+			draw_colored_polygon(pts, Color(0.06, 0.03, 0.1))
+			var closed := pts.duplicate()
+			closed.append(pts[0])
+			draw_polyline(closed, rim, 6.0, true)
+			draw_polyline(closed, col, 3.0, true)
 		"barrel":
+			draw_rect(r, Color(0.06, 0.03, 0.1))
+			draw_rect(r.grow(3.0), rim, false, 3.0)
 			draw_rect(r, col, false, 3.0)
 			draw_line(Vector2(-w * 0.5, -h * 0.2), Vector2(w * 0.5, -h * 0.2), col, 2.0)
 			draw_line(Vector2(-w * 0.5, h * 0.2), Vector2(w * 0.5, h * 0.2), col, 2.0)
-		"vase":
-			draw_arc(Vector2(0, 4), w * 0.45, 0.0, PI, 16, col, 3.0, true)
-			draw_line(Vector2(-w * 0.3, -h * 0.5), Vector2(-w * 0.45, 4), col, 3.0)
-			draw_line(Vector2(w * 0.3, -h * 0.5), Vector2(w * 0.45, 4), col, 3.0)
-			draw_line(Vector2(-w * 0.3, -h * 0.5), Vector2(w * 0.3, -h * 0.5), col, 3.0)
 		_:
+			draw_rect(r, Color(0.06, 0.03, 0.1))
+			draw_rect(r.grow(3.0), rim, false, 3.0)
 			draw_rect(r, col, false, 3.0)
 			draw_line(r.position, r.end, Color(col.r, col.g, col.b, 0.7), 2.0)
 			draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), Color(col.r, col.g, col.b, 0.7), 2.0)

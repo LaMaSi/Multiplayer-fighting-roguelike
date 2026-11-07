@@ -164,10 +164,39 @@ func _run() -> void:
 	Coop.friendly_fire = true
 	await frames(60)
 
+	print("[crouch avoids HIGH attacks only]")
+	await clear_enemies()
+	place(f1, Vector2(1000, 599), 1)
+	f1.invuln = 0.0
+	p1.script_set(Vector2(0, 1), [])
+	await frames(14)
+	check(f1.is_crouched(), "holding down crouches (crouch=%.2f)" % f1._crouch)
+	var hi := HitInfo.new()
+	hi.team = "enemy"
+	hi.height = "high"
+	hi.dmg = 5.0
+	var hp_c := f1.hp
+	check(not f1.take_hit(hi) and f1.hp == hp_c, "crouching avoids a HIGH hit")
+	var mid := HitInfo.new()
+	mid.team = "enemy"
+	mid.height = "mid"
+	mid.dmg = 5.0
+	check(f1.take_hit(mid) and f1.hp < hp_c, "crouching does not avoid a MID hit")
+	await frames(80)
+	p1.script_set(Vector2.ZERO, [])
+	await frames(14)
+	f1.invuln = 0.0
+	var hi2 := HitInfo.new()
+	hi2.team = "enemy"
+	hi2.height = "high"
+	hi2.dmg = 5.0
+	check(f1.take_hit(hi2), "standing takes a HIGH hit")
+	await frames(60)
+
 	print("[all 30 moves execute]")
 	await clear_enemies()
 	var dist := {"fireball": 220, "boomerang": 220, "spread_shot": 220, "ground_wave": 220, "pull_hook": 250,
-		"teleport_strike": 300, "dodge_roll": 120, "grab_throw": 60, "dive_kick": 130, "cyclone": 40, "back_kick": -70}
+		"teleport_strike": 300, "pocket_mine": 40, "grab_throw": 60, "dive_kick": 130, "cyclone": 40, "back_kick": -70}
 	var no_damage := ["guard", "parry", "reflect", "rage_taunt", "boost_spark", "ally_toss", "grab_throw", "pull_hook", "dive_kick"]
 	for id in MoveDB.POOL:
 		await clear_enemies()
@@ -197,6 +226,8 @@ func _run() -> void:
 			if not f1.attack.active and f1.state in ["idle", "walk", "land", "jump", "fall"]:
 				longest = i
 				break
+		if id == "pocket_mine":
+			await frames(45)  # the mine arms after ~0.45 s
 		var damaged := dm.hp < h0 or absf(dm.global_position.x - x0) > 12.0 or dm.state != "idle"
 		var ok := longest > 0 or id == "dive_kick"
 		check(ok, "%s: starts and finishes (%d frames)" % [id, longest])

@@ -25,10 +25,13 @@ const NEUTRAL := {
 	"th_f": 0.0, "kn_f": 0.05, "th_b": 0.0, "kn_b": 0.05,
 	"fist_f": 1.0, "fist_b": 1.0, "reach_f": 1.0, "reach_b": 1.0,
 	"foot_f": 1.0, "foot_b": 1.0, "legr_f": 1.0, "legr_b": 1.0,
+	"wp_rot": 0.0,  ## sword: angle relative to the front forearm (negative = tip raised). hammer: absolute angle (see _draw_weapon)
 }
 
 var color := Color(0.3, 1.5, 1.8)
 var style := ""  ## "", "helmet", "crown", "cap", "horns", "hood"
+var weapon := ""  ## "", "sword", "hammer", "magic": drawn on the hands (code-drawn, no sprites)
+var weapon_scale := 1.0
 ## body build (enemies differ from the round-headed, line-only players)
 var arm_scale := 1.0  ## limb lengths (players have longer arms and legs)
 var leg_scale := 1.0
@@ -229,7 +232,9 @@ func _render(halo: bool) -> void:
 			# angry visor
 			draw_line(head_c + rx * 0.9 - ry * 0.1, head_c - rx * 0.1 + ry * 0.2, col_f, 3.0, true)
 		else:
-			draw_circle(head_c, hr - 1.0, Color(0.03, 0.02, 0.08))
+			# players: a tinted face so the black eyes are visible; enemies keep the dark fill
+			var face := Color(color.r * 0.5, color.g * 0.5, color.b * 0.5, 1.0) if eyes else Color(0.03, 0.02, 0.08)
+			draw_circle(head_c, hr - 1.0, face)
 			draw_arc(head_c, hr, 0.0, TAU, 28, col_f, 3.5, true)
 			if eyes:
 				_draw_eyes(head_c, hr, head_ang)
@@ -238,6 +243,63 @@ func _render(halo: bool) -> void:
 		_accessory(head_c, col_f, hr)
 	# front arm
 	_limb(shoulder, arm_f_a, arm_f_b, 5.0 * ls, col_f, halo, float(p["fist_f"]))
+	if weapon != "":
+		_draw_weapon(halo, shoulder + arm_f_a, shoulder + arm_f_a + arm_f_b, shoulder + arm_b_a + arm_b_b, col_f)
+
+
+## Weapons are drawn from the hands, so every move's arm keyframes move the weapon with them.
+## elbow_f / hand_f = front arm, hand_b = back hand.
+func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2, col: Color) -> void:
+	var dark := Color(0.02, 0.01, 0.05, 0.9)
+	var fd := (hand_f - elbow_f)
+	fd = fd.normalized() if fd.length() > 0.5 else Vector2.RIGHT
+	var wd := fd.rotated(float(pose["wp_rot"]))
+	var n := Vector2(-wd.y, wd.x)
+	var ws := weapon_scale
+	match weapon:
+		"sword":
+			var blade := 62.0 * ws * maxf(arm_scale, 1.0)
+			var base := hand_f + wd * 5.0
+			var tip := base + wd * blade
+			if halo:
+				draw_line(hand_f - wd * 7.0, tip + wd * 3.0, dark, 11.0 * ws)
+				draw_line(base - n * 11.0, base + n * 11.0, dark, 8.0)
+			else:
+				draw_line(hand_f - wd * 7.0, base, col.darkened(0.35), 5.0)       # grip
+				draw_line(base - n * 10.0, base + n * 10.0, col, 4.0, true)         # cross-guard
+				draw_colored_polygon(PackedVector2Array([base + n * 4.0, tip, base - n * 4.0]), col.darkened(0.55))
+				draw_polyline(PackedVector2Array([base + n * 4.0, tip, base - n * 4.0]), col, 2.5, true)
+				draw_line(base, tip - wd * 6.0, Color(2.0, 2.0, 2.2), 1.5, true)    # bright edge
+		"hammer":
+			# the hammer angle is absolute in figure space (0 = forward, + = down, -PI/2 = straight up, PI = back)
+			var hd := Vector2.from_angle(float(pose["wp_rot"]))
+			var shaft := 74.0 * ws * maxf(arm_scale, 1.0)
+			var head_c := hand_f + hd * shaft
+			var tail := hand_f - hd * 24.0
+			var sd := (head_c - tail).normalized()
+			var sn := Vector2(-sd.y, sd.x)
+			var hw := 17.0 * ws  # half length of the head across the shaft
+			var ht := 12.0 * ws  # half thickness along the shaft
+			var quad := PackedVector2Array([head_c + sn * hw + sd * ht, head_c - sn * hw + sd * ht, head_c - sn * hw - sd * ht, head_c + sn * hw - sd * ht])
+			if halo:
+				draw_line(tail, head_c, dark, 10.0)
+				draw_colored_polygon(PackedVector2Array([quad[0] + (sn + sd) * 3.0, quad[1] + (-sn + sd) * 3.0, quad[2] + (-sn - sd) * 3.0, quad[3] + (sn - sd) * 3.0]), dark)
+			else:
+				draw_line(tail, head_c, col.darkened(0.3), 5.0, true)
+				draw_colored_polygon(quad, col.darkened(0.6))
+				draw_polyline(PackedVector2Array([quad[0], quad[1], quad[2], quad[3], quad[0]]), col, 3.0, true)
+				draw_line(head_c - sn * hw * 0.6, head_c + sn * hw * 0.6, Color(1.8, 1.8, 2.0), 1.5, true)
+		"magic":
+			if not halo:
+				var t := Time.get_ticks_msec() / 1000.0
+				for hp_: Vector2 in [hand_f, hand_b]:
+					var r := 9.0 + 2.0 * sin(t * 6.0 + hp_.x)
+					draw_circle(hp_, r + 7.0, Color(col.r, col.g, col.b, 0.14))
+					draw_circle(hp_, r, Color(col.r, col.g, col.b, 0.35))
+					draw_circle(hp_, r * 0.45, Color(2.0, 2.0, 2.2))
+					for i in 3:
+						var a := t * 3.0 + i * TAU / 3.0 + hp_.y * 0.05
+						draw_circle(hp_ + Vector2.from_angle(a) * (r + 6.0), 1.8, col)
 
 
 ## Bright half-circle eyes (flat side up, slight inward tilt = "cool, not angry"). They slide towards

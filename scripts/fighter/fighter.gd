@@ -40,6 +40,12 @@ var _buf_btn := -1
 var _buf_t := 0.0
 var _dash_t := 0.0
 var _dash_cd := 0.0
+var _air_dash_used := false  ## one dash per air time; reset on landing
+var class_id := ""  ## "brawler" / "sword" / "hammer" / "magic", "" = legacy
+var class_speed := 1.0
+var double_jump := false  ## unlocked by a level-up card
+var _air_jump_ready := true
+var _crouch := 0.0  ## 0..1, eases in over ~7 frames while holding down on the ground
 var _ghost := false
 var _toss_t := 0.0
 var _toss_hit: Dictionary = {}
@@ -66,6 +72,11 @@ func _ready() -> void:
 	input = Inp.players[player_index]
 	spawn_point = global_position
 	loadout = MoveDB.STARTER.duplicate()
+	var cid: String = RunState.classes[player_index % 2]
+	if cid != "":
+		apply_class(cid)
+		if not RunState.active:
+			loadout = ClassData.training_loadout(cid)
 	if RunState.active:
 		RunState.apply_to(self)
 	Coop.fighters.append(self)
@@ -73,7 +84,29 @@ func _ready() -> void:
 
 
 func get_run_speed() -> float:
-	return RUN_SPEED * (1.3 if has_buff("speed") else 1.0) * (0.75 if held != null else 1.0)
+	return RUN_SPEED * class_speed * (1.3 if has_buff("speed") else 1.0) * (0.75 if held != null else 1.0)
+
+
+## Weapon class: stats, weapon visual and base pose. "" = legacy (no class, plain fists).
+func apply_class(id: String) -> void:
+	class_id = id
+	if id == "":
+		class_speed = 1.0
+		figure.weapon = ""
+		return
+	var c := ClassData.get_class_data(id)
+	class_speed = float(c["speed"])
+	figure.weapon = String(c["weapon"])
+	if not RunState.active:
+		max_hp = float(c["hp"])
+		hp = max_hp
+
+
+## Class base pose (the silhouette idle, walk arms and recovery return to), or {} for the legacy fighter.
+func _base_pose() -> Dictionary:
+	if class_id == "":
+		return {}
+	return ClassData.base_pose(class_id, Time.get_ticks_msec() / 1000.0 + player_index)
 
 
 func is_btn_held(b: int) -> bool:
@@ -127,6 +160,11 @@ func _locomotion(delta: float) -> void:
 	var mx := input.dir.x
 	if absf(mx) < 0.2:
 		mx = 0.0
+	# crouch: hold down (stick mostly vertical) on the ground; stationary, no crouch-walking
+	var want_crouch := on_floor and held == null and state != "attack" and input.dir.y > 0.6 and absf(input.dir.x) < 0.5
+	_crouch = move_toward(_crouch, 1.0 if want_crouch else 0.0, delta / 0.115)
+	if _crouch > 0.3 and want_crouch:
+		mx = 0.0
 	move_input_x = mx
 	if mx != 0.0:
 		var want := 1 if mx > 0.0 else -1
@@ -149,6 +187,8 @@ func _locomotion(delta: float) -> void:
 	if on_floor:
 		_coyote = COYOTE
 		_jumping = false
+		_air_dash_used = false
+		_air_jump_ready = true
 		velocity.y = 50.0
 	else:
 		_coyote -= delta
@@ -171,6 +211,14 @@ func _locomotion(delta: float) -> void:
 			squash = Vector2(0.8, 1.25)
 			Sfx.play("jump")
 			Fx.dust(get_parent(), global_position, 6)
+		elif double_jump and _air_jump_ready and not on_floor:
+			velocity.y = JUMP_V * 0.92
+			_air_jump_ready = false
+			_jump_buf = 0.0
+			_jumping = true
+			squash = Vector2(0.8, 1.25)
+			Sfx.play("jump", 1.25)
+			Fx.ring(get_parent(), global_position + Vector2(0, -10), figure.color, 36.0, 0.2)
 	if input.released(PlayerInput.Btn.JUMP) and _jumping and velocity.y < 0.0:
 		velocity.y *= 0.45
 		_jumping = false
@@ -185,7 +233,7 @@ func _locomotion(delta: float) -> void:
 		if input.pressed(PlayerInput.Btn.INTERACT) or input.pressed(PlayerInput.Btn.X) or input.pressed(PlayerInput.Btn.Y) or input.pressed(PlayerInput.Btn.B):
 			_throw_held()
 	else:
-		if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0:
+		if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0 and (on_floor or not _air_dash_used):
 			_start_dash()
 		elif input.pressed(PlayerInput.Btn.INTERACT):
 			_try_pickup()
@@ -282,7 +330,7 @@ func _try_slot(slot: String, btn: int) -> bool:
 	var id: String = loadout.get(slot, "")
 	if id == "":
 		return false
-	var m := MoveDB.get_move(id)
+	var m := MoveDB.get_move_for(id, class_id)
 	if m == null:
 		return false
 	if m.ground_only and not is_on_floor():
@@ -311,13 +359,13 @@ func _attack_extra(_delta: float) -> void:
 			var head := cur.id.rstrip("0123456789")
 			if attack.can_chain() and id == head:
 				_buf_t = 0.0
-				start_attack(MoveDB.get_move(cur.chain_next), _buf_btn)
+				start_attack(MoveDB.get_move_for(cur.chain_next, class_id), _buf_btn)
 				return
 			if attack.can_cancel() and id != head and _try_slot(_buf_slot, _buf_btn):
 				_buf_t = 0.0
 				return
 	# dash cancel on hit
-	if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0 and attack.can_cancel():
+	if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0 and attack.can_cancel() and (is_on_floor() or not _air_dash_used):
 		attack.interrupt()
 		_start_dash()
 
@@ -340,9 +388,11 @@ func _start_dash() -> void:
 	var dir := signf(input.dir.x) if absf(input.dir.x) > 0.3 else float(facing)
 	state = "dash"
 	_dash_t = 0.17
-	_dash_cd = 0.5
+	_dash_cd = 0.7
+	if not is_on_floor():
+		_air_dash_used = true
 	velocity = Vector2(dir * 640.0, 0.0)
-	invuln = maxf(invuln, 0.22)
+	invuln = maxf(invuln, 0.12)  # a few i-frames at the start only
 	_ghost = true
 	set_collision_mask_value(3, false)
 	Sfx.play("whoosh", 1.2)
@@ -573,7 +623,35 @@ func apply_pickup(kind: String) -> void:
 
 # ------------------------------------------------------------------ visuals
 
+## Crouching under a HIGH attack or projectile avoids it. MID and LOW still hit.
+func is_crouched() -> bool:
+	return _crouch >= 0.6 and is_on_floor()
+
+
+func _dodges(info: HitInfo) -> bool:
+	if info.height == "high" and info.attacker != self and is_crouched() and not info.friendly:
+		Fx.number(get_parent(), global_position + Vector2(0, -body_h - 8.0), "DUCK", Color(1, 1, 1, 0.8), 16)
+		return true
+	return false
+
+
 func _loco_pose() -> Dictionary:
+	var p := _loco_pose_base()
+	var base := _base_pose()
+	if not base.is_empty() and not p.is_empty():
+		if state == "idle" or state == "land":
+			p = base.duplicate() if state == "idle" else PoseLib.blend(p, base, 0.5)
+		else:
+			# walk, jump, fall: legs animate, the arms (and weapon) keep the class guard
+			for k in ["ua_f", "la_f", "ua_b", "la_b", "wp_rot", "root_y"]:
+				if base.has(k):
+					p[k] = base[k]
+	if _crouch > 0.01 and not p.is_empty():
+		p = PoseLib.blend(p, PoseLib.crouch(), _crouch)
+	return p
+
+
+func _loco_pose_base() -> Dictionary:
 	var p: Dictionary
 	match state:
 		"land":
@@ -637,7 +715,7 @@ func _draw() -> void:
 		if revive_progress > 0.0:
 			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * revive_progress, 32, Color(2.0, 1.7, 1.9), 5.0, true)
 		var f := ThemeDB.fallback_font
-		var txt := "HOLD RT" if Coop.revives_left > 0 else "NO REVIVES"
+		var txt := "HOLD RB" if Coop.revives_left > 0 else "NO REVIVES"
 		draw_string(f, Vector2(-34, -92), txt, HORIZONTAL_ALIGNMENT_CENTER, 70.0, 13, Color(1, 1, 1, 0.8))
 	if Dbg.enabled:
 		draw_rect(Rect2(-body_w * 0.5, -body_h, body_w, body_h), Color(1, 1, 0, 0.8), false, 1.0)

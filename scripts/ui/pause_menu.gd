@@ -41,7 +41,7 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
 		if open and _page != "main":
-			_page = "main"
+			_page = "testing" if _page == "lab" else "main"
 			_sel = 0
 		else:
 			_toggle()
@@ -58,16 +58,20 @@ func _toggle() -> void:
 
 
 func _items() -> Array:
-	var out: Array = [["resume", "Resume"],
+	if _page == "testing":
+		var t: Array = [["moves", "Show move list on HUD: %s" % ("ON" if Hud.show_moves else "OFF")],
+			["impact", "Hit explosion size: %d%%" % int(Fx.impact_scale * 100.0)]]
+		if not RunState.active:
+			t.append_array([["lo0", "Move Lab - Player 1"], ["lo1", "Move Lab - Player 2"]])
+		if level is TrainingLevel:
+			t.append_array([["spawn_kind", "Enemy to spawn: %s   (A: spawn)" % SPAWNABLE[_spawn_idx]], ["crate", "Spawn a crate"], ["heal", "Heal both players"]])
+		t.append(["back", "Back"])
+		return t
+	return [["resume", "Resume"],
 		["ff", "Friendly fire: %s" % ("ON" if Coop.friendly_fire else "OFF")],
 		["ffscale", "Friendly fire damage: %d%%" % int(Coop.ff_scale * 100.0)],
-		]
-	if not RunState.active:
-		out.append_array([["lo0", "Move Lab - Player 1"], ["lo1", "Move Lab - Player 2"]])
-	if level is TrainingLevel:
-		out.append_array([["spawn_kind", "Enemy to spawn: %s   (A: spawn)" % SPAWNABLE[_spawn_idx]], ["crate", "Spawn a crate"], ["heal", "Heal both players"]])
-	out.append_array([["restart", "Restart level"], ["menu", "Main menu"]])
-	return out
+		["testing", "Testing Options"],
+		["restart", "Restart level"], ["menu", "Main menu"]]
 
 
 func _process(_delta: float) -> void:
@@ -84,7 +88,7 @@ func _process(_delta: float) -> void:
 				_activate()
 			elif p.pressed(PlayerInput.Btn.B):
 				if _page != "main":
-					_page = "main"
+					_page = "testing" if _page == "lab" else "main"
 					_sel = 0
 					Sfx.play("ui", 0.8)
 				else:
@@ -93,7 +97,7 @@ func _process(_delta: float) -> void:
 
 
 func _count() -> int:
-	return _items().size() if _page == "main" else PlayerSlots.size() + 1
+	return PlayerSlots.size() + 1 if _page == "lab" else _items().size()
 
 
 func _nav(d: Vector2i) -> void:
@@ -105,9 +109,11 @@ func _nav(d: Vector2i) -> void:
 
 
 func _side(dx: int) -> void:
-	if _page == "main":
+	if _page != "lab":
 		var id: String = _items()[_sel][0]
 		match id:
+			"moves": Hud.show_moves = not Hud.show_moves
+			"impact": Fx.impact_scale = clampf(snappedf(Fx.impact_scale + 0.25 * dx, 0.25), 0.0, 3.0)
 			"ff": Coop.friendly_fire = not Coop.friendly_fire
 			"ffscale":
 				var opts := [0.25, 0.5, 0.75, 1.0]
@@ -118,18 +124,27 @@ func _side(dx: int) -> void:
 		var f := Coop.fighters[_lo_player]
 		var slot: String = PlayerSlots[_sel]
 		var list: Array = [""]
-		list.append_array(MoveDB.POOL)
+		if f.class_id == "":
+			list.append_array(MoveDB.POOL)  # legacy fighter: the original pool, any slot
+		else:
+			list.append_array(ClassData.pool_for_slot(slot, f.class_id))  # X universal, Y adaptive, B own class
 		var cur: String = f.loadout.get(slot, "")
 		var i2 := list.find(cur)
 		f.set_move(slot, list[posmod(i2 + dx, list.size())])
 
 
 func _activate() -> void:
-	if _page == "main":
+	if _page != "lab":
 		var id: String = _items()[_sel][0]
 		match id:
 			"resume": _toggle()
-			"ff", "ffscale": _side(1)
+			"ff", "ffscale", "moves", "impact": _side(1)
+			"testing":
+				_page = "testing"
+				_sel = 0
+			"back":
+				_page = "main"
+				_sel = 0
 			"lo0", "lo1":
 				_lo_player = int(id.substr(2))
 				_page = "lab"
@@ -151,7 +166,7 @@ func _activate() -> void:
 			"restart": level.restart()
 			"menu": level.to_menu()
 	elif _sel == PlayerSlots.size():
-		_page = "main"
+		_page = "testing"
 		_sel = 0
 
 
@@ -166,8 +181,8 @@ func _text(c: Control, pos: Vector2, text: String, size: int, col: Color, width 
 
 func paint(c: Control) -> void:
 	c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.82))
-	if _page == "main":
-		_text(c, Vector2(240, 120), "PAUSED", 56, Color(1, 1, 1), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
+	if _page != "lab":
+		_text(c, Vector2(240, 120), "PAUSED" if _page == "main" else "TESTING OPTIONS", 56 if _page == "main" else 44, Color(1, 1, 1), 800.0, HORIZONTAL_ALIGNMENT_CENTER)
 		var items := _items()
 		for i in items.size():
 			var sel := i == _sel

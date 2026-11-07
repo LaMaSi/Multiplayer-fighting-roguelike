@@ -56,18 +56,47 @@ static func ring(parent: Node, pos: Vector2, col: Color, radius: float = 60.0, d
 	parent.add_child(s)
 
 
+## Global multiplier for the hit explosion size (debug / Testing Options slider). 0 = off.
+static var impact_scale := 1.0
+
+
+## Hit impact. The burst and ring are small, faint and drawn BEHIND the fighters so the silhouettes stay
+## readable; hit-stop, flash, shake and the thin slash line carry the feel.
 static func impact(parent: Node, pos: Vector2, col: Color, power: float = 1.0, dir: Vector2 = Vector2.ZERO) -> void:
 	if not is_instance_valid(parent) or not parent.is_inside_tree():
 		return
-	var s := FxShape.new()
-	s.mode = "burst"
-	s.col = col
-	s.size = 48.0 + 48.0 * power
-	s.dur = 0.2
-	s.position = pos
-	parent.add_child(s)
-	ring(parent, pos, col, 40.0 + 44.0 * power, 0.26)
-	sparks(parent, pos, col, int(5 + 7 * power), dir)
+	var sc := impact_scale
+	if sc > 0.01:
+		var s := FxShape.new()
+		s.mode = "burst"
+		s.col = col
+		s.size = (26.0 + 20.0 * power) * sc
+		s.dur = 0.16
+		s.alpha = 0.4
+		s.behind = true
+		s.position = pos
+		parent.add_child(s)
+		var r := FxShape.new()
+		r.mode = "ring"
+		r.col = col
+		r.size = (24.0 + 26.0 * power) * sc
+		r.dur = 0.2
+		r.alpha = 0.45
+		r.behind = true
+		r.position = pos
+		parent.add_child(r)
+	# thin slash line along the blow direction (on top, but only a few pixels wide)
+	var d := dir.normalized() if dir != Vector2.ZERO else Vector2(1, -0.3).normalized()
+	var sl := FxShape.new()
+	sl.mode = "slash"
+	sl.col = col
+	sl.size = (70.0 + 34.0 * power) * maxf(sc, 0.3)
+	sl.dur = 0.11
+	sl.alpha = 0.95
+	sl.dir = d
+	sl.position = pos
+	parent.add_child(sl)
+	sparks(parent, pos, col, int(3 + 4 * power), dir)
 
 
 static func number(parent: Node, pos: Vector2, text: String, col: Color, size: int = 22) -> void:
@@ -127,6 +156,7 @@ static func afterimage(parent: Node, figure: StickFigure, col: Color) -> void:
 	g.leg_scale = figure.leg_scale
 	g.head_scale = figure.head_scale
 	g.fill_torso = figure.fill_torso
+	g.weapon = figure.weapon
 	g.square_head = figure.square_head
 	g.pose = figure.pose.duplicate()
 	g.target = g.pose.duplicate()

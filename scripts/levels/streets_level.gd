@@ -21,19 +21,20 @@ func _setup() -> void:
 
 
 func _full() -> void:
+	objective = "Clear the street and take down the boss"
 	level_w = 6800.0
 	platforms = [
-		Rect2(500, 470, 280, PLAT_H), Rect2(1000, 380, 240, PLAT_H),
-		Rect2(1900, 470, 300, PLAT_H), Rect2(2300, 360, 260, PLAT_H),
-		Rect2(3100, 470, 320, PLAT_H), Rect2(3550, 350, 260, PLAT_H),
-		Rect2(4300, 470, 300, PLAT_H), Rect2(4700, 360, 300, PLAT_H),
-		Rect2(5500, 460, 300, PLAT_H),
+		Rect2(500, 510, 280, PLAT_H), Rect2(1000, 450, 240, PLAT_H),
+		Rect2(1900, 510, 300, PLAT_H), Rect2(2300, 450, 260, PLAT_H),
+		Rect2(3100, 510, 320, PLAT_H), Rect2(3550, 450, 260, PLAT_H),
+		Rect2(4300, 510, 300, PLAT_H), Rect2(4700, 450, 300, PLAT_H),
+		Rect2(5500, 505, 300, PLAT_H),
 	]
 	props_spec = [
-		[420, "crate"], [470, "crate"], [620, "barrel", 470], [1100, "vase", 380], [1500, "barrel"], [1560, "crate"],
-		[2000, "crate", 470], [2400, "barrel", 360], [2750, "vase"], [2800, "crate"],
-		[3200, "barrel", 470], [3650, "crate", 350], [3950, "barrel"], [4000, "vase"],
-		[4400, "crate", 470], [4800, "barrel", 360], [5200, "crate"], [5250, "vase"], [5600, "barrel", 460], [5900, "crate"],
+		[420, "crate"], [510, "crate"], [620, "barrel", 510], [1100, "vase", 450], [1500, "barrel"], [1560, "crate"],
+		[2000, "crate", 510], [2400, "barrel", 450], [2750, "vase"], [2800, "crate"],
+		[3200, "barrel", 510], [3650, "crate", 450], [3950, "barrel"], [4000, "vase"],
+		[4400, "crate", 510], [4800, "barrel", 450], [5200, "crate"], [5250, "vase"], [5600, "barrel", 505], [5900, "crate"],
 	]
 	encounters = [
 		{"x": 1300.0, "waves": [[["thug", 2]], [["thug", 1], ["thrower", 1]]]},
@@ -54,12 +55,14 @@ func _generated(node: Dictionary, depth: int) -> void:
 	enemy_dmg_mult = 1.0 + 0.06 * depth
 	if t != "boss":
 		exit_x = level_w - 260.0
+	objective = {"fight": "Break through to the exit", "elite": "Defeat the elite guard, then reach the exit",
+		"treasure": "Smash the loot, then reach the exit", "boss": "Take down the boss"}.get(t, "Reach the exit")
 
 	# platforms
 	var n_plat := int(level_w / 720.0)
 	for i in n_plat:
 		var x := 420.0 + i * 720.0 + rng.randf_range(-70.0, 70.0)
-		var y := 470.0 if rng.randf() < 0.55 else 365.0
+		var y := 510.0 if rng.randf() < 0.55 else 450.0  # jump apex is ~168px: top platforms must stay within reach
 		platforms.append(Rect2(x, y, rng.randf_range(250.0, 320.0), PLAT_H))
 
 	# containers

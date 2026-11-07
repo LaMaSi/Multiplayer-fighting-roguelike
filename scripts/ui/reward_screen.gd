@@ -87,6 +87,8 @@ func _process(delta: float) -> void:
 			var row := _slot / 4
 			col = posmod(col + d.x, 4)
 			row = posmod(row + d.y, 3)
+			if _cards[_sel].has("row"):
+				row = int(_cards[_sel]["row"])  # X / Y / B moves only fit their own row
 			_slot = row * 4 + col
 	_last = d
 	if inp.pressed(PlayerInput.Btn.JUMP):
@@ -102,9 +104,12 @@ func _confirm() -> void:
 	if _phase == "cards":
 		if card["kind"] == "move":
 			_phase = "slot"
-			_slot = 0
+			var row0 := int(card.get("row", 0))
+			_slot = row0 * 4
 			var loadout: Dictionary = RunState.loadouts[_player()]
 			for s in 12:
+				if card.has("row") and s / 4 != row0:
+					continue
 				if not loadout.has(_slot_name(s)):
 					_slot = s
 					break

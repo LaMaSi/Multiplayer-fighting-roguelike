@@ -33,6 +33,10 @@ var enemy := false
 var tele := false
 var color := Color(1.6, 1.6, 1.6)
 var land_wait := -1  ## frame at which to wait until the actor touches the floor (dive kick)
+var tier := ""  ## "weapon" (B slots, class-locked), "adaptive" (Y, reshaped by the class), "universal" (X), "" = enemy / legacy
+var class_id := ""  ## owning class for weapon moves; the applied class for an adaptive variant
+var height := "mid"  ## "high" / "mid" / "low": the height of the first hit
+var meter_cost := 0.0  ## reserved: Style meter cost of the LT version (super meter design pending)
 
 
 func last_hit_end() -> int:

@@ -66,6 +66,7 @@ func _ready() -> void:
 	collision_mask = 0
 	set_collision_mask_value(1, true)
 	set_collision_mask_value(2, true)
+	set_collision_mask_value(4, true)  # barriers (Bulwark Plant) block bodies but not projectiles
 	floor_snap_length = 8.0
 	var cs := CollisionShape2D.new()
 	var cap := CapsuleShape2D.new()
@@ -194,8 +195,15 @@ func _on_defeated() -> void:
 
 # ------------------------------------------------------------------ taking hits
 
+## Override: true if this actor avoids the hit entirely (e.g. a crouching player vs a HIGH attack).
+func _dodges(_info: HitInfo) -> bool:
+	return false
+
+
 func take_hit(info: HitInfo) -> bool:
 	if not is_targetable() or invuln > 0.0:
+		return false
+	if _dodges(info):
 		return false
 	if _filter_hit(info):
 		return true

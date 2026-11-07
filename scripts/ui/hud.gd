@@ -19,6 +19,7 @@ const METER_USABLE := 0.5  ## a super / Duo needs at least half a meter
 static var show_moves := false
 
 var level: LevelBase
+var objective := ""  ## one-line goal shown under the revive hearts
 
 var _canvas: Canvas
 var _trail: Array[float] = [100.0, 100.0]

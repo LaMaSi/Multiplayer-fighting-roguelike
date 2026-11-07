@@ -28,6 +28,7 @@ var result_stats: Dictionary = {}
 var fighters: Array[Fighter] = []
 var cam: CameraRig
 var hud: Hud
+var objective := ""  ## one-line goal for the HUD (set by the level before _ready finishes)
 var menu: PauseMenu
 
 var _enc_idx := 0
@@ -60,6 +61,7 @@ func _ready() -> void:
 	_spawn_props()
 	hud = Hud.new()
 	hud.level = self
+	hud.objective = objective
 	add_child(hud)
 	menu = PauseMenu.new()
 	menu.level = self

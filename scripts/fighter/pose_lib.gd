@@ -12,6 +12,12 @@ static func idle(t: float) -> Dictionary:
 	}
 
 
+## True for the neutral idle pose (used to swap in the class base pose at the end of a move).
+static func is_idle(p: Dictionary) -> bool:
+	return absf(float(p.get("ua_f", -9.0)) - 0.95) < 0.001 and absf(float(p.get("la_f", -9.0)) - 1.55) < 0.001 \
+		and absf(float(p.get("kn_f", -9.0)) - 0.45) < 0.001 and absf(float(p.get("th_b", -9.0)) + 0.25) < 0.001
+
+
 ## Slouchy enemy stance.
 static func idle_enemy(t: float) -> Dictionary:
 	var b := sin(t * 2.2) * 0.04
@@ -99,6 +105,23 @@ static func getup() -> Dictionary:
 		"th_f": 1.0, "kn_f": 1.6, "th_b": -0.5, "kn_b": 1.6,
 		"ua_f": 0.8, "la_f": 0.4, "ua_b": 0.2, "la_b": 0.4,
 	}
+
+
+## Crouch: deep knees (the hip drops by itself), torso forward, guard up.
+static func crouch() -> Dictionary:
+	return {
+		"lean": 0.42, "head": -0.1,
+		"th_f": 1.25, "kn_f": 2.3, "th_b": -0.55, "kn_b": 1.75,
+		"ua_f": 1.2, "la_f": 1.8, "ua_b": 0.9, "la_b": 2.0,
+	}
+
+
+## Blend two poses (missing keys in `a` use `b`'s value).
+static func blend(a: Dictionary, b: Dictionary, t: float) -> Dictionary:
+	var out := a.duplicate()
+	for k in b:
+		out[k] = lerpf(float(a.get(k, b[k])), float(b[k]), t)
+	return out
 
 
 static func guard() -> Dictionary:

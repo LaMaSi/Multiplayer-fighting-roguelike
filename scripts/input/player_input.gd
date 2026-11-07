@@ -89,9 +89,10 @@ func poll() -> void:
 			for b in PAD_BTN:
 				if Input.is_joy_button_pressed(device, PAD_BTN[b]):
 					nh[b] = true
-			if Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT) > 0.5:
-				nh[Btn.DASH] = true
+			# RT = dodge dash, RB = interact / grab (LT is reserved for empowered moves later)
 			if Input.get_joy_axis(device, JOY_AXIS_TRIGGER_RIGHT) > 0.5:
+				nh[Btn.DASH] = true
+			if Input.is_joy_button_pressed(device, JOY_BUTTON_RIGHT_SHOULDER):
 				nh[Btn.INTERACT] = true
 		var k: Dictionary = KB[index]
 		var kd := Vector2(
@@ -140,7 +141,7 @@ func digital_dir() -> Vector2i:
 
 
 func buttons_string() -> String:
-	var names := ["A", "X", "Y", "B", "LT", "RT", "LB", "RB", "ST"]
+	var names := ["A", "X", "Y", "B", "RT", "RB", "LB", "RB", "ST"]
 	var s := ""
 	for i in Btn.COUNT:
 		if held[i]:

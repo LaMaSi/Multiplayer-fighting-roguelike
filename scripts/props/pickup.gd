@@ -71,7 +71,9 @@ func _draw() -> void:
 	var c: Color = Pal.interact()  # one hue for everything you can grab; the glyph tells the type
 	var bob := sin(_t * 5.0) * 3.0
 	var r := 13.0 if kind == "hp_m" else 10.0
-	draw_circle(Vector2(0, -16 + bob), r + 6.0, Color(c.r, c.g, c.b, 0.15))
+	var pulse := 0.5 + 0.5 * sin(_t * 4.0)  # gentle pulse
+	draw_circle(Vector2(0, -16 + bob), r + 6.0 + 2.0 * pulse, Color(c.r, c.g, c.b, 0.15))
+	draw_arc(Vector2(0, -16 + bob), r + 4.0 + 1.5 * pulse, 0.0, TAU, 24, Color(Prop.RIM.r, Prop.RIM.g, Prop.RIM.b, 0.4 + 0.4 * pulse), 2.5, true)  # interactable rim
 	draw_circle(Vector2(0, -16 + bob), r, Color(0.05, 0.03, 0.1))
 	draw_arc(Vector2(0, -16 + bob), r, 0.0, TAU, 20, c, 3.0, true)
 	draw_string(ThemeDB.fallback_font, Vector2(-5, -10 + bob), GLYPH[kind], HORIZONTAL_ALIGNMENT_CENTER, 10.0, 16, c)

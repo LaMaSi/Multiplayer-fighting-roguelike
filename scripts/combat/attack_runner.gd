@@ -239,6 +239,19 @@ func _do_event(e: Dictionary) -> void:
 			Fx.number(parent, a.global_position + Vector2(0, -110), "RAGE!", Color(2.2, 0.4, 0.3), 28)
 			Sfx.play("buff", 0.7)
 			Juice.shake(0.3)
+		"pillar":
+			Barrier.spawn(parent, a.global_position + Vector2(a.facing * float(e["dx"]), 0.0), float(e["life"]), a.team)
+		"ward":
+			# shield bubble on the partner (if close) or on yourself: absorbs one hit
+			var pw := Coop.partner_of(a)
+			var wt: Actor = a
+			if pw != null and pw.is_alive() and pw.global_position.distance_to(a.global_position) < 420.0:
+				wt = pw
+			wt.shield_hits += 1
+			Fx.ring(parent, wt.global_position + Vector2(0, -45), a.figure.color, 80.0, 0.35)
+			Fx.beam(parent, a.global_position + Vector2(0, -60), wt.global_position + Vector2(0, -60), a.figure.color, 0.3)
+			Fx.number(parent, wt.global_position + Vector2(0, -110), "WARDED", Color(1.9, 1.9, 2.2), 22)
+			Sfx.play("buff", 1.2)
 		"boost":
 			var p3 := Coop.partner_of(a)
 			var tgt: Actor = p3 if (p3 != null and p3.is_alive()) else a
@@ -299,7 +312,13 @@ func _hits() -> void:
 			continue
 		var rect := world_rect(h["box"])
 		actor.debug_hit_rect = rect
-		for t in actor.hit_targets():
+		var targets: Array = actor.hit_targets()
+		if bool(h.get("partner_safe", false)):
+			# Home Run: the partner can be batted too, even with friendly fire off (no damage to them)
+			var pp := Coop.partner_of(actor)
+			if pp != null and pp.is_targetable() and not (pp in targets):
+				targets.append(pp)
+		for t in targets:
 			var key := "%d:%d" % [i, t.get_instance_id()]
 			if _hit_done.has(key):
 				continue
@@ -328,13 +347,22 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.kind = String(h["kind"])
 	info.stop = int(h["stop"]) + (4 if float(h["dmg"]) >= 18.0 else (2 if float(h["dmg"]) >= 9.0 else 1))
 	info.low = bool(h["low"])
+	info.height = String(h.get("height", "low" if info.low else "mid"))
+	info.guard_break = bool(h.get("guard_break", false))
+	if move.hold and _hold_frames > 0:
+		info.dmg *= 1.0 + 0.8 * minf(float(_hold_frames), 60.0) / 60.0  # charged moves hit harder
 	info.shake = float(h["shake"])
 	info.punch = float(h.get("punch", 0.0))
 	info.prop_power = float(h.get("prop_power", 1.0))
 	info.wallbounce = bool(h.get("wallbounce", false))
 	info.heal_self = float(h.get("heal_self", 0.0))
 	info.color = h.get("color", a.figure.color)
+	if a.team == "enemy" and info.height == "high":
+		info.color = Color(2.4, 2.0, 0.3)  # high attacks spark amber
 	info.friendly = (t is Actor and (t as Actor).team == a.team)
+	if bool(h.get("partner_safe", false)) and info.friendly:
+		info.dmg = 0.0  # a partner launch never hurts the partner
+		info.no_combo = true
 	info.pos = rect.get_center().clamp(t.get_hurt_rect().position, t.get_hurt_rect().end)
 	var kb: Vector2 = (h["kb"] as Vector2) * a.upgrade_mult(move.id, "kb")
 	if bool(h["radial"]):

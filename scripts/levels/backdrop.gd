@@ -163,6 +163,13 @@ var _layers: Array[SkyLayer] = []
 var _sun: SunLayer
 
 
+## Desaturate towards grey (sat 1 = unchanged, 0 = grey) and scale brightness: anything bright in the
+## foreground then reads as gameplay.
+static func _mute(c: Color, k: float, sat: float) -> Color:
+	var g := (c.r + c.g + c.b) / 3.0
+	return Color(lerpf(g, c.r, sat) * k, lerpf(g, c.g, sat) * k, lerpf(g, c.b, sat) * k, c.a)
+
+
 func setup(theme: Dictionary, level_w: float, ground_y: float) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(theme.get("seed", 3))

@@ -7,11 +7,14 @@ var col := Color(1, 1, 1)
 var size := 40.0
 var dur := 0.25
 var t := 0.0
+var alpha := 1.0  ## overall opacity
+var behind := false  ## draw behind the fighters (z -2) instead of on top
+var dir := Vector2.RIGHT  ## slash direction
 var _angles: Array[float] = []
 
 
 func _ready() -> void:
-	z_index = 60
+	z_index = -2 if behind else 60
 	if mode == "burst":
 		var base := randf() * TAU
 		for i in 8:
@@ -27,7 +30,15 @@ func _process(_d: float) -> void:
 
 func _draw() -> void:
 	var a := 1.0 - t
-	var c := Color(col.r, col.g, col.b, a)
+	var c := Color(col.r, col.g, col.b, a * alpha)
+	if mode == "slash":
+		# a needle through the hit point: grows fast, thins out and fades
+		var e := 1.0 - pow(1.0 - t, 2.0)
+		var half := size * (0.35 + 0.65 * e) * 0.5
+		var nrm := Vector2(-dir.y, dir.x)
+		var hw := 0.5 + 2.2 * a
+		draw_colored_polygon(PackedVector2Array([-dir * half, nrm * hw, dir * half, -nrm * hw]), c)
+		return
 	if mode == "ring":
 		var r := size * (1.0 - pow(1.0 - t, 3.0))
 		draw_arc(Vector2.ZERO, maxf(r, 1.0), 0.0, TAU, 40, c, 1.5 + 5.0 * a, true)

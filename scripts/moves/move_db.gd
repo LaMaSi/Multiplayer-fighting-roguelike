@@ -6,11 +6,25 @@ extends RefCounted
 const POOL: Array[String] = [
 	"jab", "uppercut", "dash_punch", "sweep", "back_kick",
 	"fireball", "boomerang", "spread_shot", "ground_wave", "guard",
-	"parry", "reflect", "dodge_roll", "spin_kick", "cyclone",
+	"parry", "reflect", "pocket_mine", "spin_kick", "cyclone",
 	"stomp", "dive_kick", "rising_dragon", "anti_air", "haymaker",
 	"wall_elbow", "flurry", "grab_throw", "pull_hook", "teleport_strike",
 	"ally_toss", "heal_pulse", "rage_taunt", "boost_spark", "pillar_smash",
 ]
+
+## Every move a player can equip (legacy 30-move POOL plus the weapon-class moves).
+static func all_player_moves() -> Array:
+	var out: Array = []
+	for id in ClassData.X_POOL:
+		out.append(id)
+	for id in ClassData.Y_POOL:
+		out.append(id)
+	for cid in ClassData.IDS:
+		for id in (ClassData.get_class_data(cid)["b_pool"] as Array):
+			if not (id in out):
+				out.append(id)
+	return out
+
 
 ## 12 slots per character: X / Y / B  x  neutral, up, down, side (left and right are the same move;
 ## pressing a side direction also turns the fighter that way).
@@ -43,6 +57,119 @@ static func has_move(id: String) -> bool:
 	if _db.is_empty():
 		_build()
 	return _db.has(id)
+
+
+static var _variants: Dictionary = {}
+
+
+## The move as `class_id` performs it. Weapon / universal moves are returned unchanged (apart from the
+## class base pose in the recovery); adaptive (Y) moves go through the class modifier table once and are cached.
+static func get_move_for(id: String, class_id: String) -> MoveData:
+	var m := get_move(id)
+	if m == null or class_id == "" or m.enemy:
+		return m
+	var key := id + "@" + class_id
+	if _variants.has(key):
+		return _variants[key]
+	var v := _make_variant(m, class_id)
+	_variants[key] = v
+	return v
+
+
+static func _clone(m: MoveData) -> MoveData:
+	var c := MoveData.new()
+	for p in m.get_property_list():
+		if int(p["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			var val = m.get(p["name"])
+			c.set(p["name"], val.duplicate(true) if (val is Array or val is Dictionary) else val)
+	return c
+
+
+## Piecewise time warp: the wind-up scales by `st`, the active part is untouched, the recovery scales by `rc`.
+static func _warp(f: float, first: float, last: float, st: float, rc: float) -> int:
+	if f <= first:
+		return int(round(f * st))
+	if f <= last:
+		return int(round(first * st + (f - first)))
+	return int(round(first * st + (last - first) + (f - last) * rc))
+
+
+static func _make_variant(m: MoveData, class_id: String) -> MoveData:
+	var cd := ClassData.get_class_data(class_id)
+	var mods: Dictionary = cd["mods"]
+	var v := _clone(m)
+	v.class_id = class_id
+	var base := ClassData.base_pose(class_id, 0.0)
+	var weapon := String(cd["weapon"])
+	# recovery returns to the class silhouette; weapon keys get sensible defaults
+	for i in v.kf.size():
+		var pose: Dictionary = v.kf[i][1]
+		if PoseLib.is_idle(pose):
+			v.kf[i][1] = base.duplicate()
+		else:
+			if weapon == "sword" and not pose.has("wp_rot"):
+				pose["wp_rot"] = float(base["wp_rot"])
+			if weapon == "hammer" and not pose.has("wp_rot"):
+				# adaptive moves: the head extends along the front forearm
+				var fa: float = float(pose.get("ua_f", 0.95)) + float(pose.get("la_f", 1.55))
+				pose["wp_rot"] = PI * 0.5 - fa
+			if weapon in ["sword", "hammer"]:
+				pose["fist_f"] = pose.get("fist_f", 1.0)
+				pose["fist_b"] = pose.get("fist_b", 1.0)
+				pose["fist_f"] = minf(float(pose["fist_f"]), 1.5)  # no oversized fists around a weapon
+				pose["fist_b"] = minf(float(pose["fist_b"]), 1.5)
+	if m.tier != "adaptive":
+		return v
+	var st: float = mods["startup"]
+	var rc: float = mods["recovery"]
+	var first := 9999.0
+	var last := 0.0
+	for h in v.hits:
+		first = minf(first, float(h["at"]))
+		last = maxf(last, float(h["at"]) + float(h["dur"]))
+	if v.hits.is_empty():
+		first = float(v.total) * 0.3
+		last = first
+	for k in v.kf:
+		k[0] = _warp(float(k[0]), first, last, st, rc)
+	for e in v.events:
+		e["at"] = _warp(float(e["at"]), first, last, st, rc)
+		if e.has("to"):
+			e["to"] = _warp(float(e["to"]), first, last, st, rc)
+	var reach: float = mods["reach"]
+	var dz: float = mods.get("dead_zone", 0.0)
+	for h in v.hits:
+		var b: Rect2 = h["box"]
+		var d := float(h["dur"])
+		h["at"] = _warp(float(h["at"]), first, last, st, rc)
+		h["dur"] = maxi(1, int(d))
+		if not bool(h.get("radial", false)):
+			var left := b.position.x * reach
+			var right := (b.position.x + b.size.x) * reach
+			if dz > 0.0 and left < dz and right > dz + 24.0 and b.position.x >= 0.0:
+				left = dz  # dead zone: nothing connects at point-blank range
+			h["box"] = Rect2(left, b.position.y, maxf(right - left, 12.0), b.size.y)
+		else:
+			h["box"] = Rect2(b.position.x * reach, b.position.y, b.size.x * reach, b.size.y)
+		h["dmg"] = float(h["dmg"]) * float(mods["dmg"])
+		h["kb"] = (h["kb"] as Vector2) * float(mods["kb"])
+		if bool(mods.get("guard_break", false)):
+			h["guard_break"] = true
+	for d in v.drive:
+		d["from"] = _warp(float(d["from"]), first, last, st, rc)
+		d["to"] = _warp(float(d["to"]), first, last, st, rc)
+	if not v.spin.is_empty():
+		v.spin["at"] = _warp(float(v.spin["at"]), first, last, st, rc)
+	v.total = _warp(float(v.total), first, last, st, rc)
+	if v.cancel_from >= 0:
+		v.cancel_from = _warp(float(v.cancel_from), first, last, st, rc)
+	if v.chain_from > 0:
+		v.chain_from = _warp(float(v.chain_from), first, last, st, rc)
+	if v.hold_frame > 0:
+		v.hold_frame = _warp(float(v.hold_frame), first, last, st, rc)
+	if v.land_wait >= 0:
+		v.land_wait = _warp(float(v.land_wait), first, last, st, rc)
+	return v
 
 
 # ---------------------------------------------------------------- helpers
@@ -108,6 +235,21 @@ static func _proj(at: int, d: Dictionary) -> Dictionary:
 static func _build() -> void:
 	_build_player()
 	_build_enemy()
+	MoveDBWeapons.build()
+	# tiers (weapon / adaptive / universal), owning class and the height of the first hit
+	for id in _db:
+		var m: MoveData = _db[id]
+		if m.enemy:
+			continue
+		var head := String(id).rstrip("0123456789")
+		var t := ClassData.tier_of(head)
+		if m.tier == "" and t != "":
+			m.tier = t
+		if m.tier == "weapon" and m.class_id == "":
+			m.class_id = ClassData.class_of_weapon_move(head)
+		if not m.hits.is_empty():
+			var h0: Dictionary = m.hits[0]
+			m.height = String(h0.get("height", "low" if bool(h0.get("low", false)) else "mid"))
 
 
 static func _build_player() -> void:
@@ -229,15 +371,14 @@ static func _build_player() -> void:
 			[34, {"lean": -0.1, "ua_f": 1.57, "la_f": 0.0, "ua_b": 1.57, "la_b": 0.0}], [46, _idle()]],
 		"events": [{"at": 4, "type": "reflect", "dur": 30}, {"at": 4, "type": "sfx", "name": "buff"}]})
 
-	# --- 13 Dodge roll strike -------------------------------------------
-	_mk({"id": "dodge_roll", "name": "Dodge Roll Strike", "short": "ROLL", "desc": "I-frames, then a kick.",
-		"total": 40, "spin": {"at": 1, "dur": 14, "turns": 1.0}, "cancel_from": 20,
-		"kf": [[0, {"lean": 1.0, "th_f": 1.5, "kn_f": 2.2, "th_b": 1.2, "kn_b": 2.2, "ua_f": 1.0, "la_f": 2.0, "ua_b": 1.0, "la_b": 2.0}],
-			[15, {"lean": 0.2, "th_f": 1.55, "kn_f": 0.1, "th_b": -0.4, "kn_b": 0.5, "ua_f": 0.4, "la_f": 1.2}],
-			[28, _idle()]],
-		"events": [{"at": 0, "type": "invuln", "dur": 17}, {"at": 1, "type": "vel", "vx": 680.0}, {"at": 1, "type": "sfx", "name": "whoosh"},
-			{"at": 3, "type": "ghost"}, {"at": 6, "type": "ghost"}, {"at": 9, "type": "ghost"}],
-		"hits": [_hit(15, 4, Rect2(0, -64, 78, 42), 9, 20, Vector2(280, -160), {"kind": "push", "stop": 4})]})
+	# --- 13 Pocket Mine (replaces Dodge Roll Strike, which the RT dash now covers) ---
+	_mk({"id": "pocket_mine", "name": "Pocket Mine", "short": "MINE", "desc": "Drops a mine. Launches the first enemy to step on it.",
+		"total": 30, "tags": ["projectile"],
+		"kf": [[0, {"lean": 0.5, "th_f": 0.9, "kn_f": 1.6, "th_b": -0.5, "kn_b": 1.4, "ua_f": 0.6, "la_f": 0.4, "ua_b": 0.3, "la_b": 0.3}],
+			[8, {"lean": 0.7, "th_f": 1.0, "kn_f": 1.7, "th_b": -0.5, "kn_b": 1.5, "ua_f": 0.4, "la_f": 0.1}],
+			[22, _idle()]],
+		"events": [_proj(8, {"kind": "mine", "pos": Vector2(34, -6), "vel": Vector2.ZERO, "dmg": 12.0, "stun": 30,
+			"kb": Vector2(180, -640), "life": 10.0, "radius": 14.0, "color": ORANGE, "pkind": "launch", "ground": true, "sfx": "pickup"})]})
 
 	# --- 14 Spin kick ---------------------------------------------------
 	var spin_hits: Array = []
@@ -423,14 +564,14 @@ static func _build_enemy() -> void:
 			[16, {"lean": 0.5, "ua_f": 1.55, "la_f": 0.0, "th_f": 0.8, "kn_f": 0.3, "th_b": -0.7}],
 			[28, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 15, "type": "vel", "vx": 120.0}],
-		"hits": [_hit(16, 4, Rect2(8, -82, 58, 32), 8, 16, Vector2(180, 0), {"stop": 3})]})
+		"hits": [_hit(16, 4, Rect2(8, -82, 58, 32), 8, 16, Vector2(180, 0), {"stop": 3, "height": "high"})]})
 	_mk({"id": "e_double", "name": "Double Punch", "enemy": true, "tele": true, "total": 56, "color": RED,
 		"kf": [[0, {"lean": -0.2, "ua_f": -0.5, "la_f": 1.4}],
 			[14, {"lean": 0.5, "ua_f": 1.55, "la_f": 0.0, "th_f": 0.8, "kn_f": 0.3, "th_b": -0.7}],
 			[24, {"lean": 0.5, "ua_b": 1.55, "la_b": 0.0, "ua_f": 0.3, "la_f": 1.8}],
 			[40, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 13, "type": "vel", "vx": 100.0}, {"at": 23, "type": "vel", "vx": 100.0}],
-		"hits": [_hit(14, 3, Rect2(8, -82, 58, 32), 6, 14, Vector2(100, 0), {"stop": 3}),
+		"hits": [_hit(14, 3, Rect2(8, -82, 58, 32), 6, 14, Vector2(100, 0), {"stop": 3, "height": "high"}),
 			_hit(24, 4, Rect2(8, -82, 62, 32), 8, 22, Vector2(300, -220), {"kind": "launch", "stop": 4})]})
 	# biker: charge
 	_mk({"id": "e_charge", "name": "Charge", "enemy": true, "tele": true, "total": 74, "color": RED,
@@ -453,12 +594,12 @@ static func _build_enemy() -> void:
 			[42, {"lean": 0.9, "ua_f": 0.8, "la_f": 0.1, "ua_b": 0.8, "th_f": 0.9, "kn_f": 0.5, "th_b": -0.8, "kn_b": 0.6}],
 			[70, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 42, "type": "ring", "radius": 230.0, "sfx": "boom", "shake": 0.7}],
-		"hits": [_hit(42, 3, Rect2(-170, -50, 340, 52), 16, 30, Vector2(320, -520), {"radial": true, "kind": "launch", "stop": 8, "shake": 0.5})]})
+		"hits": [_hit(42, 3, Rect2(-170, -50, 340, 52), 16, 30, Vector2(320, -520), {"radial": true, "kind": "launch", "stop": 8, "shake": 0.5, "height": "low"})]})
 	_mk({"id": "boss_swing", "name": "Wide Swing", "enemy": true, "tele": true, "total": 70, "color": RED,
 		"kf": [[0, {"lean": -0.5, "ua_f": -1.2, "la_f": 0.4}],
 			[26, {"lean": 0.7, "ua_f": 1.57, "la_f": 0.0, "th_f": 0.9, "kn_f": 0.3, "th_b": -0.8}], [50, PoseLib.idle_enemy(0.0)]],
 		"events": [{"at": 0, "type": "tele"}, {"at": 25, "type": "vel", "vx": 220.0}],
-		"hits": [_hit(26, 5, Rect2(10, -115, 120, 70), 13, 28, Vector2(480, -140), {"kind": "launch", "stop": 6, "shake": 0.35})]})
+		"hits": [_hit(26, 5, Rect2(10, -115, 120, 70), 13, 28, Vector2(480, -140), {"kind": "launch", "stop": 6, "shake": 0.35, "height": "high"})]})
 	_mk({"id": "boss_charge", "name": "Bull Rush", "enemy": true, "tele": true, "total": 110, "color": RED,
 		"kf": [[0, {"lean": 0.5, "th_f": 0.8, "kn_f": 1.5, "th_b": -0.6, "kn_b": 1.5}],
 			[34, {"lean": 1.0, "th_f": 1.0, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.3, "ua_f": 1.4, "la_f": 0.2, "ua_b": 1.2}],

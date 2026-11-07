@@ -83,7 +83,20 @@ func _draw() -> void:
 
 func telegraph() -> void:
 	figure.modulate = Color(1.5, 0.75, 0.75, figure.modulate.a)
-	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 14.0), "!", Color(2.5, 0.5, 0.4), 34)
+	# the marker shows the attack height: amber "^" = HIGH (crouch under it), orange "v" = LOW (jump it), red "!" = MID
+	var h := "mid"
+	if attack.move != null and not attack.move.hits.is_empty():
+		var h0: Dictionary = attack.move.hits[0]
+		h = String(h0.get("height", "low" if bool(h0.get("low", false)) else "mid"))
+	var mark := "!"
+	var mc := Color(2.5, 0.5, 0.4)
+	if h == "high":
+		mark = "^"
+		mc = Color(2.4, 2.0, 0.3)
+	elif h == "low":
+		mark = "v"
+		mc = Color(2.4, 1.1, 0.3)
+	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 14.0), mark, mc, 34)
 	Sfx.play("ui", 0.6)
 
 
