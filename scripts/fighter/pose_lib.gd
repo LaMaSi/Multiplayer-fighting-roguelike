@@ -189,7 +189,7 @@ static func stance(front_x: float, back_x: float, drop: float) -> Dictionary:
 ## Four-beat idle loop on planted feet: breathe in (up), out (down + weight to the RIGHT), in (up),
 ## out (down + weight to the LEFT). x = hip shift (px), dip = hip lowering (px, knees bend), b = chest / arm lift.
 static func breath(t: float) -> Dictionary:
-	var ph := t * 10.0  # one breath = PI of phase, ~0.31 s
+	var ph := t * 15.0  # one breath = PI of phase, ~0.21 s (quick, lively)
 	var down := (1.0 - cos(ph)) * 0.5  # 0 = in / up, 1 = out / down
 	return {"x": sin(ph * 0.5) * 4.0, "dip": down * 3.5, "b": cos(ph) * 0.04, "down": down}
 

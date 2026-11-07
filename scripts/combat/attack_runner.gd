@@ -121,7 +121,7 @@ func _cleanup() -> void:
 	aiming = false
 	actor.figure.rot = 0.0
 	actor.figure.modulate = Color.WHITE
-	actor.figure.follow_speed = 28.0
+	actor.figure.follow_speed = 36.0
 	actor.figure.zeta = 1.0
 	actor.figure.trail_on = false
 	actor.guard_t = 0

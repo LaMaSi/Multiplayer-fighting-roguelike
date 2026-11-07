@@ -7,18 +7,18 @@ signal defeated(e: Enemy)
 
 const DEFS := {
 	"dummy": {"name": "Training Dummy", "hp": 99999.0, "speed": 0.0, "color": Color(1.6, 1.6, 1.8), "style": "", "ai": "dummy", "attacks": []},
-	"thug": {"name": "Thug", "hp": 55.0, "speed": 150.0, "color": Color(1.3, 0.3, 0.08), "style": "cap", "ai": "melee", "build": {"limb": 1.55, "head": 1.05, "fill": true, "square": true},
+	"thug": {"name": "Thug", "hp": 55.0, "speed": 190.0, "color": Color(1.3, 0.3, 0.08), "style": "cap", "ai": "melee", "build": {"limb": 1.55, "head": 1.05, "fill": true, "square": true},
 		"attacks": ["e_punch", "e_double"], "range": 62.0, "cd": 1.5},
-	"biker": {"name": "Biker", "hp": 75.0, "speed": 200.0, "color": Color(1.4, 0.25, 0.1), "style": "helmet", "ai": "charger", "build": {"limb": 1.3, "head": 1.3, "fill": true, "square": false},
+	"biker": {"name": "Biker", "hp": 75.0, "speed": 250.0, "color": Color(1.4, 0.25, 0.1), "style": "helmet", "ai": "charger", "build": {"limb": 1.3, "head": 1.3, "fill": true, "square": false},
 		"attacks": ["e_charge"], "range": 0.0, "cd": 2.2},
-	"thrower": {"name": "Bottle Thrower", "hp": 40.0, "speed": 130.0, "color": Color(1.1, 0.1, 0.25), "style": "hood", "ai": "ranged", "build": {"limb": 0.8, "head": 0.9, "fill": false, "square": true},
+	"thrower": {"name": "Bottle Thrower", "hp": 40.0, "speed": 165.0, "color": Color(1.1, 0.1, 0.25), "style": "hood", "ai": "ranged", "build": {"limb": 0.8, "head": 0.9, "fill": false, "square": true},
 		"attacks": ["e_throw"], "range": 0.0, "cd": 2.4},
 	# few and tanky is the norm: brutes and heavies soak a long team combo; they still launch and juggle
-	"brute": {"name": "Brute", "hp": 230.0, "speed": 110.0, "color": Color(1.35, 0.15, 0.35), "style": "helmet", "ai": "melee", "build": {"limb": 1.8, "head": 1.15, "fill": true, "square": true},
+	"brute": {"name": "Brute", "hp": 230.0, "speed": 135.0, "color": Color(1.35, 0.15, 0.35), "style": "helmet", "ai": "melee", "build": {"limb": 1.8, "head": 1.15, "fill": true, "square": true},
 		"attacks": ["e_punch", "e_double"], "range": 72.0, "cd": 1.9, "scale": 1.25, "dmg": 1.35},
-	"heavy": {"name": "Heavy", "hp": 340.0, "speed": 90.0, "color": Color(1.2, 0.2, 0.9), "style": "horns", "ai": "melee", "build": {"limb": 2.0, "head": 1.2, "fill": true, "square": true},
+	"heavy": {"name": "Heavy", "hp": 340.0, "speed": 110.0, "color": Color(1.2, 0.2, 0.9), "style": "horns", "ai": "melee", "build": {"limb": 2.0, "head": 1.2, "fill": true, "square": true},
 		"attacks": ["e_double", "e_punch"], "range": 78.0, "cd": 2.3, "scale": 1.4, "dmg": 1.6},
-	"boss_street": {"name": "Big Boss", "hp": 750.0, "speed": 120.0, "color": Color(1.45, 0.08, 0.08), "style": "crown", "ai": "boss", "build": {"limb": 1.9, "head": 1.1, "fill": true, "square": true},
+	"boss_street": {"name": "Big Boss", "hp": 750.0, "speed": 145.0, "color": Color(1.45, 0.08, 0.08), "style": "crown", "ai": "boss", "build": {"limb": 1.9, "head": 1.1, "fill": true, "square": true},
 		"attacks": ["boss_swing", "boss_slam", "boss_charge"], "range": 100.0, "cd": 1.0, "scale": 1.5, "resist": true, "boss": true},
 }
 
@@ -38,6 +38,8 @@ var _jump_vy := 0.0  ## pending jump impulse (applied after the ground-sticking 
 var _regen_t := 0.0
 var _summoned: Array[bool] = [false, false]
 var _aggro := false
+var _climb_cd := 0.0
+var _stand_side := 0.0
 
 
 func _configure() -> void:
@@ -188,6 +190,7 @@ func _control(delta: float) -> void:
 		return
 	var chill := 0.55 if frost_t > 0.0 else 1.0  # chilled: slower walking and slower attacks
 	_cd -= delta * chill
+	_climb_cd = maxf(0.0, _climb_cd - delta)
 	_strafe_t -= delta
 	if _strafe_t <= 0.0:
 		_strafe_t = randf_range(0.8, 2.0)
@@ -214,9 +217,11 @@ func _control(delta: float) -> void:
 			var terrain := _terrain_jump(dir) if absf(want_x) > 1.0 else 0
 			if terrain == 2:
 				want_x = 0.0  # a pit it cannot cross: wait at the edge instead of walking in
-			elif terrain == 0 and dy < -90.0 and adx < 230.0 and randf() < 0.05:
-				_jump(dir, run_speed * 1.2, 880.0)  # up to a platform the target stands on
-			elif dy > 110.0 and adx < 220.0 and _drop_t <= 0.0:
+			elif terrain == 0 and dy < -90.0 and adx < 900.0 and _climb_cd <= 0.0:
+				var cw := _climb(dy)  # walk to a platform that leads up to the target, hop onto it
+				if cw != 0.0:
+					want_x = cw
+			elif dy > 110.0 and adx < 420.0 and _drop_t <= 0.0:
 				_drop_t = 0.4
 				set_collision_mask_value(2, false)
 				global_position.y += 2.0
@@ -265,6 +270,11 @@ func _begin(id: String) -> void:
 func _ai_melee(dir: float, adx: float, dy: float, _delta: float) -> float:
 	var rng := float(def["range"])
 	var level := absf(dy) < 60.0
+	var inner := _inner_dir()
+	var on_inner := inner == 0.0 or signf(global_position.x - target.global_position.x) == inner or adx > 340.0
+	var sx := target.global_position.x + inner * rng * 0.85
+	if not on_inner and level and adx < 340.0:
+		return signf(sx - global_position.x) * run_speed  # get BETWEEN the two players: that is where they can be juggled
 	if _has_token or (_cd <= 0.0 and adx < 340.0 and Coop.request_token(self)):
 		_has_token = true
 		if adx > rng and level:
@@ -281,6 +291,54 @@ func _ai_melee(dir: float, adx: float, dy: float, _delta: float) -> float:
 	if adx < 150.0:
 		return -dir * run_speed * 0.7
 	return _strafe * run_speed * 0.35
+
+
+## Which side of the target the partner is on (-1/1), or 0 when there is no (close enough) partner. Enemies prefer to stand there.
+func _inner_dir() -> float:
+	if target == null:
+		return 0.0
+	var p := Coop.partner_of(target)
+	if p == null or not p.is_alive() or p.state == "downed":
+		return 0.0
+	var d := p.global_position.x - target.global_position.x
+	return signf(d) if absf(d) > 140.0 else 0.0
+
+
+
+## Walks toward a platform that gets us up toward the target and hops when underneath. Returns the wanted horizontal velocity (0 = nothing found).
+func _climb(dy: float) -> float:
+	var lvl := get_parent()
+	if lvl == null or not ("platforms" in lvl):
+		return 0.0
+	var best: Rect2 = Rect2()
+	var bd := INF
+	var cands: Array = (lvl.platforms as Array).duplicate()
+	for n in get_tree().get_nodes_in_group("moving_platforms"):
+		var mp := n as MovingPlatform
+		cands.append(Rect2(mp.position - mp.size * 0.5, mp.size))
+	for r: Rect2 in cands:
+		var rise := global_position.y - r.position.y
+		if rise < 40.0 or rise > 175.0:
+			continue
+		if r.position.y < target.global_position.y - 60.0:
+			continue  # overshoots the target
+		var gx := 0.0
+		if global_position.x < r.position.x:
+			gx = r.position.x - global_position.x
+		elif global_position.x > r.end.x:
+			gx = global_position.x - r.end.x
+		if gx < bd and gx < 700.0:
+			bd = gx
+			best = r
+	if bd == INF:
+		return 0.0
+	var cx := best.position.x + best.size.x * 0.5
+	if bd < 4.0 and absf(global_position.x - cx) < best.size.x * 0.5 - 14.0:
+		_jump(signf(target.global_position.x - global_position.x) * 0.3, run_speed * 0.6, 900.0)
+		_climb_cd = 0.6
+		return 0.0
+	var tx := clampf(global_position.x, best.position.x + 24.0, best.end.x - 24.0)
+	return signf(tx - global_position.x) * run_speed
 
 
 func _ai_charger(dir: float, adx: float, dy: float) -> float:

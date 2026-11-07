@@ -2,12 +2,14 @@ class_name Fighter
 extends Actor
 ## A player character: locomotion, the 15-slot move loadout, dash, carrying, toss and revive.
 
-const RUN_SPEED := 330.0
-const ACCEL := 2800.0
-const AIR_ACCEL := 1800.0
-const FRICTION := 3400.0
-const AIR_FRICTION := 600.0
-const FALL_MULT := 1.35
+const RUN_SPEED := 400.0
+const WALK_FRAC := 0.42  ## a gentle stick tilt walks at this fraction of the run speed
+const WALK_TILT := 0.65
+const ACCEL := 7000.0
+const AIR_ACCEL := 4200.0
+const FRICTION := 8000.0
+const AIR_FRICTION := 900.0
+const FALL_MULT := 1.6
 const JUMP_V := -880.0
 const COYOTE := 0.09
 const JUMP_BUFFER := 0.12
@@ -148,6 +150,8 @@ func set_move(slot: String, id: String) -> void:
 
 func _tick_timers(delta: float) -> void:
 	super._tick_timers(delta)
+	if state in ["hurt", "launched", "attack", "dash", "downed", "tossed", "ledge", "dead"]:
+		_sprint = 0  # a sprint never survives being hit, attacking or hanging
 	_dash_cd = maxf(0.0, _dash_cd - delta)
 	_fling_grace = maxf(0.0, _fling_grace - delta)
 	_record_motion()
@@ -190,7 +194,9 @@ var _stick_active := false
 func _update_sprint(delta: float, on_floor: bool) -> void:
 	var raw := input.dir.x
 	_tap_t += delta
-	var active := absf(raw) > 0.6
+	if absf(input.dir.y) > 0.5:
+		_tap_t = 9.0  # a motion input (down / diagonal) is not a double tap
+	var active := absf(raw) > 0.6 and absf(input.dir.y) < 0.5  # diagonals belong to special-move motions, not sprints
 	var neutral := absf(raw) < 0.25
 	if active and not _stick_active:
 		var s := 1 if raw > 0.0 else -1
@@ -221,6 +227,10 @@ func _locomotion(delta: float) -> void:
 	var mx := input.dir.x
 	if absf(mx) < 0.2:
 		mx = 0.0
+	elif absf(mx) < WALK_TILT:
+		mx = signf(mx) * WALK_FRAC  # walk: a light tilt gives a clearly slower pace than a full push (run)
+	else:
+		mx = signf(mx)
 	# crouch: hold down (stick mostly vertical) on the ground; stationary, no crouch-walking
 	var want_crouch := on_floor and held == null and state != "attack" and input.dir.y > 0.6 and absf(input.dir.x) < 0.5
 	_crouch = move_toward(_crouch, 1.0 if want_crouch else 0.0, delta / 0.115)
@@ -343,7 +353,7 @@ func _locomotion(delta: float) -> void:
 	elif absf(velocity.x) > 25.0:
 		state = "walk"
 		var dir_sign := 1.0 if velocity.x * facing >= 0.0 else -1.0
-		_walk_phase += absf(velocity.x) * 0.055 * delta * dir_sign
+		_walk_phase += absf(velocity.x) * (0.07 if absf(velocity.x) > RUN_SPEED * 0.7 else 0.085) * delta * dir_sign
 	else:
 		state = "idle"
 

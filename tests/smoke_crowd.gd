@@ -36,6 +36,8 @@ func _ready() -> void:
 	check("player walks through an enemy (x %.0f > %.0f)" % [f.global_position.x, d.global_position.x], f.global_position.x > d.global_position.x + 30.0)
 	check("overlapping slows movement", slowed)
 	# two players overlap freely
+	f.global_position = Vector2(1100, 599)
+	f.velocity = Vector2.ZERO
 	other.global_position = f.global_position + Vector2(-5, 0)
 	await frames(10)
 	check("players can overlap", absf(other.global_position.x - f.global_position.x) < 40.0)

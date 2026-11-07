@@ -10,6 +10,7 @@ var level_w := 3200.0
 var ground_y := 600.0
 var platforms: Array = []  ## Rect2 (top-left, size)
 var ground_segs: Array = []  ## Rect2 (x, top_y, width, depth) pieces of ground; empty = one flat ground. Gaps between pieces are pits.
+var moving_specs: Array = []  ## {rect: Rect2, vertical: bool, travel: float (half), period: float, phase: float}
 var doors_spec: Array = []  ## {x, kind: "challenge" | "shop"}
 var hazards_spec: Array = []  ## {kind: "spikes" | "bumper" | "spring", x}
 var in_room := false  ## the players are inside a door room (the level itself is paused in place)
@@ -131,6 +132,10 @@ func _build_world() -> void:
 	for r: Rect2 in platforms:
 		var b := _make_body(r, 2, true)
 		b.set_meta("bottom_y", r.end.y)
+	for m: Dictionary in moving_specs:
+		var mp := MovingPlatform.new()
+		add_child(mp)
+		mp.setup(m["rect"], bool(m["vertical"]), float(m["travel"]), float(m["period"]), float(m["phase"]), Pal.terrain())
 
 
 ## The ground pieces, with the first and last stretched past the level edges. Legacy levels: one flat slab.
@@ -304,15 +309,31 @@ func _start_encounter(enc: Dictionary) -> void:
 
 
 func _spawn_wave(wave: Array) -> void:
+	# enemies appear BETWEEN the players (dropping in), so they can be juggled between the two right away
+	var xs: Array[float] = []
+	for f in Coop.fighters:
+		if is_instance_valid(f) and f.is_alive():
+			xs.append(f.global_position.x)
+	var mid := (_arena.x + _arena.y) * 0.5
+	if xs.size() > 0:
+		mid = 0.0
+		for v in xs:
+			mid += v
+		mid /= xs.size()
+	var spread := 60.0 + (absf(xs[0] - xs[xs.size() - 1]) * 0.4 if xs.size() > 1 else 120.0)
+	var n := 0
+	for entry in wave:
+		n += int(entry[1])
+	var k := 0
 	for entry in wave:
 		var kind: String = entry[0]
-		var count: int = entry[1]
-		for i in count:
-			var side := 1.0 if randf() < 0.5 else -1.0
-			var x := (_arena.y - 70.0) if side > 0.0 else (_arena.x + 70.0)
-			x += randf_range(-30.0, 30.0) * -side
-			var e := spawn_enemy(kind, Vector2(x, ground_y - 1.0))
-			e.velocity = Vector2(-side * 120.0, 0)
+		for i in int(entry[1]):
+			var off := ((float(k) + 0.5) / float(maxi(n, 1)) - 0.5) * 2.0 * spread
+			k += 1
+			var x := clampf(mid + off, _arena.x + 90.0, _arena.y - 90.0)
+			var e := spawn_enemy(kind, Vector2(x, ground_top(x) - 260.0))
+			e.velocity = Vector2(0, 0)
+			e.invuln = 0.7
 
 
 func _end_encounter(enc: Dictionary) -> void:

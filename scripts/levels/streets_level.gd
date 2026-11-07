@@ -134,6 +134,8 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 	var seg_x := 0.0
 	var fi := 0
 	var gap_islands: Array = []
+	var pits: Array = []  # Vector3(x, width, ground top)
+	moving_specs = []
 	while x < level_w:
 		# next flat zone at or after x
 		while fi < flats.size() and (flats[fi] as Vector2).y <= x:
@@ -152,8 +154,27 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			x = zone.x
 			continue
 		var pick := rng.randf()
-		if pick < 0.30:
+		if pick < 0.16:
 			x += rng.randf_range(220.0, 420.0)  # flat run
+		elif pick < 0.38 and room > 1000.0 and top == base:
+			# staircase: two steps up, a landing, then back down in one go
+			var h1 := rng.randf_range(50.0, 85.0)
+			var h2 := h1 + rng.randf_range(50.0, 85.0)
+			ground_segs.append(Rect2(seg_x, top, x - seg_x, 700.0))
+			seg_x = x
+			x += rng.randf_range(160.0, 240.0)
+			ground_segs.append(Rect2(seg_x, base - h1, x - seg_x, 700.0))
+			seg_x = x
+			x += rng.randf_range(200.0, 320.0)
+			ground_segs.append(Rect2(seg_x, base - h2, x - seg_x, 700.0))
+			seg_x = x
+			x += rng.randf_range(160.0, 240.0)
+			ground_segs.append(Rect2(seg_x, base - h1, x - seg_x, 700.0))
+			seg_x = x
+			top = base
+			x += 40.0
+			ground_segs.append(Rect2(seg_x, base, x - seg_x, 700.0))
+			seg_x = x
 		elif pick < 0.55 and room > 640.0 and top == base:
 			# raised (or sunken) ground block: step, run, step back
 			var h := rng.randf_range(50.0, STEP_MAX) * (1.0 if rng.randf() < 0.6 else -1.0)  # negative = sunken block
@@ -168,12 +189,14 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			# pit
 			var gw := rng.randf_range(GAP_MIN, GAP_MAX)
 			ground_segs.append(Rect2(seg_x, top, x - seg_x, 700.0))
+			pits.append(Vector3(x, gw, top))
 			x += gw
 			seg_x = x
 			x += rng.randf_range(260.0, 380.0)
 		elif room > 760.0:
 			# wide pit with an island platform in the middle (reached with one jump from each side)
 			var gw2 := rng.randf_range(360.0, 440.0)
+			pits.append(Vector3(x, gw2, -top))  # negative top: this one already has its island
 			ground_segs.append(Rect2(seg_x, top, x - seg_x, 700.0))
 			gap_islands.append(Rect2(x + gw2 * 0.5 - 70.0, top - 110.0, 140.0, PLAT_H))
 			x += gw2
@@ -198,6 +221,40 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		if rng.randf() < 0.4 and low.end.x + 260.0 < g.end.x:
 			var hw := rng.randf_range(200.0, 260.0)
 			platforms.append(Rect2(low.end.x + 70.0, g.position.y - 270.0, hw, PLAT_H))
+
+	# moving platforms: bridges that glide across pits, bobbing lifts, and floating stairs in the air
+	for pt: Vector3 in pits:
+		if pt.z < 0.0:
+			continue
+		if rng.randf() < 0.55:
+			var pw := 130.0
+			moving_specs.append({"rect": Rect2(pt.x + pt.y * 0.5 - pw * 0.5, pt.z - 30.0, pw, PLAT_H), "vertical": false, "travel": maxf(30.0, pt.y * 0.5 - pw * 0.5 - 40.0), "period": rng.randf_range(3.6, 5.0), "phase": rng.randf()})
+	for g3: Rect2 in ground_segs:
+		if g3.size.x < 520.0:
+			continue
+		var roll := rng.randf()
+		if roll < 0.3:
+			# lift: a platform bobbing between 90 and 330 px above the ground, high stuff to reach
+			var lx := g3.position.x + rng.randf_range(60.0, g3.size.x - 200.0)
+			moving_specs.append({"rect": Rect2(lx, g3.position.y - 210.0, 120.0, PLAT_H), "vertical": true, "travel": 110.0, "period": rng.randf_range(3.4, 4.6), "phase": rng.randf()})
+		elif roll < 0.6 and g3.size.x > 700.0:
+			# floating stairs high in the air
+			var sx := g3.position.x + rng.randf_range(40.0, g3.size.x - 640.0)
+			for si in 3:
+				platforms.append(Rect2(sx + si * 190.0, g3.position.y - 150.0 - si * 100.0, 150.0, PLAT_H))
+		elif roll < 0.8:
+			# a mover patrolling above the ground
+			var mx0 := g3.position.x + rng.randf_range(160.0, maxf(161.0, g3.size.x - 240.0))
+			moving_specs.append({"rect": Rect2(mx0, g3.position.y - 180.0, 150.0, PLAT_H), "vertical": false, "travel": 140.0, "period": rng.randf_range(3.6, 5.0), "phase": rng.randf()})
+	# every arena gets its own mix of platforms so battles use height
+	for e in encounters:
+		var ax := float(e["x"])
+		if t == "boss":
+			continue
+		var side := -1.0 if rng.randf() < 0.5 else 1.0
+		platforms.append(Rect2(ax + side * 330.0 - 110.0, ground_y - 150.0, 220.0, PLAT_H))
+		platforms.append(Rect2(ax + side * 530.0 - 90.0, ground_y - 260.0, 180.0, PLAT_H))
+		moving_specs.append({"rect": Rect2(ax - side * 120.0 - 75.0, ground_y - 200.0, 150.0, PLAT_H), "vertical": rng.randf() < 0.4, "travel": 130.0, "period": rng.randf_range(3.6, 4.8), "phase": rng.randf()})
 
 	# doors: one or two per fight / elite level on solid ground between the arenas (challenge room or move shop)
 	doors_spec = []

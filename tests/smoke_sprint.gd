@@ -19,6 +19,8 @@ func _ready() -> void:
 	await frames(30)
 	var f: Fighter = Coop.fighters[0]
 	var inp: PlayerInput = f.input
+	f.global_position = Vector2(200, 599)
+	Coop.fighters[1].global_position = Vector2(100, 599)
 	inp.script_set(Vector2.RIGHT, [])
 	await frames(40)
 	var walk := f.get_run_speed()

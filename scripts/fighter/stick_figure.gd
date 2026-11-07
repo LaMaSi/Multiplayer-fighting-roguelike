@@ -49,7 +49,7 @@ var _blink := 0.0
 
 var pose: Dictionary = NEUTRAL.duplicate()
 var target: Dictionary = NEUTRAL.duplicate()
-var follow_speed := 28.0  ## spring frequency (rad/s)
+var follow_speed := 36.0  ## spring frequency (rad/s)
 var zeta := 1.0  ## damping ratio: 1 = no overshoot, ~0.5 = snappy with overshoot
 var rot := 0.0
 var jitter := 0.0  ## hit-stop shake amplitude in px

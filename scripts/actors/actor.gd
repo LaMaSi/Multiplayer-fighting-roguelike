@@ -473,6 +473,9 @@ func _st_attack(delta: float) -> void:
 	_attack_extra(delta)
 	if state != "attack":
 		return
+	if not attack.active:  # safety net: an interrupted move whose follow-up failed must never leave the actor frozen
+		state = "idle"
+		return
 	if is_on_floor() and velocity.y >= 0.0:
 		velocity.y = 50.0
 		velocity.x = move_toward(velocity.x, 0.0, 2400.0 * delta)
