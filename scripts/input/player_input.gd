@@ -4,7 +4,7 @@ extends RefCounted
 ## controller and/or a keyboard set. Polled once per physics frame by the Inp autoload.
 ## Tests can switch it to "scripted" mode and feed fake input.
 
-enum Btn { JUMP, X, Y, B, DASH, INTERACT, LB, RB, START, BACK, COUNT }
+enum Btn { JUMP, X, Y, B, DASH, INTERACT, LB, RB, START, BACK, EMPOWER, COUNT }
 
 const DEADZONE := 0.35
 
@@ -27,7 +27,7 @@ const KB := [
 		"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S,
 		"btn": {
 			Btn.JUMP: KEY_SPACE, Btn.X: KEY_F, Btn.Y: KEY_G, Btn.B: KEY_H,
-			Btn.DASH: KEY_C, Btn.INTERACT: KEY_V, Btn.LB: KEY_Q, Btn.RB: KEY_E, Btn.BACK: KEY_TAB,
+			Btn.DASH: KEY_C, Btn.INTERACT: KEY_V, Btn.LB: KEY_Q, Btn.RB: KEY_E, Btn.BACK: KEY_TAB, Btn.EMPOWER: KEY_Z,
 		},
 	},
 	{
@@ -35,7 +35,7 @@ const KB := [
 		"btn": {
 			Btn.JUMP: KEY_SHIFT, Btn.X: KEY_COMMA, Btn.Y: KEY_PERIOD, Btn.B: KEY_SLASH,
 			Btn.DASH: KEY_SEMICOLON, Btn.INTERACT: KEY_APOSTROPHE,
-			Btn.LB: KEY_BRACKETLEFT, Btn.RB: KEY_BRACKETRIGHT, Btn.BACK: KEY_BACKSLASH,
+			Btn.LB: KEY_BRACKETLEFT, Btn.RB: KEY_BRACKETRIGHT, Btn.BACK: KEY_BACKSLASH, Btn.EMPOWER: KEY_PAGEDOWN,
 		},
 	},
 ]
@@ -95,6 +95,8 @@ func poll() -> void:
 				nh[Btn.DASH] = true
 			if Input.is_joy_button_pressed(device, JOY_BUTTON_RIGHT_SHOULDER):
 				nh[Btn.INTERACT] = true
+			if Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT) > 0.5:
+				nh[Btn.EMPOWER] = true  # LT: empower the next move (spends a little meter)
 		var k: Dictionary = KB[index]
 		var kd := Vector2(
 			float(Input.is_physical_key_pressed(k["right"])) - float(Input.is_physical_key_pressed(k["left"])),
@@ -142,7 +144,7 @@ func digital_dir() -> Vector2i:
 
 
 func buttons_string() -> String:
-	var names := ["A", "X", "Y", "B", "RT", "RB", "LB", "RB", "ST", "BK"]
+	var names := ["A", "X", "Y", "B", "RT", "RB", "LB", "RB", "ST", "BK", "LT"]
 	var s := ""
 	for i in Btn.COUNT:
 		if held[i]:

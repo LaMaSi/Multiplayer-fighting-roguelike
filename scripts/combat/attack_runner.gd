@@ -10,6 +10,7 @@ var active := false
 var hit_connected := false
 var grabbed: Node = null
 var aiming := false  ## holding a grabbed enemy: steer with the stick, press a button to throw that way
+var empowered := false  ## LT held when the move started and meter was spent: +30 % damage, +20 % knockback, +25 % hitbox
 var _aim_t := 0
 var held_btn := -1
 
@@ -35,6 +36,7 @@ func start(m: MoveData, btn := -1) -> void:
 		grabbed.release()  # never leave a grabbed enemy stuck when a new move starts
 	grabbed = null
 	aiming = false
+	empowered = false
 	hit_connected = false
 	held_btn = btn
 	_hit_done.clear()
@@ -252,6 +254,23 @@ func _do_event(e: Dictionary) -> void:
 			if p2 != null and p2.is_alive() and p2.global_position.distance_to(a.global_position) < float(e["radius"]) + 40.0:
 				p2.heal(float(e["amount"]))
 				Fx.number(parent, p2.global_position + Vector2(0, -100), "+%d" % int(e["amount"]), Color(2.0, 1.7, 1.9), 24)
+		"well":
+			var gz := GravityZone.new()
+			gz.owner_actor = a
+			gz.team = a.team
+			gz.col = a.figure.color
+			gz.radius = float(e["radius"])
+			gz.life = float(e["life"])
+			gz.global_position = a.global_position + Vector2(float(a.facing) * float(e["dist"]), -40.0)
+			parent.add_child(gz)
+		"rider":
+			# every super helps the partner: a damage buff and a little healing when they are near
+			var rp := Coop.partner_of(a)
+			if rp != null and rp.is_alive() and rp.state != "downed" and rp.global_position.distance_to(a.global_position) < 520.0:
+				rp.add_buff("dmg", 8.0)
+				rp.heal(15.0)
+				Fx.ring(parent, rp.global_position + Vector2(0, -45), Color(2.0, 1.7, 1.9), 90.0, 0.4)
+				Fx.number(parent, rp.global_position + Vector2(0, -110), "TEAM BOOST", Color(2.0, 1.7, 1.9), 22)
 		"rage":
 			a.add_buff("rage", float(e["dur"]))
 			Fx.ring(parent, a.global_position + Vector2(0, -45), Color(2.2, 0.3, 0.2), 120.0, 0.4)
@@ -306,6 +325,8 @@ func _teleport() -> void:
 
 func world_rect(box: Rect2) -> Rect2:
 	var p := actor.global_position
+	if empowered:
+		box = Rect2(box.position.x * 1.1, box.position.y - box.size.y * 0.125, box.size.x * 1.25, box.size.y * 1.25)
 	if actor.facing >= 0:
 		return Rect2(p.x + box.position.x, p.y + box.position.y, box.size.x, box.size.y)
 	return Rect2(p.x - box.position.x - box.size.x, p.y + box.position.y, box.size.x, box.size.y)
@@ -381,7 +402,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	var info := HitInfo.new()
 	info.attacker = a
 	info.team = a.team
-	info.dmg = float(h["dmg"]) * a.dmg_mult() * a.upgrade_mult(move.id, "dmg")
+	info.dmg = float(h["dmg"]) * a.dmg_mult() * a.upgrade_mult(move.id, "dmg") * (1.3 if empowered else 1.0)
 	if a.team == "enemy":
 		info.dmg *= Coop.enemy_dmg_mult
 	info.stun = int(h["stun"]) + (3 if a.team == "player" else 0)  # a little extra hitstun: solo chains become possible
@@ -408,7 +429,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		info.dmg = 0.0  # a partner launch never hurts the partner
 		info.no_combo = true
 	info.pos = rect.get_center().clamp(t.get_hurt_rect().position, t.get_hurt_rect().end)
-	var kb: Vector2 = (h["kb"] as Vector2) * a.upgrade_mult(move.id, "kb")
+	var kb: Vector2 = (h["kb"] as Vector2) * a.upgrade_mult(move.id, "kb") * (1.2 if empowered else 1.0)
 	if bool(h["radial"]):
 		var dx: float = t.get_hurt_rect().get_center().x - a.global_position.x
 		var s := signf(dx) if absf(dx) > 4.0 else float(a.facing)

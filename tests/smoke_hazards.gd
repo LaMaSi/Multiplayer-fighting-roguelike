@@ -82,4 +82,14 @@ func _ready() -> void:
 	f.input.script_set(Vector2.ZERO, [])
 	await frames(90)
 	check("a thrown spring survives and lands as a pad", is_instance_valid(spr2) and spr2.state == "idle" and spr2.global_position.x > 450.0)
+	# gravity well zone drags enemies toward its centre
+	var gz := GravityZone.new()
+	gz.owner_actor = f
+	gz.global_position = Vector2(2000, 560)
+	lv.add_child(gz)
+	var ge: Enemy = lv.spawn_enemy("brute", Vector2(2150, 599))
+	await frames(10)
+	var gx := ge.global_position.x
+	await frames(60)
+	check("a gravity zone pulls enemies toward its centre (%.0f -> %.0f)" % [gx, ge.global_position.x], ge.global_position.x < gx - 40.0)
 	get_tree().quit()

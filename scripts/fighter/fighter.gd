@@ -62,6 +62,8 @@ var _toss_t := 0.0
 var _toss_hit: Dictionary = {}
 var _flung_t := 0.0  ## thrown by the partner: a fast floaty jump that can still act (attack, dash) and body-checks enemies
 var _fling_grace := 0.0
+var _dir_hist: Array = []  ## [physics frame, token] of recent stick directions for the super motion
+var _super_hint_shown := false
 var _ghost_tick := 0.0
 
 
@@ -146,6 +148,10 @@ func _tick_timers(delta: float) -> void:
 	super._tick_timers(delta)
 	_dash_cd = maxf(0.0, _dash_cd - delta)
 	_fling_grace = maxf(0.0, _fling_grace - delta)
+	_record_motion()
+	if meter >= MoveDBSupers.COST and not _super_hint_shown and class_id != "x":
+		_super_hint_shown = true
+		Coop.say("SUPER READY!  Down, down-forward, forward (twice) + X (team) or B (class)", Color(2.0, 1.8, 0.5), global_position + Vector2(0, -150))
 	if _ghost and state != "dash":
 		# actors never block each other any more; the dash only phases through barriers, solid again once clear
 		var me := get_hurt_rect()
@@ -268,6 +274,8 @@ func _locomotion(delta: float) -> void:
 			_try_pickup()
 		elif input.pressed(PlayerInput.Btn.LB):
 			_try_grab()
+		elif (input.pressed(PlayerInput.Btn.X) or input.pressed(PlayerInput.Btn.B)) and _try_super(input.pressed(PlayerInput.Btn.B)):
+			pass
 		else:
 			for b in [PlayerInput.Btn.X, PlayerInput.Btn.Y, PlayerInput.Btn.B]:
 				if input.pressed(b):
@@ -377,7 +385,14 @@ func _try_slot(slot: String, btn: int) -> bool:
 		_turn_t = 0
 	if m.air_only and is_on_floor():
 		velocity.y = -520.0
+	var emp := input.is_held(PlayerInput.Btn.EMPOWER) and meter >= 10.0 and not m.hits.is_empty() and m.tier != "super"
+	if emp:
+		meter -= 10.0
 	start_attack(m, btn)
+	if emp:
+		attack.empowered = true
+		Fx.ring(get_parent(), global_position + Vector2(0, -50), figure.color, 60.0, 0.25)
+		Fx.number(get_parent(), global_position + Vector2(0, -130), "EMPOWERED", Color(2.0, 1.7, 0.5), 18)
 	return true
 
 
@@ -963,3 +978,65 @@ func _flung_tick(delta: float, on_floor: bool) -> void:
 			if t.take_hit(info):
 				freeze = maxi(freeze, 4)
 				meter = minf(100.0, meter + 6.0)
+
+
+# ------------------------------------------------------------------ supers (double quarter-circle forward + X / B)
+
+## Remember the stick as one of: D (down), DF (down-forward), F (forward), N (anything else).
+func _record_motion() -> void:
+	var d := input.dir
+	var sy := 1 if d.y > 0.5 else (-1 if d.y < -0.5 else 0)
+	var sx := 1 if d.x > 0.5 else (-1 if d.x < -0.5 else 0)
+	var fwd := sx * facing
+	var tok := "N"
+	if sy > 0 and fwd == 0:
+		tok = "D"
+	elif sy > 0 and fwd > 0:
+		tok = "DF"
+	elif sy == 0 and fwd > 0:
+		tok = "F"
+	var now := Engine.get_physics_frames()
+	if _dir_hist.is_empty() or _dir_hist[_dir_hist.size() - 1][1] != tok:
+		_dir_hist.append([now, tok])
+	while not _dir_hist.is_empty() and now - int(_dir_hist[0][0]) > 90:
+		_dir_hist.pop_front()
+	while _dir_hist.size() > 16:
+		_dir_hist.pop_front()
+
+
+## True when the recent stick history contains down, forward, down, forward (down-forward may sit between): a double
+## quarter-circle forward, entered within the last 1.5 s and finished at most 0.25 s ago.
+func _motion_ready() -> bool:
+	var now := Engine.get_physics_frames()
+	var want := ["D", "F", "D", "F"]
+	var wi := 0
+	var last_f := -1000
+	for e in _dir_hist:
+		if wi < want.size() and e[1] == want[wi]:
+			wi += 1
+			if wi == want.size():
+				last_f = int(e[0])
+	if wi < want.size():
+		return false
+	# F is the last token recorded while held; allow the stick still being on forward or released shortly after
+	var tail: String = _dir_hist[_dir_hist.size() - 1][1]
+	return tail == "F" or now - last_f <= 15 or now - int(_dir_hist[_dir_hist.size() - 1][0]) <= 15
+
+
+func _try_super(class_super: bool) -> bool:
+	if not is_on_floor() or meter < MoveDBSupers.COST or not _motion_ready():
+		return false
+	var id: String = "super_generic"
+	if class_super and class_id != "":
+		id = String(MoveDBSupers.CLASS_SUPER.get(class_id, "super_generic"))
+	var m := MoveDB.get_move_for(id, class_id)
+	if m == null:
+		return false
+	meter -= MoveDBSupers.COST
+	_dir_hist.clear()
+	start_attack(m, PlayerInput.Btn.B if class_super else PlayerInput.Btn.X)
+	Fx.ring(get_parent(), global_position + Vector2(0, -50), Color(2.0, 1.7, 0.5), 140.0, 0.4)
+	Fx.number(get_parent(), global_position + Vector2(0, -135), m.name.to_upper() + "!", Color(2.0, 1.7, 0.5), 26)
+	Juice.zoom_punch(0.08)
+	Sfx.play("relay")
+	return true

@@ -248,17 +248,13 @@ static func _magic() -> void:
 			_hit(40, 2, Rect2(30, -94, 360, 40), 3, 10, Vector2(40, 0), {"stop": 1, "shake": 0.04}),
 			_hit(48, 2, Rect2(30, -94, 360, 40), 3, 10, Vector2(40, 0), {"stop": 1, "shake": 0.04}),
 			_hit(56, 3, Rect2(30, -98, 360, 48), 5, 20, Vector2(200, -120), {"kind": "launch", "stop": 4, "shake": 0.15})]}, "weapon", "magic")
-	_mk({"id": "gravity_well", "name": "Gravity Well", "short": "WELL", "desc": "A pulling zone that drags enemies together.",
-		"total": 84, "tags": ["utility"],
+	_mk({"id": "gravity_well", "name": "Gravity Well", "short": "WELL", "desc": "Leaves a zone that drags enemies toward its centre for 4 seconds. Gather a crowd for a team combo.",
+		"total": 70, "tags": ["utility"],
 		"kf": [[0, {"lean": 0.0, "ua_f": 1.9, "la_f": 0.3, "ua_b": -1.9, "la_b": -0.3, "th_f": 0.2, "kn_f": 0.3, "th_b": -0.2, "kn_b": 0.2}],
 			[10, {"lean": -0.1, "ua_f": 1.6, "la_f": 0.0, "ua_b": 1.4, "la_b": 0.1, "th_f": 0.4, "kn_f": 0.4, "th_b": -0.4, "kn_b": 0.3}],
 			[64, _idle()]],
-		"events": [{"at": 12, "type": "ring", "radius": 200.0, "sfx": "buff", "shake": 0.1}, {"at": 30, "type": "ring", "radius": 160.0}, {"at": 46, "type": "ring", "radius": 120.0}],
-		"hits": [_hit(14, 3, Rect2(140, -130, 260, 130), 1, 12, Vector2.ZERO, {"kind": "pull", "pull_speed": 420.0, "stop": 1, "shake": 0.0}),
-			_hit(24, 3, Rect2(140, -130, 260, 130), 1, 12, Vector2.ZERO, {"kind": "pull", "pull_speed": 420.0, "stop": 1, "shake": 0.0}),
-			_hit(34, 3, Rect2(140, -130, 260, 130), 1, 12, Vector2.ZERO, {"kind": "pull", "pull_speed": 420.0, "stop": 1, "shake": 0.0}),
-			_hit(44, 3, Rect2(140, -130, 260, 130), 1, 12, Vector2.ZERO, {"kind": "pull", "pull_speed": 420.0, "stop": 1, "shake": 0.0}),
-			_hit(54, 3, Rect2(140, -130, 260, 130), 1, 14, Vector2.ZERO, {"kind": "pull", "pull_speed": 420.0, "stop": 1, "shake": 0.0})]}, "weapon", "magic")
+		"events": [{"at": 12, "type": "ring", "radius": 200.0, "sfx": "buff", "shake": 0.1}, {"at": 12, "type": "well", "radius": 200.0, "life": 4.0, "dist": 240.0}],
+		"hits": []}, "weapon", "magic")
 	_mk({"id": "mirror_ward", "name": "Mirror Ward", "short": "WARD", "desc": "A shield bubble on your partner (or you): absorbs one hit.",
 		"total": 36, "tags": ["buff"],
 		"kf": [[0, {"lean": 0.0, "ua_f": 2.2, "la_f": 0.3, "ua_b": -2.2, "la_b": -0.3}],

@@ -186,3 +186,17 @@ tests/      headless smoke tests (run with godot --headless -s)
   move shop (pedestals: move pick 50, power-up pick 35, heal both 25). Picks go to `RunState.bonus_picks` and are
   appended to the end-of-level reward queue.
 - Not built: move preview images (Phase 6), shop/challenge door art polish, a challenge reward choice screen inside the room.
+
+## As built: supers, empowered moves and more (branch feature/movement-levels)
+- Supers (`MoveDBSupers`, `Fighter._try_super`): double quarter-circle forward (down, down-forward, forward, twice)
+  then X = generic Team Surge, then B = the class super (Fury Barrage / Blade Storm / Meteor Slam / Arcane Nova).
+  Cost 50 % of the personal meter. Every super is invulnerable while it winds up and has a team rider (partner within
+  520 px gets +dmg for 8 s and 15 HP).
+- Empowered moves: hold LT (pad axis; Z / PageDown on keyboard) while pressing a move: costs 10 meter, +30 % damage,
+  +20 % knockback, +25 % hitbox.
+- Gravity Well is now a lasting zone (`GravityZone`): 4 s, drags enemies toward its centre.
+- Elements: fire / shock / frost on Magic, basic and weapon moves; Infusion level-up card (see `Actor` statuses).
+- Hazards: spike traps, bumpers, throwable springs; explosive crates.
+- Still open: Duo Specials (the planned LB trigger now grabs, needs a new trigger), the 5th B slot (planned B+Back,
+  Back now opens the loadout), Magic marks (needs a MARKS.md planning session), Home Run partner steering,
+  move preview images.

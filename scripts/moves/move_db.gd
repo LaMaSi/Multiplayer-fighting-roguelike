@@ -238,6 +238,7 @@ static func _build() -> void:
 	_build_player()
 	_build_enemy()
 	MoveDBWeapons.build()
+	MoveDBSupers.build()
 	_apply_status()
 	_lengthen_short_hits()
 	# tiers (weapon / adaptive / universal), owning class and the height of the first hit
