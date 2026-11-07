@@ -316,6 +316,15 @@ func _hits() -> void:
 		for cr: Rect2 in crects:
 			all_r = all_r.merge(cr)
 		actor.debug_hit_rect = all_r
+		if actor.team == "player":
+			# batting thrown bottles and enemy shots back: any active swing, weapon or swoosh that touches one reflects it
+			for pr in actor.get_tree().get_nodes_in_group("projectiles"):
+				if not is_instance_valid(pr) or pr.team == actor.team or pr.reflected:
+					continue
+				var pr_rect: Rect2 = pr._rect()
+				if rect.intersects(pr_rect) or crects.any(func(cr: Rect2) -> bool: return cr.intersects(pr_rect)):
+					pr.reflect_by(actor)
+					actor.freeze = maxi(actor.freeze, 3)
 		var targets: Array = actor.hit_targets()
 		if bool(h.get("partner_safe", false)):
 			# Home Run: the partner can be batted too, even with friendly fire off (no damage to them)

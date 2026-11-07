@@ -313,6 +313,7 @@ func respawn() -> void:
 	set_collision_mask_value(2, true)
 	invuln = 1.5
 	state = "idle"
+	set_collision_layer_value(3, true)
 
 
 func _fell_out() -> void:
@@ -516,6 +517,7 @@ func _st_tossed(delta: float) -> void:
 
 func _on_defeated() -> void:
 	state = "downed"
+	set_collision_layer_value(3, false)  # a KO'd player is not an obstacle: the partner walks (and dashes) straight over
 	velocity = Vector2.ZERO
 	revive_progress = 0.0
 	if held != null and is_instance_valid(held):
@@ -551,6 +553,7 @@ func revive() -> void:
 	hp = max_hp * 0.3
 	revive_progress = 0.0
 	state = "getup"
+	set_collision_layer_value(3, true)
 	_getup_t = 0.5
 	invuln = 2.0
 	Sfx.play("revive")

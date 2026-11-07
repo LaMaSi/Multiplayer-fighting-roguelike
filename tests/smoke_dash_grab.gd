@@ -42,4 +42,26 @@ func _ready() -> void:
 	await frames(14)
 	check("LB starts the grab move", f.attack.move != null and f.attack.move.id == "grab_throw")
 	check("enemy is grabbed", d.state == "grabbed")
+
+	# a KO'd player is not an obstacle
+	other._on_defeated()
+	check("downed player is non-solid", not other.get_collision_layer_value(3))
+	other.revive()
+	check("revived player is solid again", other.get_collision_layer_value(3))
+	# batting an enemy projectile back
+	f.attack.interrupt()
+	f.state = "idle"
+	await frames(40)
+	var e := {"kind": "bottle", "pos": Vector2(0, -60), "vel": Vector2.ZERO, "dmg": 6.0, "stun": 12, "kb": Vector2(100, 0), "life": 3.0, "radius": 12.0, "color": Color.RED}
+	Projectile.launch(d, e)
+	var pr: Projectile = null
+	for n in get_tree().get_nodes_in_group("projectiles"):
+		pr = n
+	pr.global_position = f.global_position + Vector2(f.facing * 40, -80)
+	pr.vel = Vector2.ZERO
+	pr.gravity = 0.0
+	check("enemy projectile starts hostile", pr.team == "enemy")
+	f.start_attack(MoveDB.get_move_for("jab", f.class_id), PlayerInput.Btn.B)
+	await frames(14)
+	check("swing bats the projectile back", pr.reflected and pr.team == "player")
 	get_tree().quit()

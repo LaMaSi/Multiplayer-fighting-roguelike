@@ -58,6 +58,7 @@ static func launch(a: Actor, e: Dictionary) -> void:
 		p.vel = Vector2(v.x * a.facing, v.y)
 		if p.shape == "bottle":
 			p.gravity = 900.0
+	p.add_to_group("projectiles")
 	p.z_index = 20
 	a.get_parent().add_child(p)
 	if String(e.get("sfx", "shoot")) != "":
@@ -173,21 +174,28 @@ func _check_reflect() -> void:
 		if f.reflect_t > 0 and f.is_targetable():
 			var shield := Rect2(f.global_position.x + (f.facing * 30.0 - 40.0), f.global_position.y - 110.0, 80.0, 120.0)
 			if shield.intersects(_rect()):
-				team = "player"
-				reflected = true
-				owner_actor = f
-				vel = Vector2(f.facing * absf(vel.x) * 1.4 + 60.0 * f.facing, -vel.y * 0.2)
-				gravity = 0.0
-				dmg *= 1.6
-				kb = Vector2(absf(kb.x) * f.facing, kb.y)
-				col = f.figure.color
-				pierce = true
-				_done.clear()
-				life = _age + 1.6
-				Sfx.play("parry", 1.2)
-				Fx.impact(get_parent(), global_position, col, 1.0)
-				Coop.say("REFLECT!", col, global_position + Vector2(0, -40))
+				reflect_by(f)
 				return
+
+
+## Send this projectile back at its owner team (shield reflect, or a melee swing connecting with it).
+func reflect_by(f: Actor, power := 1.0) -> void:
+	if reflected or team == "player":
+		return
+	team = "player"
+	reflected = true
+	owner_actor = f
+	vel = Vector2(f.facing * absf(vel.x) * 1.4 + 60.0 * f.facing, -vel.y * 0.2)
+	gravity = 0.0
+	dmg *= 1.6 * power
+	kb = Vector2(absf(kb.x) * f.facing, kb.y)
+	col = f.figure.color
+	pierce = true
+	_done.clear()
+	life = _age + 1.6
+	Sfx.play("parry", 1.2)
+	Fx.impact(get_parent(), global_position, col, 1.0)
+	Coop.say("REFLECT!", col, global_position + Vector2(0, -40))
 
 
 func _check_hits() -> void:
