@@ -10,7 +10,7 @@ func frames(n: int) -> void:
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
-	for v in Backdrop.STYLES.size():
+	for v in [4, 5]:
 		Backdrop.variant = v
 		var level: LevelBase = load(String(args[0])).instantiate()
 		add_child(level)

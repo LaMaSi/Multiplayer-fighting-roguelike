@@ -21,3 +21,16 @@ const BG_SKY_SPLIT := [0.42, 0.76]  ## where the bands change, as a fraction of 
 const BG_BUILDING := [Color(0.19, 0.11, 0.27), Color(0.13, 0.08, 0.20), Color(0.08, 0.05, 0.14)]  ## far, mid, near
 const BG_WINDOW := Color(0.55, 0.38, 0.38, 0.30)
 const BG_GROUND := Color(0.05, 0.03, 0.10)
+
+
+## Synthwave backdrop (variant 5), from the reference images: one gradient sky with a striped sun,
+## dark silhouettes that read against the horizon glow, cool rim light and tidy rows of lit windows.
+const SYNTH_SKY := [Color(0.05, 0.02, 0.14), Color(0.17, 0.05, 0.34), Color(0.55, 0.11, 0.50), Color(1.0, 0.38, 0.42)]
+const SYNTH_SKY_AT := [0.0, 0.45, 0.8, 1.0]
+const SYNTH_FILL := [Color(0.25, 0.08, 0.36), Color(0.17, 0.06, 0.28), Color(0.10, 0.04, 0.19)]  ## far, mid, near
+const SYNTH_RIM := [Color(0.5, 0.3, 0.9, 0.0), Color(0.45, 0.3, 0.9, 0.35), Color(0.3, 0.75, 1.0, 0.4)]
+const SYNTH_HAZE := Color(0.95, 0.3, 0.5)
+const SYNTH_HAZE_A := [0.30, 0.18, 0.08]
+const SYNTH_WIN := [Color(0.25, 0.75, 0.95), Color(0.85, 0.3, 0.7)]
+const SYNTH_WIN_A := [0.0, 0.45, 0.6]
+const SYNTH_SUN := [Color(1.0, 0.85, 0.3), Color(1.0, 0.35, 0.6)]

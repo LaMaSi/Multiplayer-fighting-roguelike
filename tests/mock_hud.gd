@@ -12,9 +12,21 @@ var f_toon: Font
 
 class Mock extends Control:
 	var style := 0  # 0 neon, 1 cartoon, 2 minimal
+	var tt := 0.0  ## animation clock (seconds)
+	var combo := 18
+	var age := 1.0  ## seconds since the combo last went up
+	var meters := [0.62, 1.0]  ## P1, P2
 	var fh: Font
 	var fb: Font
 	var ft: Font
+
+	func _process(delta: float) -> void:
+		if style == 4 and not frozen:
+			tt += delta
+			age += delta
+			queue_redraw()
+
+	var frozen := false
 
 	func _draw() -> void:
 		match style:
@@ -142,7 +154,23 @@ class Mock extends Control:
 		draw_set_transform_matrix(Transform2D.IDENTITY)
 
 	# ---------------------------------------------------------------- D: ring + block bar (from reference)
-	## Solid colours, no glow. Ring = health number (outer ticks = super meter); bar = 10 health blocks.
+	## Solid colours. Ring = health number; 10 health blocks; below it a big SUPER meter that
+	## pulses lightly once it is usable (>= 1/3) and burns hard when full.
+	const TILTS := [-0.06, 0.09, -0.15, 0.13, -0.21, 0.17]
+	const USABLE := 0.34
+
+	func _flame(x: float, y: float, w: float, strength: float) -> void:
+		# flickering flame tongues along an edge (y is the baseline, tongues go up)
+		var n := int(w / 9.0)
+		for i in n:
+			var ph := tt * 11.0 + float(i) * 1.9
+			var hgt := (14.0 + 16.0 * (0.5 + 0.5 * sin(ph)) + 8.0 * sin(ph * 2.3 + 1.0)) * strength
+			var fx := x + 4.0 + i * 9.0
+			var pts := PackedVector2Array([Vector2(fx - 5.5, y), Vector2(fx + sin(ph) * 2.0, y - hgt), Vector2(fx + 5.5, y)])
+			draw_colored_polygon(pts, Color(2.2, 0.9, 0.2, 0.9))
+			var pts2 := PackedVector2Array([Vector2(fx - 2.5, y), Vector2(fx, y - hgt * 0.6), Vector2(fx + 2.5, y)])
+			draw_colored_polygon(pts2, Color(2.4, 2.0, 1.0, 0.95))
+
 	func _ref() -> void:
 		var dark := Color(0.03, 0.02, 0.07, 0.8)
 		for pi in 2:
@@ -150,12 +178,11 @@ class Mock extends Control:
 			var col := Color(0.55, 0.98, 0.2) if flip else Color(0.2, 0.9, 1.0)
 			var hp := 0.58 if flip else 0.94
 			var trail := 0.74 if flip else 1.0
-			var meter := 0.8 if flip else 0.35
+			var meter: float = meters[pi]
 			var x0 := 24.0
 			var y0 := 18.0
 			var cx := 1280.0 - (x0 + 38.0) if flip else x0 + 38.0
 			var cy := y0 + 38.0
-			# geometry is authored for P1 and mirrored for P2
 			var mx := Transform2D(Vector2(-1, 0), Vector2(0, 1), Vector2(1280, 0)) if flip else Transform2D.IDENTITY
 			draw_set_transform_matrix(mx)
 			var hx := x0 + 62.0
@@ -168,7 +195,6 @@ class Mock extends Control:
 			var fr := frame.duplicate()
 			fr.append(frame[0])
 			draw_polyline(fr, col, 3.0, true)
-			# health blocks
 			var bw := 29.0
 			var gap := 6.0
 			var bxs := hx + 22.0
@@ -186,34 +212,88 @@ class Mock extends Control:
 					draw_rect(r, Color(0.95, 0.4, 0.25, 0.85) if trail >= t1 else Color(0.95, 0.4, 0.25, 0.5))
 				else:
 					draw_rect(r, Color(col.r, col.g, col.b, 0.22), false, 2.0)
+			# ---- super meter: big bar under the health frame
+			var mxp := hx + 14.0
+			var myp := hy + 66.0
+			var mw := 372.0
+			var mh := 22.0
+			var full := meter >= 0.999
+			var usable := meter >= USABLE
+			var pulse := 0.5 + 0.5 * sin(tt * (9.0 if full else 3.4))
+			var mframe := PackedVector2Array([Vector2(mxp, myp), Vector2(mxp + mw - 18.0, myp), Vector2(mxp + mw, myp + mh), Vector2(mxp + 14.0, myp + mh)])
+			if usable:
+				# halo behind the bar
+				var ha := (0.10 + 0.16 * pulse) if not full else (0.22 + 0.28 * pulse)
+				for k in 3:
+					draw_colored_polygon(Geometry2D.offset_polygon(mframe, 4.0 + k * 4.0)[0], Color(2.0, 1.4, 0.5, ha * (0.55 - k * 0.15)))
+			draw_colored_polygon(mframe, Color(0.03, 0.02, 0.07, 0.85))
+			var fill_poly := PackedVector2Array([Vector2(mxp + 2.0, myp + 2.0), Vector2(mxp + 2.0 + (mw - 22.0) * meter, myp + 2.0), Vector2(mxp + 2.0 + (mw - 22.0) * meter + 14.0 * 0.9, myp + mh - 2.0), Vector2(mxp + 14.0, myp + mh - 2.0)])
+			var fc := Color(0.85, 0.85, 1.0)
+			if usable:
+				fc = Color(1.6, 1.4, 0.8).lerp(Color(2.2, 1.7, 0.7), pulse) if not full else Color(2.4, 1.6, 0.5).lerp(Color(2.6, 2.4, 1.4), pulse)
+			draw_colored_polygon(fill_poly, fc)
+			# tier marks at 1/3 and 2/3
+			for q in [1.0 / 3.0, 2.0 / 3.0]:
+				var qx: float = mxp + 2.0 + (mw - 22.0) * q + 7.0
+				draw_line(Vector2(qx, myp + 2.0), Vector2(qx, myp + mh - 2.0), Color(0.03, 0.02, 0.07, 0.9), 3.0)
+			var oc := Color(1.0, 0.95, 0.8) if not usable else Color(2.0, 1.6, 0.8)
+			var mf := mframe.duplicate()
+			mf.append(mframe[0])
+			draw_polyline(mf, oc, 2.5, true)
+			if full:
+				_flame(mxp + 16.0, myp + 1.0, mw - 40.0, 0.7 + 0.3 * pulse)
 			# ring
-			draw_circle(Vector2(cx if not flip else 1280.0 - cx, cy), 36.0, Color(0.03, 0.02, 0.07, 0.9))
-			var rc := Vector2(cx if not flip else 1280.0 - cx, cy)
-			draw_arc(rc, 36.0, 0.0, TAU, 40, col, 3.5, true)
-			for i in 24:
-				var a0 := -PI * 0.5 + TAU * float(i) / 24.0
-				var on := float(i) / 24.0 < meter
-				draw_arc(rc, 29.0, a0 + 0.03, a0 + TAU / 24.0 - 0.07, 3, Color(1, 1, 1, 0.9) if on else Color(col.r, col.g, col.b, 0.22), 4.0, true)
+			var rc := Vector2(cx, cy)
 			draw_set_transform_matrix(Transform2D.IDENTITY)
+			draw_circle(rc, 36.0, Color(0.03, 0.02, 0.07, 0.9))
+			draw_arc(rc, 36.0, 0.0, TAU, 40, col, 3.5, true)
+			draw_arc(rc, 29.0, 0.0, TAU, 40, Color(col.r, col.g, col.b, 0.25), 2.0, true)
 			_txt(fb, Vector2(cx - 30, cy + 9), "%d" % int(hp * 100.0), 28, Color(0.95, 0.95, 1.0), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 60.0)
 			_txt(fh, Vector2(cx - 30, cy - 12), "P2" if flip else "P1", 10, col, 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 60.0)
-		# combo (tilted, solid, no glow)
-		var pink := Color(1.0, 0.4, 0.72)
+			if full:
+				var bcx := 1280.0 - (mxp + mw * 0.5) if flip else mxp + mw * 0.5
+				_txt(fh, Vector2(bcx - 100.0, myp + 16.0), "SUPER READY", 12, Color(0.12, 0.04, 0.02), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		_combo_juicy()
+		# shared lives
+		_txt(fb, Vector2(540, 262), "LIVES", 14, Color(0.8, 0.8, 0.9), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		for i in 3:
+			_head(Vector2(610 + i * 30, 280), 9.0, Color(0.95, 0.95, 1.0), i < 2)
+
+	## Juicy combo: damped-spring punch on every hit, shake, glow that heats up with the tier;
+	## every 5 hits the number grows and takes a new tilt, with a shock ring on the tier change.
+	func _combo_juicy() -> void:
+		var tier := combo / 5
+		var spring := 1.0 + 0.42 * exp(-9.0 * age) * cos(24.0 * age)
+		var base := 1.0 + 0.08 * minf(float(tier), 7.0)
+		var tilt: float = TILTS[tier % TILTS.size()] + 0.09 * exp(-6.0 * age) * sin(30.0 * age)
+		var shake := Vector2.ZERO
+		if age < 0.25:
+			shake = Vector2(sin(tt * 90.0), cos(tt * 77.0)) * 5.0 * (1.0 - age / 0.25)
+		var heat := clampf(float(tier) / 5.0, 0.0, 1.0)
+		var glow_c := Color(2.0, 0.7, 1.2).lerp(Color(2.4, 1.6, 0.6), heat)
+		var plate_c := Color(1.0, 0.4, 0.72).lerp(Color(1.0, 0.72, 0.3), heat)
 		_txt(fh, Vector2(540, 34), "3250", 18, Color(0.9, 0.9, 1.0), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
-		var xf := Transform2D(Vector2(1, 0), Vector2(-0.28, 1), Vector2(640, 104)).rotated_local(-0.06)
+		var s := base * spring
+		var xf := Transform2D(Vector2(1, 0), Vector2(-0.28, 1), Vector2(640, 152) + shake).rotated_local(tilt).scaled_local(Vector2(s, s))
+		# tier-up shock ring (screen space)
+		if combo % 5 == 0 and age < 0.5:
+			var rr := 60.0 + 260.0 * (age / 0.5)
+			draw_arc(Vector2(640, 134), rr, 0.0, TAU, 48, Color(glow_c.r, glow_c.g, glow_c.b, 0.7 * (1.0 - age / 0.5)), 4.0, true)
 		draw_set_transform_matrix(xf)
 		var slash := PackedVector2Array([Vector2(-96, 12), Vector2(-74, -52), Vector2(96, -52), Vector2(74, 12)])
-		draw_colored_polygon(slash, Color(0.03, 0.02, 0.07, 0.8))
+		var ga := 0.14 + 0.05 * float(tier) + 0.3 * exp(-6.0 * age)
+		for k in 3:
+			draw_colored_polygon(Geometry2D.offset_polygon(slash, 6.0 + k * 7.0)[0], Color(glow_c.r, glow_c.g, glow_c.b, ga * (0.6 - k * 0.15)))
+		draw_colored_polygon(slash, Color(0.03, 0.02, 0.07, 0.85))
 		var sl := slash.duplicate()
 		sl.append(slash[0])
-		draw_polyline(sl, pink, 2.5, true)
-		_txt(fh, Vector2(-100, 0), "x18", 64, Color(0.97, 0.97, 1.0), 4, Color(0.05, 0.0, 0.1), HORIZONTAL_ALIGNMENT_CENTER, 200.0)
-		_txt(fb, Vector2(-100, 36), "TEAM COMBO  ·  3 RELAYS", 17, pink, 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		draw_polyline(sl, plate_c, 2.5, true)
+		for k in 3:
+			_txt(fh, Vector2(-100, 0), "x%d" % combo, 64, Color(glow_c.r, glow_c.g, glow_c.b, ga * 0.7), 8 + k * 8, Color(glow_c.r, glow_c.g, glow_c.b, ga * 0.4), HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		var numc := Color(0.97, 0.97, 1.0).lerp(Color(2.2, 2.0, 1.4), heat * 0.7)
+		_txt(fh, Vector2(-100, 0), "x%d" % combo, 64, numc, 4, Color(0.05, 0.0, 0.1), HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		_txt(fb, Vector2(-100, 36), "TEAM COMBO  ·  3 RELAYS", 17, plate_c, 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
 		draw_set_transform_matrix(Transform2D.IDENTITY)
-		# shared lives
-		_txt(fb, Vector2(540, 166), "LIVES", 14, Color(0.8, 0.8, 0.9), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
-		for i in 3:
-			_head(Vector2(610 + i * 30, 184), 9.0, Color(0.95, 0.95, 1.0), i < 2)
 
 	# ---------------------------------------------------------------- B: cartoon
 	func _rrect(r: Rect2, col: Color, rad := 10.0, outline := 5.0) -> void:
@@ -298,7 +378,7 @@ func _ready() -> void:
 	f_body = _font("res://assets/fonts/Rajdhani-Bold.ttf", 0)
 	f_toon = _font("res://assets/fonts/Bangers.ttf", 0)
 	Pal.terrain_pink = true
-	Backdrop.variant = 4
+	Backdrop.variant = 5
 	var level: LevelBase = load(String(args[0])).instantiate()
 	add_child(level)
 	for i in 10:
@@ -316,13 +396,26 @@ func _ready() -> void:
 	m.ft = f_toon
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(m)
-	for s in [4]:
-		m.style = s
+	m.style = 4
+	m.frozen = true
+	var states := [
+		{"n": "a", "combo": 4, "age": 0.03, "m": [0.2, 0.62]},
+		{"n": "b", "combo": 5, "age": 0.04, "m": [0.5, 1.0]},
+		{"n": "c", "combo": 10, "age": 0.08, "m": [0.62, 1.0]},
+		{"n": "d", "combo": 15, "age": 0.04, "m": [0.62, 1.0]},
+		{"n": "e", "combo": 25, "age": 0.6, "m": [0.62, 1.0]},
+		{"n": "f", "combo": 35, "age": 0.04, "m": [1.0, 1.0]},
+	]
+	for st in states:
+		m.combo = st["combo"]
+		m.age = st["age"]
+		m.meters = st["m"]
+		m.tt = 1.3
 		m.queue_redraw()
-		for i in 25:
+		for i in 4:
 			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
-		get_viewport().get_texture().get_image().save_png("%s/hud_%d.png" % [args[1], s])
+		get_viewport().get_texture().get_image().save_png("%s/hud_%s.png" % [args[1], st["n"]])
 	get_tree().quit()
 
 
