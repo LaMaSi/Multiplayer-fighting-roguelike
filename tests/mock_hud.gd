@@ -18,9 +18,10 @@ class Mock extends Control:
 
 	func _draw() -> void:
 		match style:
-			0: _neon()
+			0: _neon(0)
 			1: _toon()
 			2: _minimal()
+			3: _neon(1)
 
 	# ---------------------------------------------------------------- helpers
 	func _glow(pts: PackedVector2Array, col: Color, w := 2.0, closed := true) -> void:
@@ -73,8 +74,9 @@ class Mock extends Control:
 			draw_string_outline(f, pos, t, align, width, size, outline, ocol)
 		draw_string(f, pos, t, align, width, size, col)
 
-	# ---------------------------------------------------------------- A: neon arcade
-	func _neon() -> void:
+	# ---------------------------------------------------------------- A: neon arcade (no portraits)
+	## sub 0 = compact glass panel, sub 1 = open (no panel), bigger bars
+	func _neon(sub := 0) -> void:
 		for pi in 2:
 			var flip := pi == 1
 			var col := P2 if flip else P1
@@ -82,48 +84,61 @@ class Mock extends Control:
 			var trail := 0.74 if flip else 1.0
 			var meter := 0.8 if flip else 0.35
 			var stocks := 2 if flip else 3
-			var px := 1280.0 - 20.0 - 430.0 if flip else 20.0
-			# glass panel
-			var panel := _slab(px, 14, 430, 96, 22, flip)
-			draw_colored_polygon(panel, Color(0.02, 0.01, 0.06, 0.62))
-			_glow(panel, Color(col.r, col.g, col.b, 0.8), 2.0)
-			# portrait
-			var pc := Vector2(px + (430 - 56) if flip else px + 56, 62)
-			var sq := PackedVector2Array([pc + Vector2(-34, -34), pc + Vector2(34, -34), pc + Vector2(34, 34), pc + Vector2(-34, 34)])
-			draw_colored_polygon(sq, Color(col.r * 0.12, col.g * 0.12, col.b * 0.12, 0.9))
-			_glow(sq, col, 2.5)
-			draw_arc(pc + Vector2(0, -8), 12, 0.0, TAU, 24, col, 3.5, true)
-			draw_line(pc + Vector2(0, 4), pc + Vector2(0, 22), col, 4.0, true)
-			draw_line(pc + Vector2(-16, 12), pc + Vector2(16, 12), col, 4.0, true)
-			for s in [-1.0, 1.0]:
-				draw_rect(Rect2(pc.x + s * 5.0 - 2.5, pc.y - 12, 5, 7), Color.BLACK)
-			# health bar
-			var bx := px + 8.0 if flip else px + 104.0
-			var bw := 300.0
-			draw_colored_polygon(_slab(bx, 30, bw, 22, 12, flip), Color(0.03, 0.02, 0.08, 0.9))
-			draw_colored_polygon(_fill_part(bx, 30, bw, 22, 12, flip, 0.0, trail), Color(1.6, 1.3, 0.5, 0.85))
-			for i in 12:
-				var a := hp * float(i) / 12.0
-				var b := hp * float(i + 1) / 12.0
-				var k := 0.7 + 0.5 * float(i) / 12.0
-				draw_colored_polygon(_fill_part(bx, 30, bw, 22, 12, flip, a, b), Color(col.r * k, col.g * k, col.b * k, 1.0))
-			_glow(_slab(bx, 30, bw, 22, 12, flip), Color(col.r, col.g, col.b, 0.9), 2.0)
-			_txt(fh, Vector2(bx + (bw - 40.0 if flip else 4.0), 26), "P2" if flip else "P1", 16, col, 0, Color.BLACK, HORIZONTAL_ALIGNMENT_LEFT)
-			_txt(fb, Vector2(bx + (0.0 if flip else bw - 60.0), 26), "%d" % int(hp * 100.0), 20, Color(1.8, 1.8, 1.8), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_RIGHT if not flip else HORIZONTAL_ALIGNMENT_LEFT, 60.0)
+			var bw := 330.0 if sub == 0 else 440.0
+			var bh := 24.0 if sub == 0 else 30.0
+			var pw := bw + 60.0
+			var px := 1280.0 - 22.0 - pw if flip else 22.0
+			var bx := px + 28.0 if sub == 0 else px + 20.0
+			if flip and sub == 1:
+				bx = px + pw - 20.0 - bw
+			var by := 38.0
+			if sub == 0:
+				var panel := _slab(px, 14, pw, 88, 20, flip)
+				draw_colored_polygon(panel, Color(0.02, 0.01, 0.06, 0.6))
+				_glow(panel, Color(col.r, col.g, col.b, 0.75), 2.0)
+			# bar
+			var slab := _slab(bx, by, bw, bh, 14, flip)
+			draw_colored_polygon(slab, Color(0.03, 0.02, 0.08, 0.92))
+			if trail > hp:
+				draw_colored_polygon(_fill_part(bx, by, bw, bh, 14, flip, hp, trail), Color(1.5, 0.45, 0.3, 0.9))
+			var c0 := Color(minf(col.r, 1.0), minf(col.g, 1.0), minf(col.b, 1.0))
+			draw_colored_polygon(_fill_part(bx, by, bw, bh, 14, flip, 0.0, hp), c0 * 0.82)
+			draw_colored_polygon(_fill_part(bx, by + bh * 0.5, bw, bh * 0.5, 14, flip, 0.0, hp), c0 * 0.62)
+			# thin highlight along the top of the fill
+			draw_colored_polygon(_fill_part(bx + 2, by + 2, bw - 4, 4, 14, flip, 0.0, hp), Color(1, 1, 1, 0.28))
+			_glow(slab, Color(col.r, col.g, col.b, 0.95), 2.0)
+			# name plate and number
+			var plate_w := 46.0
+			var plate_x := bx + bw - plate_w if flip else bx
+			var plate := _slab(plate_x, by - 22, plate_w, 18, 8, flip)
+			draw_colored_polygon(plate, col)
+			_txt(fh, Vector2(plate_x, by - 8), "P2" if flip else "P1", 13, Color(0.02, 0.01, 0.06), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, plate_w)
+			var nx := bx if flip else bx + bw - 70.0
+			_txt(fb, Vector2(nx, by - 6), "%d" % int(hp * 100.0), 22, Color(1.9, 1.9, 1.9), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_LEFT if flip else HORIZONTAL_ALIGNMENT_RIGHT, 70.0)
 			# super meter
-			draw_colored_polygon(_slab(bx + 6, 60, 220, 8, 6, flip), Color(0.03, 0.02, 0.08, 0.9))
-			draw_colored_polygon(_fill_part(bx + 6, 60, 220, 8, 6, flip, 0.0, meter), Color(1.7, 1.7, 2.2))
-			_glow(_slab(bx + 6, 60, 220, 8, 6, flip), Color(1.0, 1.0, 1.6, 0.5), 1.2)
-			# stocks
+			var mw := bw * 0.62
+			var mx := bx + bw - mw - 8.0 if flip else bx + 8.0
+			draw_colored_polygon(_slab(mx, by + bh + 8, mw, 8, 6, flip), Color(0.03, 0.02, 0.08, 0.9))
+			draw_colored_polygon(_fill_part(mx, by + bh + 8, mw, 8, 6, flip, 0.0, meter), Color(1.7, 1.7, 2.2))
+			_glow(_slab(mx, by + bh + 8, mw, 8, 6, flip), Color(1.0, 1.0, 1.6, 0.5), 1.2)
+			# stocks (right of the meter on the same row)
+			var sx := bx + 4.0 if flip else bx + bw - 4.0
 			for i in 3:
-				var cx := bx + 16.0 + i * 30.0 if not flip else bx + bw - 16.0 - i * 30.0
-				_head(Vector2(cx, 90), 9.0, col, i < stocks)
-		# combo
-		_txt(fh, Vector2(640, 36), "3250", 20, Color(1.6, 1.6, 1.8), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+				var cx := sx + 12.0 + i * 28.0 if flip else sx - 12.0 - i * 28.0
+				_head(Vector2(cx, by + bh + 12), 9.0 if sub == 0 else 10.0, col, i < stocks)
+		# combo: tilted + italic, neon pink glow, slash accent behind
+		var pink := Color(2.0, 0.7, 1.2)
+		_txt(fh, Vector2(540, 34), "3250", 18, Color(1.6, 1.6, 1.8), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		var xf := Transform2D(Vector2(1, 0), Vector2(-0.28, 1), Vector2(640, 104)).rotated_local(-0.06)
+		draw_set_transform_matrix(xf)
+		var slash := PackedVector2Array([Vector2(-100, 14), Vector2(-76, -52), Vector2(100, -52), Vector2(76, 14)])
+		draw_colored_polygon(slash, Color(pink.r * 0.25, pink.g * 0.12, pink.b * 0.2, 0.55))
+		_glow(slash, Color(pink.r, pink.g, pink.b, 0.55), 1.5)
 		for i in 3:
-			_txt(fh, Vector2(540, 108), "x18", 72, Color(2.0, 0.7, 1.2, 0.18), 10 + i * 8, Color(2.0, 0.7, 1.2, 0.10), HORIZONTAL_ALIGNMENT_CENTER, 200.0)
-		_txt(fh, Vector2(540, 108), "x18", 72, Color(2.0, 1.9, 2.0), 4, Color(0.05, 0.0, 0.1), HORIZONTAL_ALIGNMENT_CENTER, 200.0)
-		_txt(fb, Vector2(540, 132), "TEAM COMBO  ·  3 RELAYS", 18, Color(2.0, 0.7, 1.2), 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+			_txt(fh, Vector2(-100, 0), "x18", 68, Color(pink.r, pink.g, pink.b, 0.18), 10 + i * 8, Color(pink.r, pink.g, pink.b, 0.10), HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		_txt(fh, Vector2(-100, 0), "x18", 68, Color(2.0, 1.9, 2.0), 4, Color(0.05, 0.0, 0.1), HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		_txt(fb, Vector2(-100, 38), "TEAM COMBO  ·  3 RELAYS", 18, pink, 0, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
+		draw_set_transform_matrix(Transform2D.IDENTITY)
 
 	# ---------------------------------------------------------------- B: cartoon
 	func _rrect(r: Rect2, col: Color, rad := 10.0, outline := 5.0) -> void:
@@ -226,7 +241,7 @@ func _ready() -> void:
 	m.ft = f_toon
 	m.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(m)
-	for s in 3:
+	for s in [0, 3]:
 		m.style = s
 		m.queue_redraw()
 		for i in 25:
