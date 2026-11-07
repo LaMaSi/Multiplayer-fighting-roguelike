@@ -223,7 +223,7 @@ func _render(halo: bool) -> void:
 	_limb(hip, kn_f_pos, ft_f_off, 5.5 * ls, col_f, halo, float(p["foot_f"]))
 	# head
 	if halo:
-		draw_circle(head_c, hr + 3.5, Color(0.02, 0.01, 0.05, 0.88))
+		draw_circle(head_c, hr + 3.5, Color(0.02, 0.01, 0.05, 1.0))
 	else:
 		if square_head:
 			var rx := Vector2(cos(head_ang), sin(head_ang)) * hr
@@ -252,7 +252,7 @@ func _render(halo: bool) -> void:
 ## Weapons are drawn from the hands, so every move's arm keyframes move the weapon with them.
 ## elbow_f / hand_f = front arm, hand_b = back hand.
 func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2, col: Color) -> void:
-	var dark := Color(0.02, 0.01, 0.05, 0.9)
+	var dark := Color(0.02, 0.01, 0.05, 1.0)
 	var fd := (hand_f - elbow_f)
 	fd = fd.normalized() if fd.length() > 0.5 else Vector2.RIGHT
 	var wd := fd.rotated(float(pose["wp_rot"]))
@@ -357,15 +357,15 @@ func _limb(origin: Vector2, a_off: Vector2, b_off: Vector2, w: float, col: Color
 
 func _seg(a: Vector2, b: Vector2, w: float, col: Color, halo: bool) -> void:
 	if halo:
-		var hc := Color(0.02, 0.01, 0.05, 0.88)  # dark outline: separates the figure from busy backgrounds
+		var hc := Color(0.02, 0.01, 0.05, 1.0)  # opaque dark outline (translucent pieces darkened where they overlap = jagged joints): separates the figure from busy backgrounds
 		w += 5.0
 		draw_line(a, b, hc, w, true)
-		draw_circle(a, w * 0.5, hc)
-		draw_circle(b, w * 0.5, hc)
+		draw_circle(a, w * 0.5, hc, true, -1.0, true)
+		draw_circle(b, w * 0.5, hc, true, -1.0, true)
 	else:
 		draw_line(a, b, col, w, true)
-		draw_circle(a, w * 0.5, col)
-		draw_circle(b, w * 0.5, col)
+		draw_circle(a, w * 0.5, col, true, -1.0, true)
+		draw_circle(b, w * 0.5, col, true, -1.0, true)
 
 
 ## Global rects along every limb tip that is currently drawing a swoosh ribbon (the weapon tip stands in for the
