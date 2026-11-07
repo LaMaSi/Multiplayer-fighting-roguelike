@@ -7,7 +7,7 @@ const GRAVITY := 2300.0
 ## The one colour used only for things you can interact with (containers, pickups, the exit).
 const RIM := Color(2.0, 1.75, 0.25)
 
-var kind := "crate"  ## crate, barrel, vase
+var kind := "crate"  ## crate, barrel, vase, explosive
 var hp := 24.0
 var state := "idle"  ## idle, held, flying, dead
 var thrown_by: Actor = null
@@ -30,6 +30,9 @@ func setup(k: String) -> Prop:
 			col = Pal.interact()
 			w = 40.0
 			h = 54.0
+		"explosive":
+			hp = 20.0
+			col = Color(1.5, 0.35, 0.12)
 		"vase":
 			hp = 12.0
 			col = Pal.interact()
@@ -138,7 +141,7 @@ func _physics_process(delta: float) -> void:
 				var info := HitInfo.new()
 				info.attacker = thrown_by
 				info.team = "player"
-				info.dmg = 14.0
+				info.dmg = 18.0
 				info.kind = "launch"
 				info.kb = Vector2(signf(vx if vx != 0.0 else 1.0) * 380.0, -420.0)
 				info.stun = 28
@@ -173,8 +176,61 @@ func _break(by: Actor) -> void:
 	Fx.ring(parent, pos, col, 60.0, 0.25)
 	Sfx.play("break")
 	Juice.shake(0.15)
-	_drop(parent, pos)
+	if kind == "explosive":
+		_explode(by, pos)
+	else:
+		_drop(parent, pos)
 	queue_free()
+
+
+## Explosive crate: a big blast that launches enemies (and hurts the players a little), and sets off nearby crates.
+const BLAST_RADIUS := 175.0
+
+
+func _explode(by: Actor, pos: Vector2) -> void:
+	var parent := get_parent()
+	Fx.ring(parent, pos, Color(2.2, 1.0, 0.3), BLAST_RADIUS, 0.45)
+	Fx.ring(parent, pos, Color(2.2, 0.4, 0.15), BLAST_RADIUS * 0.6, 0.3)
+	Fx.shatter(parent, pos, Color(2.2, 0.9, 0.2), 34)
+	Fx.dust(parent, pos, 16, Color(1.4, 0.8, 0.3, 0.8))
+	Sfx.play("boom", 0.7)
+	Juice.shake(0.7)
+	Juice.zoom_punch(0.08)
+	for n in get_tree().get_nodes_in_group("actors"):
+		if not (n is Actor):
+			continue
+		var a := n as Actor
+		if not a.is_targetable() or a.get_hurt_rect().get_center().distance_to(pos) > BLAST_RADIUS + 30.0:
+			continue
+		var info := HitInfo.new()
+		info.attacker = by
+		info.team = "player"
+		info.source = "prop"
+		info.kind = "launch"
+		info.stun = 30
+		info.stop = 7
+		info.shake = 0.4
+		info.color = Color(2.2, 0.9, 0.2)
+		info.pos = pos
+		var away := signf(a.global_position.x - pos.x)
+		if away == 0.0:
+			away = 1.0
+		info.kb = Vector2(away * 520.0, -560.0)
+		if a.team == "enemy":
+			info.dmg = 38.0
+		else:
+			info.dmg = 14.0
+			info.friendly = true
+		a.take_hit(info)
+	for n in get_tree().get_nodes_in_group("props"):
+		if n != self and is_instance_valid(n) and n is Prop and (n as Prop).state != "dead" and n.global_position.distance_to(global_position) < BLAST_RADIUS:
+			var pi := HitInfo.new()
+			pi.attacker = by
+			pi.dmg = 99.0
+			pi.kind = "spike"
+			pi.pos = n.global_position
+			pi.kb = Vector2(0, 0)
+			(n as Prop).take_hit(pi)
 
 
 func _drop(parent: Node, pos: Vector2) -> void:
@@ -221,6 +277,16 @@ func _draw() -> void:
 			closed.append(pts[0])
 			draw_polyline(closed, rim, UiKit.LINE * 2.0, true)
 			draw_polyline(closed, col, UiKit.LINE, true)
+		"explosive":
+			var fuse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 8.0)
+			draw_rect(r, Color(0.22, 0.04, 0.03))
+			draw_rect(r.grow(3.0), rim, false, 3.0)
+			draw_rect(r, col, false, 3.0)
+			for k in [-1, 1]:
+				draw_line(Vector2(-w * 0.5, k * h * 0.36), Vector2(w * 0.5, k * h * 0.36), Color(col.r, col.g, col.b, 0.8), 4.0)
+			draw_rect(Rect2(-w * 0.34, -h * 0.2, w * 0.68, h * 0.4), Color(0.06, 0.02, 0.02))
+			draw_string(ThemeDB.fallback_font, Vector2(-w * 0.5, h * 0.1), "TNT", HORIZONTAL_ALIGNMENT_CENTER, w, 16, Color(2.0, 1.2, 0.4))
+			draw_circle(Vector2(0, -h * 0.5 - 5.0), 3.5 + 1.5 * fuse, Color(2.2, 1.3, 0.3))
 		"barrel":
 			draw_rect(r, Color(0.06, 0.03, 0.1))
 			draw_rect(r.grow(3.0), rim, false, 3.0)

@@ -90,4 +90,18 @@ func _ready() -> void:
 	check("the enemy breaks out of a 14-hit chain (hit %d)" % broke_at, broke_at == 14)
 	check("hitstun shrinks along the chain (%d -> %d frames)" % [stun_first, stun_late], stun_late < stun_first)
 	check("the breaker leaves it briefly invulnerable", t.invuln > 0.3)
+	# explosive crates
+	var tn: Prop = lv.spawn_prop("explosive", Vector2(1100, 599))
+	var tn2: Prop = lv.spawn_prop("explosive", Vector2(1200, 599))
+	var victim: Enemy = lv.spawn_enemy("thug", Vector2(1150, 599))
+	await frames(90)
+	var vhp := victim.hp
+	var hi := HitInfo.new()
+	hi.team = "player"
+	hi.dmg = 50.0
+	hi.kb = Vector2(10, 0)
+	tn.take_hit(hi)
+	await frames(10)
+	check("explosive crate blast hurts nearby enemies (%.0f -> %.0f)" % [vhp, victim.hp], victim.hp < vhp - 20.0 or victim.state == "dead" or not is_instance_valid(victim))
+	check("the blast sets off the next crate", not is_instance_valid(tn2) or tn2.state == "dead")
 	get_tree().quit()

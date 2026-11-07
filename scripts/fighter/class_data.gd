@@ -10,7 +10,7 @@ const IDS: Array[String] = ["brawler", "sword", "hammer", "magic"]
 
 ## X: universal off-hand moves (10)
 const X_POOL: Array[String] = [
-	"off_hand_jab", "spark_shot", "guard", "grab_throw", "pull_hook",
+	"off_hand_jab", "spark_shot", "guard", "shockwave", "pull_hook",
 	"ally_toss", "heal_pulse", "rage_taunt", "boost_spark", "pocket_mine",
 ]
 ## Y: adaptive moves (10)
@@ -19,7 +19,7 @@ const Y_POOL: Array[String] = [
 	"dive_kick", "anti_air", "pillar_smash", "flurry", "slide_strike",
 ]
 ## Moves that may be rolled / offered first (the starred moves in CLASS_MOVES.md)
-const X_STARS: Array[String] = ["off_hand_jab", "spark_shot", "grab_throw"]
+const X_STARS: Array[String] = ["off_hand_jab", "spark_shot", "shockwave"]
 const Y_STARS: Array[String] = ["uppercut", "sweep", "flurry", "slide_strike"]
 
 static var _db: Dictionary = {}
@@ -184,6 +184,6 @@ static func training_loadout(class_id: String) -> Dictionary:
 	var b: Array = c["b_pool"]
 	return {
 		"B": b[0], "B_UP": b[2], "B_SIDE": b[1], "B_DOWN": b[3],
-		"X": "off_hand_jab", "X_UP": "spark_shot", "X_SIDE": "grab_throw", "X_DOWN": "guard",
+		"X": "off_hand_jab", "X_UP": "spark_shot", "X_SIDE": "shockwave", "X_DOWN": "guard",
 		"Y": "uppercut", "Y_UP": "flurry", "Y_SIDE": "spin_kick", "Y_DOWN": "sweep",
 	}

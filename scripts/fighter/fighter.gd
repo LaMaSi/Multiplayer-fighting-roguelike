@@ -471,9 +471,26 @@ func _try_pickup() -> bool:
 	return false
 
 
+## Throw direction from the stick (analog), neutral = forward. A little upward bias so a flat throw still arcs up.
+func throw_dir() -> Vector2:
+	var d := input.dir
+	if d.length() < 0.35:
+		d = Vector2(float(facing), 0.0)
+	else:
+		d = d.normalized()
+	d.y -= 0.16
+	return d.normalized()
+
+
+const THROW_SPEED_ENEMY := 1000.0
+const THROW_SPEED_PROP := 1650.0
+
+
 func _throw_held() -> void:
 	if held != null and is_instance_valid(held):
-		held.thrown(Vector2(facing * 640.0, -280.0), self)
+		var td := throw_dir()
+		held.global_position = global_position + Vector2(float(facing) * 18.0, -34.0 if td.y > -0.5 else -70.0)  # released at chest height, not from above the head
+		held.thrown(td * THROW_SPEED_PROP, self)
 		Sfx.play("throw")
 	held = null
 
@@ -761,18 +778,13 @@ func _draw() -> void:
 		draw_arc(c, 34.0, 0.0, TAU, 32, Color(1, 1, 1, 0.2), 4.0, true)
 		if revive_progress > 0.0:
 			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * revive_progress, 32, Color(2.0, 1.7, 1.9), 5.0, true)
-		if state == "ledge" and _ledge_climb <= 0.0:
-			draw_arc(c, 34.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(_ledge_t / LEDGE_SOLO_TIME, 0.0, 1.0), 32, Color(2.0, 1.5, 0.4), 5.0, true)
-		if attack.active and attack.aiming:
-			var av := attack.aim_vector().normalized()
-			var base := Vector2(0, -70)
-			draw_line(base, base + av * 78.0, Color(2.0, 1.6, 0.4), 5.0, true)
-			var perp := Vector2(-av.y, av.x)
-			draw_colored_polygon(PackedVector2Array([base + av * 96.0, base + av * 70.0 + perp * 12.0, base + av * 70.0 - perp * 12.0]), Color(2.0, 1.6, 0.4))
-			draw_string(ThemeDB.fallback_font, Vector2(-60, -150), "AIM + BUTTON TO THROW", HORIZONTAL_ALIGNMENT_CENTER, 120.0, 14, Color(2.0, 1.6, 0.4))
 		var f := ThemeDB.fallback_font
 		var txt := "HOLD RB" if Coop.revives_left > 0 else "NO REVIVES"
 		draw_string(f, Vector2(-34, -92), txt, HORIZONTAL_ALIGNMENT_CENTER, 70.0, 13, Color(1, 1, 1, 0.8))
+	if state == "ledge" and _ledge_climb <= 0.0:
+		draw_arc(Vector2(0, -50), 34.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(_ledge_t / LEDGE_SOLO_TIME, 0.0, 1.0), 32, Color(2.0, 1.5, 0.4), 5.0, true)
+	if (attack.active and attack.aiming) or (held != null and is_instance_valid(held)):
+		_draw_throw_aim(held != null)
 	if Dbg.enabled:
 		draw_rect(Rect2(-body_w * 0.5, -body_h, body_w, body_h), Color(1, 1, 0, 0.8), false, 1.0)
 		draw_line(Vector2.ZERO, Vector2(facing * 30.0, 0), Color(1, 0.4, 0.2), 2.0)
@@ -849,3 +861,20 @@ func _st_ledge(delta: float) -> void:
 			Fx.ring(get_parent(), global_position + Vector2(0, -60), Color(2.0, 1.7, 1.9), 60.0, 0.3)
 			Fx.number(get_parent(), global_position + Vector2(0, -130), "HELP!", Color(2.0, 1.7, 1.9), 22)
 			Sfx.play("revive", 1.2)
+
+
+## Small arrow plus a dotted arc showing where the throw will go (drawn in world-aligned local space).
+func _draw_throw_aim(is_prop: bool) -> void:
+	var col := Color(2.0, 1.6, 0.4)
+	var dir := throw_dir()
+	var speed := THROW_SPEED_PROP if is_prop else THROW_SPEED_ENEMY
+	var start := Vector2(0, -body_h - 8.0) if is_prop else Vector2(0, -90.0)
+	# dotted arc: x = v t, y = v t + g t^2 / 2
+	for i in range(1, 6):
+		var t := 0.045 * float(i)
+		var p := start + dir * speed * t + Vector2(0, 0.5 * GRAVITY * t * t)
+		draw_circle(p, 3.2 - 0.3 * float(i), Color(col.r, col.g, col.b, 0.9 - 0.12 * float(i)))
+	var tip := start + dir * 60.0
+	var perp := Vector2(-dir.y, dir.x)
+	draw_line(start + dir * 20.0, tip, col, 4.0, true)
+	draw_colored_polygon(PackedVector2Array([tip + dir * 16.0, tip + perp * 8.0, tip - perp * 8.0]), col)

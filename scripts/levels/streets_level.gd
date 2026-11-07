@@ -223,7 +223,7 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 	# containers: on solid ground or on a platform, never over a pit
 	var n_props: int = {"fight": 10, "elite": 12, "treasure": 22, "boss": 5}.get(t, 10)
 	for i in n_props:
-		var kind := _pick(rng, [["crate", 50], ["barrel", 30], ["vase", 20]])
+		var kind := _pick(rng, [["crate", 42], ["barrel", 25], ["vase", 17], ["explosive", 16]])
 		if rng.randf() < 0.35 and platforms.size() > 0:
 			var pl: Rect2 = platforms[rng.randi() % platforms.size()]
 			props_spec.append([pl.position.x + rng.randf_range(30.0, pl.size.x - 30.0), kind, pl.position.y])

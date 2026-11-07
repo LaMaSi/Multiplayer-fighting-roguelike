@@ -8,7 +8,7 @@ const POOL: Array[String] = [
 	"fireball", "boomerang", "spread_shot", "ground_wave", "guard",
 	"parry", "reflect", "pocket_mine", "spin_kick", "cyclone",
 	"stomp", "dive_kick", "rising_dragon", "anti_air", "haymaker",
-	"wall_elbow", "flurry", "grab_throw", "pull_hook", "teleport_strike",
+	"wall_elbow", "flurry", "shockwave", "pull_hook", "teleport_strike",
 	"ally_toss", "heal_pulse", "rage_taunt", "boost_spark", "pillar_smash",
 ]
 
@@ -490,13 +490,23 @@ static func _build_player() -> void:
 
 	# --- 23 Grab & throw ------------------------------------------------
 	_mk({"id": "grab_throw", "name": "Grab & Throw", "short": "GRAB", "desc": "Grab an enemy. Aim with the stick (forward, back, up, down), then press a button again to throw.",
-		"total": 56, "tags": ["grab"], "ground_only": true,
+		"total": 58, "tags": ["grab"], "ground_only": true,
 		"kf": [[0, {"lean": 0.3, "ua_f": 1.5, "la_f": 0.1, "ua_b": 1.5, "la_b": 0.1, "th_f": 0.5, "kn_f": 0.6}],
-			[10, {"lean": -0.1, "ua_f": 3.0, "la_f": 0.1, "ua_b": 2.9, "la_b": 0.1}],
-			[26, {"lean": 0.7, "ua_f": 1.0, "la_f": 0.2, "ua_b": 1.0, "la_b": 0.2, "th_f": 0.8, "kn_f": 0.5}],
-			[56, _idle()]],
+			[10, {"lean": -0.12, "ua_f": 3.0, "la_f": 0.1, "ua_b": 2.95, "la_b": 0.1, "th_f": 0.5, "kn_f": 0.8, "th_b": -0.45, "kn_b": 0.8}],
+			[26, {"lean": -0.18, "ua_f": 3.05, "la_f": 0.05, "ua_b": 3.0, "la_b": 0.05, "th_f": 0.5, "kn_f": 0.8, "th_b": -0.45, "kn_b": 0.8}],
+			[32, {"lean": 0.55, "ua_f": 1.3, "la_f": 0.15, "ua_b": 1.3, "la_b": 0.15, "th_f": 0.8, "kn_f": 0.5, "th_b": -0.5, "kn_b": 0.4}],
+			[58, _idle()]],
 		"events": [{"at": 11, "type": "whiff_skip", "to": 40}, {"at": 26, "type": "throw", "vx": 600.0, "vy": -300.0}],
 		"hits": [_hit(5, 3, Rect2(8, -88, 50, 74), 0, 0, Vector2.ZERO, {"grab": true})]})
+
+	# --- Shockwave clap: replaces Grab & Throw in the X pool (grab is on LB now) ---------------
+	_mk({"id": "shockwave", "name": "Shockwave Clap", "short": "CLAP", "desc": "A clap that blasts everything around you away. Makes room, breaks crates.",
+		"total": 40, "ground_only": true, "cancel_from": 22,
+		"kf": [[0, {"lean": -0.1, "ua_f": -0.6, "la_f": 0.3, "ua_b": -0.9, "la_b": 0.3, "th_f": 0.4, "kn_f": 0.7, "th_b": -0.4, "kn_b": 0.7}],
+			[8, {"lean": 0.2, "ua_f": 1.55, "la_f": 0.05, "ua_b": 1.5, "la_b": 0.05, "th_f": 0.5, "kn_f": 0.6, "th_b": -0.35, "kn_b": 0.5}],
+			[30, _idle()]],
+		"events": [{"at": 8, "type": "ring", "radius": 120.0, "sfx": "boom", "shake": 0.3}],
+		"hits": [_hit(8, 6, Rect2(-120, -96, 240, 100), 6, 22, Vector2(560, -140), {"radial": true, "stop": 5, "shake": 0.25, "prop_power": 1.6})]})
 
 	# --- 24 Pull hook ---------------------------------------------------
 	_mk({"id": "pull_hook", "name": "Pull Hook", "short": "PULL", "desc": "Drags an enemy to you.",

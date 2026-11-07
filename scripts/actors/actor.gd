@@ -351,6 +351,7 @@ func grab(by: Node) -> void:
 
 
 func release() -> void:
+	figure.rot = 0.0
 	if state == "grabbed":
 		state = "hurt"
 		stun_frames = 12
@@ -574,7 +575,12 @@ func _st_grabbed(_delta: float) -> void:
 		return
 	var h := holder as Actor
 	if h != null:
-		global_position = h.global_position + Vector2(h.facing * 30.0, -26.0)
+		# Grab & Throw: lifted overhead (held flat like a press) once the lift animation has started
+		if h.attack.active and h.attack.move != null and h.attack.move.id == "grab_throw" and h.attack.frame >= 8:
+			global_position = h.global_position + Vector2(h.facing * 4.0, -118.0)
+			figure.rot = lerpf(figure.rot, float(h.facing) * 1.45, 0.35)
+		else:
+			global_position = h.global_position + Vector2(h.facing * 30.0, -26.0)
 	velocity = Vector2.ZERO
 
 

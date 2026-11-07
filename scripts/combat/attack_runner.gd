@@ -456,15 +456,9 @@ func _aim_pressed() -> bool:
 ## Direction chosen with the stick: forward (default), back, up (launcher for juggles) or down (slam).
 func aim_vector() -> Vector2:
 	var f := actor as Fighter
-	var fx := float(actor.facing)
-	var d := f.input.digital_dir() if f != null else Vector2i.ZERO
-	if d.y < 0:
-		return Vector2(120.0 * fx, -940.0)
-	if d.y > 0:
-		return Vector2(160.0 * fx, 560.0)
-	if d.x != 0:
-		return Vector2(600.0 * float(d.x), -300.0)
-	return Vector2(600.0 * fx, -300.0)
+	if f == null:
+		return Vector2(float(actor.facing) * 600.0, -300.0)
+	return f.throw_dir() * Fighter.THROW_SPEED_ENEMY
 
 
 func _throw_aimed() -> void:

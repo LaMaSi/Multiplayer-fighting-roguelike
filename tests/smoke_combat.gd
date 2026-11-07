@@ -197,7 +197,7 @@ func _run() -> void:
 	print("[all 30 moves execute]")
 	await clear_enemies()
 	var dist := {"fireball": 220, "boomerang": 220, "spread_shot": 220, "ground_wave": 220, "pull_hook": 250,
-		"teleport_strike": 300, "pocket_mine": 40, "grab_throw": 60, "dive_kick": 130, "cyclone": 40, "back_kick": -70}
+		"teleport_strike": 300, "pocket_mine": 40, "shockwave": 60, "dive_kick": 130, "cyclone": 40, "back_kick": -70}
 	var no_damage := ["guard", "parry", "reflect", "rage_taunt", "boost_spark", "ally_toss", "grab_throw", "pull_hook", "dive_kick"]
 	for id in MoveDB.POOL:
 		await clear_enemies()
