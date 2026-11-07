@@ -99,7 +99,7 @@ func _process(delta: float) -> void:
 			if _trail.size() > 8:
 				_trail.pop_front()
 		elif not _trail.is_empty():
-			_trail.pop_front()
+			_trail.clear()  # no swoosh without an active hit
 	queue_redraw()
 
 
@@ -366,3 +366,23 @@ func _seg(a: Vector2, b: Vector2, w: float, col: Color, halo: bool) -> void:
 		draw_line(a, b, col, w, true)
 		draw_circle(a, w * 0.5, col)
 		draw_circle(b, w * 0.5, col)
+
+
+## Global rects along every limb tip that is currently drawing a swoosh ribbon (the weapon tip stands in for the
+## front hand when a sword / hammer is held). The attack runner turns these into hit areas: a swoosh always hurts.
+func swoosh_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var n := _trail.size()
+	if not trail_on or n < 3:
+		return out
+	for tip in 4:
+		var total := 0.0
+		for i in range(1, n):
+			total += (_trail[i - 1][tip] as Vector2).distance_to(_trail[i][tip])
+		if total < 30.0 or total > 900.0:
+			continue
+		var r := Rect2(_trail[n - 1][tip], Vector2.ZERO)
+		for i in range(maxi(0, n - 4), n):
+			r = r.expand(_trail[i][tip])
+		out.append(r.grow(16.0))
+	return out
