@@ -3,7 +3,7 @@ extends Control
 ## players on screen showing the class they picked. Pages: main, options, testing.
 ## Stick up/down moves, left/right changes a value, A selects, B goes back. Either player can drive it.
 
-const CLASS_CYCLE := ["", "brawler", "sword", "hammer", "magic"]
+const CLASS_CYCLE := ["brawler", "sword", "hammer", "magic"]
 
 class View extends Control:
 	var menu: Control
@@ -26,6 +26,9 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Engine.time_scale = 1.0
 	Dbg._hint.visible = false
+	for i in 2:
+		if not (RunState.classes[i] in CLASS_CYCLE):
+			RunState.classes[i] = "brawler"
 	add_child(ScreenBackdrop.new())
 	var figs := Node2D.new()
 	add_child(figs)
@@ -154,12 +157,14 @@ func _toggle_magic() -> void:
 	if not RunState.magic_unlocked:
 		for i in 2:
 			if RunState.classes[i] == "magic":
-				RunState.classes[i] = ""
+				RunState.classes[i] = "brawler"
 	Sfx.play("ui")
 
 
 func _cycle_class(player: int, dx: int) -> void:
 	var i := CLASS_CYCLE.find(RunState.classes[player])
+	if i < 0:
+		i = 0
 	for _n in CLASS_CYCLE.size():
 		i = posmod(i + dx, CLASS_CYCLE.size())
 		if CLASS_CYCLE[i] != "magic" or RunState.magic_unlocked:

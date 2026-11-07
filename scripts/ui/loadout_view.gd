@@ -3,9 +3,9 @@ extends RefCounted
 ## Loadout screen logic and drawing, shared by the pause menu and the run map. Both players edit
 ## their own 3x4 grid (rows X / Y / B, columns neutral / up / side / down) at the same time:
 ## stick moves the cursor, A lifts a move, A on another slot drops it (the two moves swap), B cancels.
-## Slot rules follow the classes: X = universal moves, Y = adaptive moves, B = the player's own
-## weapon moves, so a move can only be dropped on a slot of its own kind. Upgrades belong to the
-## move, so they travel with it.
+## A move always stays on its own button: X moves can only move between the X slots, Y between the Y
+## slots and B between the B slots (so only the direction changes). Upgrades belong to the move, so
+## they travel with it.
 ##
 ## The owner supplies four callables so the same view works in a level (fighters) and on the map
 ## (RunState): get_loadout(p) -> live Dictionary, set_slot(p, slot, id), get_class(p) -> String,
@@ -53,22 +53,18 @@ func class_label(p: int) -> String:
 	return "FISTS" if cid == "" else String(ClassData.get_class_data(cid)["name"]).to_upper()
 
 
-func accepts(p: int, slot: String, move_id: String) -> bool:
-	if move_id == "":
-		return true
-	var cid: String = get_class.call(p)
-	if cid == "":
-		return true  # legacy fighter without a class: any move anywhere
-	return move_id in ClassData.pool_for_slot(slot, cid)
+## The button a slot belongs to ("X", "Y" or "B").
+static func button_of(slot: String) -> String:
+	return slot.substr(0, 1)
 
 
-func _reason(p: int, slot: String) -> String:
-	match slot.substr(0, 1):
-		"X":
-			return "X TAKES OFF-HAND MOVES ONLY"
-		"Y":
-			return "Y TAKES ADAPTIVE MOVES ONLY"
-	return "B TAKES %s MOVES ONLY" % class_label(p)
+## Moves never change button, only direction.
+func can_move(from_slot: String, to_slot: String) -> bool:
+	return button_of(from_slot) == button_of(to_slot)
+
+
+func _reason(_p: int, slot: String) -> String:
+	return "MOVES STAY ON THEIR BUTTON  (%s)" % button_of(slot)
 
 
 ## Lifts or drops the move under player p's cursor. Returns true when a swap happened.
@@ -89,12 +85,8 @@ func press(p: int) -> bool:
 		Sfx.play("ui", 0.8)
 		return false
 	var moving: String = lo.get(from, "")
-	if not accepts(p, slot, moving):
-		_say(p, _reason(p, slot))
-		Sfx.play("ui", 0.6)
-		return false
-	if not accepts(p, from, cur):
-		_say(p, _reason(p, from))
+	if not can_move(from, slot):
+		_say(p, "MOVES STAY ON THEIR BUTTON  (%s)" % button_of(from))
 		Sfx.play("ui", 0.6)
 		return false
 	set_slot.call(p, slot, moving)
@@ -212,7 +204,12 @@ func paint_player(c: Control, p: int, r: Rect2) -> void:
 			var cell := Rect2(gx + ci * (cw + 8.0), cy, cw, 56)
 			var poly := UiKit.chamfer(cell, 10.0)
 			var is_from := slot == hold and hold != ""
-			if id != "" and not is_from:
+			var off_limits := hold != "" and not can_move(hold, slot)  # other button: cannot be dropped here
+			if off_limits:
+				UiKit.poly_line(c, poly, Color(1, 1, 1, 0.1), 3.0)
+				if id != "":
+					UiKit.txt(c, UiKit.body(), cell.position + Vector2(0, 33), _move(p, id).short.to_upper(), 20, Color(1, 1, 1, 0.25), HORIZONTAL_ALIGNMENT_CENTER, cw)
+			elif id != "" and not is_from:
 				c.draw_colored_polygon(poly, Color(col.r, col.g, col.b, 0.14))
 				UiKit.poly_line(c, poly, Color(col.r, col.g, col.b, 0.7), 3.0)
 				UiKit.txt(c, UiKit.body(), cell.position + Vector2(0, 26), _move(p, id).short.to_upper(), 22, UiKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER, cw)

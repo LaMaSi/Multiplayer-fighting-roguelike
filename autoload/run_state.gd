@@ -23,7 +23,7 @@ var upgrades: Array = [{}, {}]  ## per player: move_id -> {dmg, spd, kb}
 var perks: Array = [{}, {}]  ## per player: perk id -> true (e.g. "double_jump")
 ## Chosen weapon class per player ("brawler" / "sword" / "hammer" / "magic", "" = legacy fists). Set on the main
 ## menu and kept across runs; it is not reset by start_run.
-var classes: Array = ["", ""]
+var classes: Array = ["brawler", "brawler"]  ## Brawler is the plain-fists class; "" (no class) is only the legacy fighter used by old tests
 var magic_unlocked := false  ## Magic is locked in meta progression (not built yet); toggled on the main menu for testing
 var picker := 0  ## who picks first this round (alternates every level)
 var queue: Array = []  ## [{player, kind: "move" | "level"}]
