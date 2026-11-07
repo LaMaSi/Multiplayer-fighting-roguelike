@@ -33,7 +33,7 @@ func place(f: Fighter, pos: Vector2) -> void:
 
 func _ready() -> void:
 	var inp := get_node("/root/Inp")
-	level = load("res://scenes/test_level.tscn").instantiate()
+	level = load("res://scenes/training.tscn").instantiate()
 	add_child(level)
 	await frames(5)
 	f1 = level.fighters[0]

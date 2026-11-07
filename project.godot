@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="fighting rougelike"
-run/main_scene="res://scenes/test_level.tscn"
+run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -19,6 +19,9 @@ config/icon="res://icon.svg"
 
 Inp="*res://autoload/inp.gd"
 Dbg="*res://autoload/dbg.gd"
+Juice="*res://autoload/juice.gd"
+Sfx="*res://autoload/sfx.gd"
+Coop="*res://autoload/coop.gd"
 
 [display]
 
