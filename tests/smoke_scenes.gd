@@ -3,7 +3,7 @@ extends Node
 ##   godot --path . res://tests/smoke_scenes.tscn      (grep the output for SCRIPT ERROR)
 
 const SCENES := [
-	"res://scenes/main_menu.tscn", "res://scenes/run_map.tscn", "res://scenes/reward.tscn", "res://scenes/shop.tscn",
+	"res://scenes/main_menu.tscn", "res://scenes/run_setup.tscn", "res://scenes/run_map.tscn", "res://scenes/reward.tscn", "res://scenes/shop.tscn",
 	"res://scenes/training.tscn", "res://scenes/streets.tscn",
 ]
 
