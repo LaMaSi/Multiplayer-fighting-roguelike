@@ -161,7 +161,6 @@ func _draw() -> void:
 		var tn: String = RunState.TYPE_NAMES[cur["type"]]
 		_txt(Vector2(0, 600), tn, 30, _c(COLORS[cur["type"]]), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 		_txt(Vector2(0, 632), String(DESCS[cur["type"]]), 18, Color(1, 1, 1, 0.8), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
-		_txt(Vector2(0, 668), "Up / Down: choose      A: go      Y: loadout", 16, Color(1, 1, 1, 0.5), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	for p in 2:
 		var x := 20.0 if p == 0 else 1280.0 - 20.0 - 230.0
 		var col := _c(Fighter.PLAYER_COLORS[p])

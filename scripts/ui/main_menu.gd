@@ -57,8 +57,10 @@ func _items() -> Array:
 		"testing":
 			return [["streets", "STREETS FULL TEST LEVEL", ""], ["shop", "SHOP PREVIEW", ""],
 				["magic", "MAGIC CLASS", "UNLOCKED" if RunState.magic_unlocked else "LOCKED"], ["back", "BACK", ""]]
+	if _page == "meta":
+		return [["back", "BACK", ""]]
 	return [["run", "NEW RUN", "STREETS"], ["class0", "", ""], ["class1", "", ""], ["training", "TRAINING ROOM", ""],
-		["options", "OPTIONS", ""], ["testing", "TESTING", ""], ["quit", "QUIT", ""]]
+		["meta", "UNLOCKS", "SOON"], ["options", "OPTIONS", ""], ["testing", "TESTING", ""], ["quit", "QUIT", ""]]
 
 
 func _go_page(page: String, sel := 0) -> void:
@@ -84,8 +86,13 @@ func _physics_process(_delta: float) -> void:
 			_activate(String(items[_sel][0]))
 			return
 		if p.pressed(PlayerInput.Btn.B) and _page != "main":
-			_go_page("main", 4 if _page == "options" else 5)
+			_go_page("main", _main_index(_page))
 			return
+
+
+## Row of the main list that opens a sub page (so B returns to it).
+func _main_index(page: String) -> int:
+	return {"meta": 4, "options": 5, "testing": 6}.get(page, 0)
 
 
 func _side(id: String, dx: int) -> void:
@@ -104,7 +111,7 @@ func _activate(id: String) -> void:
 		return
 	if _page == "options":
 		if id == "back":
-			_go_page("main", 4)
+			_go_page("main", _main_index("options"))
 		else:
 			OptionsList.adjust(id, 1)
 			Sfx.play("ui")
@@ -113,7 +120,9 @@ func _activate(id: String) -> void:
 		"magic":
 			_toggle_magic()
 		"back":
-			_go_page("main", 5)
+			_go_page("main", _main_index(_page))
+		"meta":
+			_go_page("meta")
 		"options":
 			_go_page("options")
 		"testing":
@@ -200,6 +209,26 @@ func _class_row(c: Control, r: Rect2, player: int, selected: bool) -> void:
 	UiKit.txt(c, UiKit.head(), r.position + Vector2(0, r.size.y * 0.5 + 7), ("<  %s  >" % name) if selected else name, 17, UiKit.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 20.0)
 
 
+## Placeholder for the meta progression (docs/ECONOMY.md §1): a greyed preview of what will be
+## unlockable. Nothing here is wired up yet.
+const LOCKED_PREVIEW := ["SWORD CLASS", "HAMMER CLASS", "MAGIC CLASS", "MOVE REROLLS", "MORE STARTING MOVES", "MORE HP", "MORE LIVES"]
+
+
+func _paint_unlocks(c: Control, y0: float) -> void:
+	UiKit.txt(c, UiKit.head(), Vector2(260, 268), "COMING SOON", 16, UiKit.AMBER)
+	for i in LOCKED_PREVIEW.size():
+		var r := Rect2(110, y0 + i * 46.0, 360, 38)
+		var p := UiKit.chamfer(r, 10.0)
+		c.draw_colored_polygon(p, Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.6))
+		UiKit.poly_line(c, p, Color(0.8, 0.8, 1.0, 0.22), UiKit.LINE)
+		# padlock
+		var lx := r.position.x + 22.0
+		var ly := r.position.y + 19.0
+		c.draw_rect(Rect2(lx - 7, ly - 2, 14, 11), Color(0.8, 0.8, 1.0, 0.45))
+		c.draw_arc(Vector2(lx, ly - 2), 5.0, PI, TAU, 10, Color(0.8, 0.8, 1.0, 0.45), 2.5, true)
+		UiKit.txt(c, UiKit.head(), r.position + Vector2(44, 25), LOCKED_PREVIEW[i], 15, Color(0.7, 0.7, 0.85, 0.5))
+
+
 func paint(c: Control) -> void:
 	# title: tilted, glowing, with a cyan offset shadow
 	c.draw_set_transform_matrix(UiKit.italic(Vector2(640, 150), -0.035, 1.0, -0.22))
@@ -210,13 +239,16 @@ func paint(c: Control) -> void:
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	c.draw_rect(Rect2(430, 194, 420, 3), UiKit.PINK)
 	UiKit.txt(c, UiKit.head(), Vector2(0, 226), "CO-OP STICKFIGURE BRAWLER", 20, UiKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER, 1280.0, 4, Color(0, 0, 0, 0.7))
-	var heading := {"main": "", "options": "OPTIONS", "testing": "TESTING"}[_page] as String
+	var heading := {"main": "", "options": "OPTIONS", "testing": "TESTING", "meta": "UNLOCKS"}[_page] as String
 	if heading != "":
 		UiKit.txt(c, UiKit.head(), Vector2(110, 268), heading, 16, UiKit.PINK)
 	var items := _items()
-	var y0 := 284.0 if heading != "" else 270.0
+	var y0 := 284.0 if heading != "" else 262.0
+	if _page == "meta":
+		_paint_unlocks(c, y0)
+		y0 += 7 * 46.0 + 12.0
 	for i in items.size():
-		var r := Rect2(110, y0 + i * 56.0, 360, 46)
+		var r := Rect2(110, y0 + i * 52.0, 360, 42)
 		var id: String = items[i][0]
 		var sel := i == _sel
 		if _page == "main" and id.begins_with("class"):
@@ -226,5 +258,4 @@ func paint(c: Control) -> void:
 			if _page == "options" and id == "post":
 				adj = true
 			UiKit.button(c, r, String(items[i][1]), sel, String(items[i][2]), adj)
-	UiKit.txt(c, UiKit.body(), Vector2(40, 700), "STICK  MOVE      A  SELECT      B  BACK", 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 3)
 	UiKit.txt(c, UiKit.body(), Vector2(900, 700), "V0.1  ·  GODOT 4.5", 16, Color(0.6, 0.6, 0.8), HORIZONTAL_ALIGNMENT_RIGHT, 340.0, 3)

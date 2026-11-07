@@ -176,7 +176,6 @@ func paint_screen(c: Control) -> void:
 	UiKit.txt(c, UiKit.body(), Vector2(40, 104), "SWAP MOVES BETWEEN BUTTONS  ·  BOTH PLAYERS AT ONCE", 18, UiKit.PINK)
 	paint_player(c, 0, Rect2(30, 126, 605, 470))
 	paint_player(c, 1, Rect2(645, 126, 605, 470))
-	UiKit.txt(c, UiKit.body(), Vector2(30, 640), "A  LIFT / DROP (SWAPS)      B  CANCEL / BACK", 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 3)
 
 
 func paint_player(c: Control, p: int, r: Rect2) -> void:

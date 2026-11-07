@@ -157,7 +157,6 @@ func _draw() -> void:
 	if _phase == "cards":
 		for i in _cards.size():
 			_draw_card(i)
-		_txt(Vector2(0, 660), "Left / Right: choose      A: confirm", 18, Color(1, 1, 1, 0.6), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	else:
 		_draw_slot_picker(pc)
 
@@ -201,7 +200,6 @@ func _draw_slot_picker(pc: Color) -> void:
 			_txt(r.position + Vector2(0, 46), "(empty)", 16, Color(1, 1, 1, 0.35), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 		else:
 			_txt(r.position + Vector2(0, 46), MoveDB.get_move(id).name, 15, Color(1, 0.8, 0.5) if sel else Color(1, 1, 1), r.size.x, HORIZONTAL_ALIGNMENT_CENTER)
-	_txt(Vector2(0, 660), "Arrows: choose slot      A: place      B: back", 18, Color(1, 1, 1, 0.6), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 
 
 func _draw_panel(p: int, x: float, y: float) -> void:

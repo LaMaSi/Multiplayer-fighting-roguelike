@@ -365,7 +365,6 @@ func paint(c: Control) -> void:
 		c.draw_circle(bc, 30.0, UiKit.INK)
 		c.draw_arc(bc, 30.0, 0.0, TAU, 28, col, 3.0, true)
 		UiKit.txt(c, head, bc + Vector2(-30, 14), "?", 40, col, HORIZONTAL_ALIGNMENT_CENTER, 60.0)
-	UiKit.txt(c, body, Vector2(60, 700), "A  VOTE      B  CANCEL VOTE", 16, UiKit.DIM_TEXT)
 
 
 func _vote_line(target: int) -> String:

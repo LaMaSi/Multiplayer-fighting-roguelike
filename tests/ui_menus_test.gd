@@ -112,6 +112,10 @@ func _ready() -> void:
 	menu._sel = 1
 	await frames(4)
 	await snap(out + "/ui_start_options.png")
+	menu._page = "meta"
+	menu._sel = 0
+	await frames(4)
+	await snap(out + "/ui_start_unlocks.png")
 	menu.queue_free()
 	await frames(3)
 	# run map with the loadout overlay

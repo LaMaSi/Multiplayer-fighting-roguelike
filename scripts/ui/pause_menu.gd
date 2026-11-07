@@ -264,7 +264,6 @@ func paint(c: Control) -> void:
 		UiKit.button(c, Rect2(80, 150 + i * 62.0, 360, 50), String(items[i][1]), i == _sel, String(items[i][2]), adj)
 	if _page == "main":
 		_paint_status(c)
-	UiKit.txt(c, UiKit.body(), Vector2(80, 690), "STICK  MOVE      A  SELECT      B  BACK", 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 3)
 
 
 ## Right side of the main page: run info and a read-only view of both loadouts.
