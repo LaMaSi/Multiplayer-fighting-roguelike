@@ -49,16 +49,12 @@ func _process(_d: float) -> void:
 func _draw() -> void:
 	var r := Rect2(-size * 0.5, size)
 	var cam := get_viewport().get_camera_2d()
-	var vx := (cam.get_screen_center_position().x - global_position.x) if cam != null else 0.0
-	DepthLayer.draw_platform(self, r, neon, vx)
-	var ft := r.position.y + DepthLayer.PLAT_FRONT
-	var fb := r.end.y + DepthLayer.PLAT_LIP
-	draw_rect(Rect2(r.position.x, ft, r.size.x, fb - ft), Color(neon.r * 0.16, neon.g * 0.16, neon.b * 0.16))
-	draw_rect(Rect2(r.position.x, ft, r.size.x, (fb - ft) * 0.5), Color(neon.r * 0.35, neon.g * 0.35, neon.b * 0.35))
-	draw_line(Vector2(r.position.x, ft), Vector2(r.end.x, ft), neon, 4.0, true)
-	# hazard stripes + end lights so it reads as "moving"
+	var ctr := cam.get_screen_center_position() if cam != null else global_position
+	var vp := Vector2(ctr.x, ctr.y - DepthLayer.RISE) - global_position  # vanishing point in local coordinates
+	var f := DepthLayer.draw_platform(self, r, neon, vp, false)
+	# hazard stripes + end lights on the front face so it reads as "moving"
 	for i in int(size.x / 24.0):
-		draw_line(Vector2(r.position.x + 8.0 + i * 24.0, fb), Vector2(r.position.x + 20.0 + i * 24.0, ft + 3.0), Color(1.4, 1.2, 0.3, 0.55), 2.0)
-	var ly := (ft + fb) * 0.5
-	draw_circle(Vector2(r.position.x + 5.0, ly), 3.0, Color(1.6, 1.4, 0.4))
-	draw_circle(Vector2(r.end.x - 5.0, ly), 3.0, Color(1.6, 1.4, 0.4))
+		draw_line(Vector2(f.position.x + 8.0 + i * 24.0, f.end.y - 2.0), Vector2(f.position.x + 20.0 + i * 24.0, f.position.y + 5.0), Color(1.4, 1.2, 0.3, 0.55), 2.0)
+	var ly := f.position.y + f.size.y * 0.5
+	draw_circle(Vector2(f.position.x + 5.0, ly), 3.0, Color(1.6, 1.4, 0.4))
+	draw_circle(Vector2(f.end.x - 5.0, ly), 3.0, Color(1.6, 1.4, 0.4))

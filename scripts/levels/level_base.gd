@@ -481,17 +481,7 @@ func _paint_ground(c: CanvasItem) -> void:
 			c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, 3.5, true)
 			c.draw_line(Vector2(r.position.x, r.end.y), r.end, Color(np.r, np.g, np.b, 0.3), 2.0, true)
 			continue
-		# readable "solid": a top surface that reaches back (DepthLayer), a lit front face with a bright edge, a dark underside
-		var ft := r.position.y + DepthLayer.PLAT_FRONT
-		var fb := r.end.y + DepthLayer.PLAT_LIP
-		for i in 3:
-			c.draw_rect(Rect2(r.position.x + 6 + i * 3, fb + 2 + i * 6, r.size.x - 12 - i * 6, 6), Color(0, 0, 0, 0.22 - i * 0.06))
-		c.draw_rect(Rect2(r.position.x, ft, r.size.x, fb - ft), Color(np.r * 0.16, np.g * 0.16, np.b * 0.16, 1.0))
-		c.draw_rect(Rect2(r.position.x, ft, r.size.x, (fb - ft) * 0.5), Color(np.r * 0.3, np.g * 0.3, np.b * 0.3, 1.0))
-		c.draw_rect(Rect2(r.position.x, fb - 3.0, r.size.x, 3.0), Color(0.02, 0.01, 0.04, 0.9))
-		c.draw_line(Vector2(r.position.x, ft), Vector2(r.end.x, ft), np, UiKit.LINE, true)
-		c.draw_line(Vector2(r.position.x, ft), Vector2(r.position.x, fb), Color(np.r, np.g, np.b, 0.55), UiKit.LINE, true)
-		c.draw_line(Vector2(r.end.x, ft), Vector2(r.end.x, fb), Color(np.r, np.g, np.b, 0.55), UiKit.LINE, true)
+		# (variants 1+: platforms are drawn as 3D boxes by DepthLayer)
 
 
 # ------------------------------------------------------------------ ledges

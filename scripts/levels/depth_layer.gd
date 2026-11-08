@@ -1,21 +1,24 @@
 class_name DepthLayer
 extends Node2D
 ## 2.5D depth for the flat side view. Collision stays exactly as it was; this is only drawing.
-## The ground and the platforms get a top surface that reaches a bit to the back (behind the walking line) and a bit to
-## the front (the lip you see in front of it). The back edge converges toward the camera centre, so the surfaces shift
-## slightly while the camera moves and pit and platform sides appear when you look at them from the right direction.
-## Characters get a soft contact shadow on whatever they stand over (the strongest depth cue for the cost).
+## One camera model for everything: a vanishing point sits above the camera centre (looking slightly down at the
+## world). A point at depth z (px behind the walking plane) is drawn at  vp + (p - vp) * EYE / (EYE + z).
+## So the floor and every platform are real boxes: their back edges converge toward the vanishing point, tops are
+## visible because the horizon is above them, and sides appear on the side that faces the camera. Everything
+## shifts correctly as the camera moves, horizontally and vertically.
+## Characters get a soft contact shadow on whatever they stand over.
 
-const FLOOR_BACK := 46.0  ## how far the ground reaches behind the walking line
-const FLOOR_FRONT := 24.0  ## and in front of it
-const PLAT_BACK := 22.0
-const PLAT_FRONT := 14.0
-const PLAT_LIP := 6.0  ## front face reaches this far below the collision rectangle
-const VANISH := 700.0  ## distance of the imaginary horizon: a point `depth` px back converges by depth / VANISH
+const EYE := 700.0  ## distance from the eye to the walking plane
+const RISE := 600.0  ## how far above the camera centre the horizon (vanishing point) sits
+const FLOOR_BACK := 50.0  ## depth of the ground behind the walking line
+const FLOOR_FRONT := 24.0  ## the lip of the ground in front of the line (fixed, drawn by the level)
+const PLAT_BACK := 50.0  ## platform boxes reach this far behind the walking line
+const PLAT_FRONT := 10.0  ## and this far in front of it
+const PLAT_LIP := 6.0  ## the box extends this far below the collision rectangle
 
 var level: LevelBase
 var _shadows: Node2D
-var _vp_x := 0.0
+var _vp := Vector2.ZERO
 var _view := Rect2()
 
 
@@ -33,9 +36,16 @@ func _process(_d: float) -> void:
 	_shadows.queue_redraw()
 
 
-## x of a point `depth` px behind the line, as seen from the camera centre.
-static func proj(x: float, vp_x: float, depth: float) -> float:
-	return x + (vp_x - x) * depth / VANISH
+## Screen position (in world coordinates) of the point `p` at depth `z`, seen from the vanishing point `vp`.
+static func P(p: Vector2, z: float, vp: Vector2) -> Vector2:
+	return vp + (p - vp) * (EYE / (EYE + z))
+
+
+## Vanishing point in world coordinates for the active camera (or a sensible default).
+static func vanish_point(vp_node: Node, fallback: Vector2) -> Vector2:
+	var cam := vp_node.get_viewport().get_camera_2d()
+	var ctr := cam.get_screen_center_position() if cam != null else fallback
+	return Vector2(ctr.x, ctr.y - RISE)
 
 
 func _update_view() -> void:
@@ -47,7 +57,7 @@ func _update_view() -> void:
 		z = maxf(cam.zoom.x, 0.05)
 	var sz := get_viewport_rect().size / z
 	_view = Rect2(ctr - sz * 0.5, sz)
-	_vp_x = ctr.x
+	_vp = Vector2(ctr.x, ctr.y - RISE)
 
 
 func _draw() -> void:
@@ -64,10 +74,15 @@ func _draw() -> void:
 	segs.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.y > b.position.y)
 	for g: Rect2 in segs:
 		_draw_floor(g, ng, vx0, vx1)
-	for r: Rect2 in level.platforms:
+	if Backdrop.variant == 0:
+		return  # the legacy flat look keeps its own platforms
+	# platforms: farthest (highest) first so lower ones overlap them
+	var plats: Array = level.platforms.duplicate()
+	plats.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.y < b.position.y)
+	for r: Rect2 in plats:
 		if r.end.x < vx0 or r.position.x > vx1:
 			continue
-		draw_platform(self, r, np, _vp_x)
+		draw_platform(self, r, np, _vp, true)
 
 
 func _draw_floor(g: Rect2, ng: Color, vx0: float, vx1: float) -> void:
@@ -80,59 +95,87 @@ func _draw_floor(g: Rect2, ng: Color, vx0: float, vx1: float) -> void:
 	var base: Color = Pal.BG_GROUND
 	var near := base.lerp(tint, 0.20)
 	var far := base.lerp(tint, 0.07)
-	var bx0 := proj(x0, _vp_x, FLOOR_BACK)
-	var bx1 := proj(x1, _vp_x, FLOOR_BACK)
+	var b0 := P(Vector2(x0, y), FLOOR_BACK, _vp)
+	var b1 := P(Vector2(x1, y), FLOOR_BACK, _vp)
+	var yb := b0.y  # same for both: the far edge is level
 	# haze above the far edge so the buildings sit into the floor
-	var fog := PackedVector2Array([Vector2(bx0, y - FLOOR_BACK - 38.0), Vector2(bx1, y - FLOOR_BACK - 38.0), Vector2(bx1, y - FLOOR_BACK), Vector2(bx0, y - FLOOR_BACK)])
+	var fog := PackedVector2Array([Vector2(b0.x, yb - 38.0), Vector2(b1.x, yb - 38.0), Vector2(b1.x, yb), Vector2(b0.x, yb)])
 	var fc := Color(0.04, 0.02, 0.09, 0.0)
 	var fd := Color(0.04, 0.02, 0.09, 0.55)
 	draw_polygon(fog, PackedColorArray([fc, fc, fd, fd]))
 	# the surface itself: dark at the far edge, lighter at the near edge
-	var top := PackedVector2Array([Vector2(bx0, y - FLOOR_BACK), Vector2(bx1, y - FLOOR_BACK), Vector2(x1, y + FLOOR_FRONT), Vector2(x0, y + FLOOR_FRONT)])
+	var top := PackedVector2Array([b0, b1, Vector2(x1, y + FLOOR_FRONT), Vector2(x0, y + FLOOR_FRONT)])
 	draw_polygon(top, PackedColorArray([far, far, near, near]))
 	# lines running into the distance, and rows across
 	var gx := x0 - fmod(x0, 100.0)
 	while gx < x1:
 		if gx > x0:
-			draw_line(Vector2(gx, y + FLOOR_FRONT), Vector2(proj(gx, _vp_x, FLOOR_BACK), y - FLOOR_BACK), Color(ng.r, ng.g, ng.b, 0.13), 1.5)
+			draw_line(Vector2(gx, y + FLOOR_FRONT), P(Vector2(gx, y), FLOOR_BACK, _vp), Color(ng.r, ng.g, ng.b, 0.13), 1.5)
 		gx += 100.0
 	for d: float in [FLOOR_BACK * 0.33, FLOOR_BACK * 0.66]:
-		draw_line(Vector2(proj(x0, _vp_x, d), y - d), Vector2(proj(x1, _vp_x, d), y - d), Color(ng.r, ng.g, ng.b, 0.09), 1.5)
+		draw_line(P(Vector2(x0, y), d, _vp), P(Vector2(x1, y), d, _vp), Color(ng.r, ng.g, ng.b, 0.09), 1.5)
 	# faint centre line = where feet stand, and a thin far edge
 	draw_line(Vector2(x0, y), Vector2(x1, y), Color(ng.r, ng.g, ng.b, 0.14), 1.5)
-	draw_line(Vector2(bx0, y - FLOOR_BACK), Vector2(bx1, y - FLOOR_BACK), Color(ng.r, ng.g, ng.b, 0.30), 2.0, true)
+	draw_line(b0, b1, Color(ng.r, ng.g, ng.b, 0.30), 2.0, true)
 	# the end faces, only when they face the camera (looking at a pit from the pit side)
 	var wall := Color(0.03, 0.015, 0.07)
-	if g.position.x >= vx0 and _vp_x < g.position.x:
-		var px := proj(g.position.x, _vp_x, FLOOR_BACK)
-		draw_polygon(PackedVector2Array([Vector2(g.position.x, y + FLOOR_FRONT), Vector2(px, y - FLOOR_BACK), Vector2(px, y - FLOOR_BACK + 900.0), Vector2(g.position.x, y + FLOOR_FRONT + 900.0)]), PackedColorArray([near, far, wall, wall]))
-		draw_line(Vector2(g.position.x, y + FLOOR_FRONT), Vector2(px, y - FLOOR_BACK), Color(ng.r, ng.g, ng.b, 0.45), 2.0, true)
-	if g.end.x <= vx1 and _vp_x > g.end.x:
-		var px2 := proj(g.end.x, _vp_x, FLOOR_BACK)
-		draw_polygon(PackedVector2Array([Vector2(g.end.x, y + FLOOR_FRONT), Vector2(px2, y - FLOOR_BACK), Vector2(px2, y - FLOOR_BACK + 900.0), Vector2(g.end.x, y + FLOOR_FRONT + 900.0)]), PackedColorArray([near, far, wall, wall]))
-		draw_line(Vector2(g.end.x, y + FLOOR_FRONT), Vector2(px2, y - FLOOR_BACK), Color(ng.r, ng.g, ng.b, 0.45), 2.0, true)
+	if g.position.x >= vx0 and _vp.x < g.position.x:
+		var t := P(Vector2(g.position.x, y), FLOOR_BACK, _vp)
+		var bt := P(Vector2(g.position.x, y + 900.0), FLOOR_BACK, _vp)
+		draw_polygon(PackedVector2Array([Vector2(g.position.x, y + FLOOR_FRONT), t, bt, Vector2(g.position.x, y + FLOOR_FRONT + 900.0)]), PackedColorArray([near, far, wall, wall]))
+		draw_line(Vector2(g.position.x, y + FLOOR_FRONT), t, Color(ng.r, ng.g, ng.b, 0.45), 2.0, true)
+	if g.end.x <= vx1 and _vp.x > g.end.x:
+		var t2 := P(Vector2(g.end.x, y), FLOOR_BACK, _vp)
+		var bt2 := P(Vector2(g.end.x, y + 900.0), FLOOR_BACK, _vp)
+		draw_polygon(PackedVector2Array([Vector2(g.end.x, y + FLOOR_FRONT), t2, bt2, Vector2(g.end.x, y + FLOOR_FRONT + 900.0)]), PackedColorArray([near, far, wall, wall]))
+		draw_line(Vector2(g.end.x, y + FLOOR_FRONT), t2, Color(ng.r, ng.g, ng.b, 0.45), 2.0, true)
 
 
-## A platform's top surface (reaching back and forward) and its visible side. `r` is the collision rectangle in the
-## canvas space of `c`, `vp_x` the camera centre in that space. The front face and neon edge are drawn by the level.
-static func draw_platform(c: CanvasItem, r: Rect2, np: Color, vp_x: float) -> void:
-	var y := r.position.y
+## Draws a platform as a real box in the shared camera model. `r` is the collision rectangle in the canvas space of
+## `c`, `vp` the vanishing point in that space. Returns the front face rectangle (for decorations such as stripes).
+static func draw_platform(c: CanvasItem, r: Rect2, np: Color, vp: Vector2, with_shadow: bool) -> Rect2:
 	var x0 := r.position.x
 	var x1 := r.end.x
-	var bx0 := proj(x0, vp_x, PLAT_BACK)
-	var bx1 := proj(x1, vp_x, PLAT_BACK)
-	var near := Color(np.r * 0.34, np.g * 0.34, np.b * 0.34)
-	var far := Color(np.r * 0.17, np.g * 0.17, np.b * 0.17)
-	var thick := r.size.y + PLAT_LIP - PLAT_FRONT
-	var side := Color(np.r * 0.08, np.g * 0.08, np.b * 0.08)
-	if vp_x < x0:
-		c.draw_colored_polygon(PackedVector2Array([Vector2(x0, y + PLAT_FRONT), Vector2(bx0, y - PLAT_BACK), Vector2(bx0, y - PLAT_BACK + thick), Vector2(x0, y + PLAT_FRONT + thick)]), side)
-	elif vp_x > x1:
-		c.draw_colored_polygon(PackedVector2Array([Vector2(x1, y + PLAT_FRONT), Vector2(bx1, y - PLAT_BACK), Vector2(bx1, y - PLAT_BACK + thick), Vector2(x1, y + PLAT_FRONT + thick)]), side)
-	c.draw_polygon(PackedVector2Array([Vector2(bx0, y - PLAT_BACK), Vector2(bx1, y - PLAT_BACK), Vector2(x1, y + PLAT_FRONT), Vector2(x0, y + PLAT_FRONT)]), PackedColorArray([far, far, near, near]))
-	c.draw_line(Vector2(bx0, y - PLAT_BACK), Vector2(bx1, y - PLAT_BACK), Color(np.r, np.g, np.b, 0.30), 1.5, true)
-	c.draw_line(Vector2(x0, y + PLAT_FRONT), Vector2(bx0, y - PLAT_BACK), Color(np.r, np.g, np.b, 0.20), 1.5, true)
-	c.draw_line(Vector2(x1, y + PLAT_FRONT), Vector2(bx1, y - PLAT_BACK), Color(np.r, np.g, np.b, 0.20), 1.5, true)
+	var yt := r.position.y
+	var yb := r.end.y + PLAT_LIP
+	var zf := -PLAT_FRONT
+	var zb := PLAT_BACK
+	var f_tl := P(Vector2(x0, yt), zf, vp)
+	var f_tr := P(Vector2(x1, yt), zf, vp)
+	var f_bl := P(Vector2(x0, yb), zf, vp)
+	var f_br := P(Vector2(x1, yb), zf, vp)
+	var b_tl := P(Vector2(x0, yt), zb, vp)
+	var b_tr := P(Vector2(x1, yt), zb, vp)
+	var b_bl := P(Vector2(x0, yb), zb, vp)
+	var b_br := P(Vector2(x1, yb), zb, vp)
+	if with_shadow:
+		for i in 3:
+			c.draw_rect(Rect2(f_bl.x + 6 + i * 3, f_bl.y + 2 + i * 6, f_br.x - f_bl.x - 12 - i * 6, 6), Color(0, 0, 0, 0.22 - i * 0.06))
+	var side := Color(np.r * 0.09, np.g * 0.09, np.b * 0.09)
+	# sides that face the camera
+	if vp.x < x0:
+		c.draw_colored_polygon(PackedVector2Array([f_tl, b_tl, b_bl, f_bl]), side)
+		c.draw_line(f_tl, b_tl, Color(np.r, np.g, np.b, 0.35), 1.5, true)
+	elif vp.x > x1:
+		c.draw_colored_polygon(PackedVector2Array([f_tr, b_tr, b_br, f_br]), side)
+		c.draw_line(f_tr, b_tr, Color(np.r, np.g, np.b, 0.35), 1.5, true)
+	# the top is visible because the horizon is above it; the underside if the platform is above the horizon
+	if vp.y < yt:
+		var near := Color(np.r * 0.34, np.g * 0.34, np.b * 0.34)
+		var far := Color(np.r * 0.17, np.g * 0.17, np.b * 0.17)
+		c.draw_polygon(PackedVector2Array([b_tl, b_tr, f_tr, f_tl]), PackedColorArray([far, far, near, near]))
+		c.draw_line(b_tl, b_tr, Color(np.r, np.g, np.b, 0.30), 1.5, true)
+	elif vp.y > yb:
+		c.draw_colored_polygon(PackedVector2Array([f_bl, f_br, b_br, b_bl]), Color(np.r * 0.05, np.g * 0.05, np.b * 0.05))
+	# the front face, with the bright edge
+	c.draw_colored_polygon(PackedVector2Array([f_tl, f_tr, f_br, f_bl]), Color(np.r * 0.16, np.g * 0.16, np.b * 0.16))
+	var fh := f_bl.y - f_tl.y
+	c.draw_rect(Rect2(f_tl.x, f_tl.y, f_tr.x - f_tl.x, fh * 0.5), Color(np.r * 0.30, np.g * 0.30, np.b * 0.30))
+	c.draw_rect(Rect2(f_bl.x, f_bl.y - 3.0, f_br.x - f_bl.x, 3.0), Color(0.02, 0.01, 0.04, 0.9))
+	c.draw_line(f_tl, f_tr, np, 3.0, true)
+	c.draw_line(f_tl, f_bl, Color(np.r, np.g, np.b, 0.55), 3.0, true)
+	c.draw_line(f_tr, f_br, Color(np.r, np.g, np.b, 0.55), 3.0, true)
+	return Rect2(f_tl, f_br - f_tl)
 
 
 ## Height of the surface under a point: the closest ground, platform or moving platform top at or below `feet`.
