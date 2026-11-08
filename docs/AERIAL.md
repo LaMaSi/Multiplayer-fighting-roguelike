@@ -45,11 +45,11 @@ Long narrow reach, high jump, innate double jump. Every Lance move works on the 
 
 Super (not implemented): *Heaven's Fall*. Leap high, then rain down piercing strikes; the hit enemies end up launched for the partner's sky relay.
 
-The weapon is a classic **lance**, drawn after a spear-fighting pose reference: a long straight pole (about 200 px) held in both hands, spread wide and mid-shaft (the rear hand is solved onto the pole with arm IK, so both hands stay on it in every pose), with a slender leaf-shaped spearhead and a small pennon. The idle stance is a wide, low lunge with the lance carried level; the thrust is a long flat extension. Reach in front of the front hand is unchanged (104 px), so the authored hitboxes still match. Drawn in code in `stick_figure.gd`; rendered and checked for the idle and the main attack poses, not yet for every move.
+The weapon is a classic **lance**, drawn after a spear-fighting pose reference: a long straight pole (about 200 px) held in both hands, spread wide and mid-shaft (the rear hand is solved onto the pole with arm IK, so both hands stay on it in every pose), with a triangular spearhead, a collar and a small pennon. The idle stance is a wide, low lunge with the lance carried level; the thrust is a long flat extension. Reach in front of the front hand is unchanged (104 px), so the authored hitboxes still match. Drawn in code in `stick_figure.gd`; rendered and checked for the idle and the main attack poses, not yet for every move.
 
 Not done for the Lance: LT versions, the weapon super, the tip mechanic (see below), per-move `wp_rot` polish.
 
-**Tip mechanic (proposed, not built):** straight-line Lance moves hit about 1.4x harder with the outer quarter of the hitbox, with a distinct spark and a 'TIP' callout, so spacing is the skill.
+**Tip mechanic (built):** a Lance strike that lands with the **spearhead** (the triangular head, about 56 px at the tip) instead of the shaft deals x1.4 damage and x1.15 knockback, +2 hit-stop frames, and shows a ring and a "TIP" callout. The check is geometric (`StickFigure.head_touches`, used from `AttackRunner._connect`): where the head is on screen when the hit connects. Measured with Thrust: enemies 30 to 70 px away take 7.0 (shaft), 90 to 170 px take 9.8 (tip). Radial moves (Windmill) and projectiles never tip; Pole Vault and Skyhook point upward, so they tip against enemies that are already in the air.
 
 ## 4. Combos with existing moves (estimates from the constants, not simulated)
 

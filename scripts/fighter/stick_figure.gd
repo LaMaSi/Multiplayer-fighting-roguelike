@@ -62,6 +62,8 @@ var hand_f_pos := Vector2(20, -50)
 var hand_b_pos := Vector2(10, -50)
 var foot_f_pos := Vector2(10, 0)
 var foot_b_pos := Vector2(-10, 0)
+var weapon_dir := Vector2.RIGHT  ## unit direction of the lance axis (figure space), for the tip mechanic
+var weapon_head := 0.0  ## length of the lance spearhead in px (0 = no spearhead)
 var weapon_tip := Vector2.ZERO  ## tip of the sword / head of the hammer (the swoosh trail follows it instead of the fist)
 
 var _vel: Dictionary = {}
@@ -125,6 +127,7 @@ func _draw() -> void:
 	foot_b_pos = m + foot_b_pos.rotated(rot)
 	head_pos = m + head_pos.rotated(rot)
 	weapon_tip = m + weapon_tip.rotated(rot)
+	weapon_dir = weapon_dir.rotated(rot)
 	_draw_trails()
 
 
@@ -260,7 +263,19 @@ func _render(halo: bool) -> void:
 const LANCE_GRIP_GAP := 52.0  ## distance between the two hands on the lance shaft (spread wide, like a real spear grip)
 const LANCE_FORE := 104.0  ## shaft + head in front of the front hand (the reach every Lance hitbox was authored for)
 const LANCE_BUTT := 96.0  ## shaft behind the front hand (the rear hand grips between the butt and the front hand)
-const LANCE_BLADE := 48.0  ## the slender spearhead at the tip
+const LANCE_BLADE := 46.0  ## the triangular spearhead at the tip (also the tip-hit zone)
+const LANCE_HEAD_W := 9.5  ## half width of the spearhead at its base
+
+
+## Is `r` (a hurt rect, global) touching the lance spearhead? Used for the tip bonus.
+func head_touches(r: Rect2) -> bool:
+	if weapon != "lance" or weapon_head <= 0.0:
+		return false
+	var tip_g := to_global(weapon_tip)
+	var base_g := to_global(weapon_tip - weapon_dir * weapon_head)
+	if not (tip_g.is_finite() and base_g.is_finite()):
+		return false  # the figure has not been drawn yet (or its pose blew up): no tip hit
+	return Rect2(base_g, Vector2.ZERO).expand(tip_g).grow(10.0).intersects(r)
 
 
 ## Two-bone arm IK: returns [upper arm vector, forearm vector] so the hand lands on `target` (clamped to the arm's
@@ -309,20 +324,13 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 			var tip_l := hand_f + wd * (LANCE_FORE * k)
 			var head_len := LANCE_BLADE * k
 			var head_b := tip_l - wd * head_len
-			var hw := 7.5 * k  # half width of the spearhead at its widest
-			var side_a := PackedVector2Array()
-			var side_b := PackedVector2Array()
-			for i in range(0, 9):
-				var t := float(i) / 8.0
-				var w := hw * pow(maxf(sin(PI * pow(t, 0.7)), 0.0), 0.85)
-				side_a.append(head_b + wd * (head_len * t) + n * w)
-				side_b.append(head_b + wd * (head_len * t) - n * w)
-			var outline := PackedVector2Array()
-			outline.append_array(side_a)
-			for i in range(side_b.size() - 1, -1, -1):
-				outline.append(side_b[i])
+			var hw := LANCE_HEAD_W * k  # half width of the spearhead at its base
+			# a long triangle: flat base at the collar, straight edges, sharp point
+			var outline := PackedVector2Array([head_b + n * hw, tip_l, head_b - n * hw])
 			if not halo:
 				weapon_tip = tip_l
+				weapon_dir = wd
+				weapon_head = head_len
 			if halo:
 				draw_line(butt, head_b, dark, 9.0 * ws)
 				draw_colored_polygon(outline, dark)
@@ -331,8 +339,8 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 				draw_line(butt, head_b + wd * 4.0, col.darkened(0.3), 4.0, true)                          # pole
 				draw_line(butt - wd * 2.0, butt + wd * 6.0, col, 5.5, true)                              # butt cap
 				draw_colored_polygon(outline, col.darkened(0.55))
-				draw_polyline(outline, col, 2.2, true)                                                    # head outline
-				draw_line(head_b + wd * 3.0, tip_l - wd * 3.0, Color(2.0, 2.0, 2.2), 1.4, true)          # central ridge
+				draw_polyline(PackedVector2Array([outline[0], outline[1], outline[2], outline[0]]), col, 2.4, true)  # head outline
+				draw_line(head_b + wd * 2.0, tip_l - wd * 3.0, Color(2.0, 2.0, 2.2), 1.5, true)          # central ridge
 				draw_line(head_b - n * 5.0, head_b + n * 5.0, col, 3.5, true)                            # collar
 				var pen := PackedVector2Array([head_b - wd * 2.0, head_b - wd * 20.0 * k + n * 9.0 * k, head_b - wd * 8.0 * k + n * 12.0 * k])
 				draw_colored_polygon(pen, Color(2.0, 0.45, 0.35))                                         # pennon

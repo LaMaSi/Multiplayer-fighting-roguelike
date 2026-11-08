@@ -20,6 +20,9 @@ var _tilt := 0.0
 var _spun := false
 var _spd_acc := 0.0
 
+const TIP_DMG := 1.4  ## Lance: damage multiplier for hits made with the spearhead
+const TIP_KB := 1.15  ## Lance: knockback multiplier for hits made with the spearhead
+
 
 func _init(a: Actor = null) -> void:
 	actor = a
@@ -395,9 +398,20 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		info.kb = Vector2(s * absf(kb.x), kb.y)
 	else:
 		info.kb = Vector2(kb.x * a.facing, kb.y)
+	# Lance tip: a strike that lands with the spearhead (not the shaft) hits harder and pushes further
+	if a.team == "player" and a.figure != null and a.figure.weapon == "lance" and move.tier in ["weapon", "adaptive"] \
+			and not bool(h["radial"]) and t is Actor and a.figure.head_touches((t as Actor).get_hurt_rect()):
+		info.tip = true
+		info.dmg *= TIP_DMG
+		info.kb *= TIP_KB
+		info.stop += 2
+		info.shake += 0.1
 	if t.take_hit(info):
 		hit_connected = true
 		a.freeze = maxi(a.freeze, info.stop)
+		if info.tip:
+			Coop.say("TIP", Color(2.2, 1.9, 0.8), info.pos + Vector2(0, -34))
+			Fx.ring(a.get_parent(), info.pos, Color(2.2, 1.9, 0.8), 38.0, 0.18)
 		if info.heal_self > 0.0:
 			a.heal(info.heal_self)
 			Fx.number(a.get_parent(), a.global_position + Vector2(0, -105), "+%d" % int(info.heal_self), Color(2.0, 1.7, 1.9), 18)

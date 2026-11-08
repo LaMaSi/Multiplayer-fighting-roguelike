@@ -191,6 +191,19 @@ func _ready() -> void:
 	check(cd.juggle_hits == 0 and cd.launch_hang == 12, "the partner catching a launched enemy restores the juggle and makes it hang")
 	await clear_enemies()
 
+	print("[lance tip]")
+	f1.apply_class("lance")
+	place(f1, Vector2(1000, 599), 1)
+	var fg := f1.figure
+	fg.weapon_tip = Vector2(150, -70)  # figure space: the spearhead spans x 94..150 at y -70
+	fg.weapon_dir = Vector2.RIGHT
+	fg.weapon_head = 56.0
+	check(fg.head_touches(Rect2(fg.to_global(Vector2(110, -110)), Vector2(34, 86))), "an enemy at the spearhead counts as a tip hit")
+	check(not fg.head_touches(Rect2(fg.to_global(Vector2(-40, -110)), Vector2(34, 86))), "an enemy at the shaft / body does not")
+	fg.weapon_tip = Vector2(NAN, NAN)
+	check(not fg.head_touches(Rect2(fg.to_global(Vector2(110, -110)), Vector2(34, 86))), "a pose with no valid tip position gives no tip hit")
+	f1.apply_class("sword")
+
 	print("[hammer partner launch, barrier, ward]")
 	await clear_enemies()
 	Coop.friendly_fire = false
