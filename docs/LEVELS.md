@@ -23,3 +23,12 @@ ground heights and higher platforms, and characters pass through each other inst
 - A level can contain doors. A door leads to a single-screen room inside the same level (state is kept).
 - Colour + shape say what is inside: red hexagon = challenge room (hard enemies, extra coins or a move choice),
   gold arch = move shop. Both players enter together; leaving returns to the door.
+
+## 2.5D depth (drawing only, collision is unchanged)
+`scripts/levels/depth_layer.gd` adds depth to the flat side view with **one camera model** for everything: a vanishing point sits `RISE` (0 px: at the camera centre, so platforms above it are seen from below) above the camera centre, and a point at depth `z` behind the walking plane is drawn at `vp + (p - vp) * EYE / (EYE + z)`.
+- **Ground:** the surface reaches `FLOOR_BACK` behind the walking line and a fixed lip `FLOOR_FRONT` in front of it, with a perspective grid, a fogged far edge and pit walls that appear when you look at them from the pit side. Feet stand on the original line, which is inside the floor band.
+- **Platforms (static and moving):** real boxes (`draw_platform`): back edge converging toward the vanishing point, a top surface, a front face with the neon edge, and the side that faces the camera. Underside is drawn if a platform is above the horizon.
+- **Camera movement:** the vanishing point follows the camera in x and y, so floors and platforms shift correctly while the camera moves or zooms.
+- **Contact shadows:** every actor gets a soft ellipse on the surface below it (ground, platform or moving platform); it shrinks and fades with height.
+- Tuning constants are at the top of the script: `EYE`, `RISE`, `FLOOR_BACK`, `PLAT_BACK`, `PLAT_FRONT`.
+- Test: `Godot --path . res://tests/shot_depth.tscn -- <out_prefix> [seed]` writes `_start`, `_pit`, `_platform` screenshots.

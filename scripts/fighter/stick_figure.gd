@@ -346,7 +346,13 @@ func _draw_eyes(h: Vector2, hr: float, ang: float) -> void:
 		var poly := PackedVector2Array()
 		for q in pts:
 			poly.append(h + (c + q).rotated(ang))
-		draw_colored_polygon(poly, Color(0, 0, 0, 1))  # black eyes; visible because players have a tinted face
+		if open < 0.2:
+			draw_line(poly[0], poly[poly.size() - 1], Color(0, 0, 0, 1), 2.0, true)  # closed eye: a line
+		else:
+			# a triangle fan of primitives: draw_colored_polygon failed to triangulate the half-disc ("Invalid polygon data")
+			var mid := h + c.rotated(ang)
+			for i in range(poly.size() - 1):
+				draw_primitive(PackedVector2Array([mid, poly[i], poly[i + 1]]), PackedColorArray([Color.BLACK, Color.BLACK, Color.BLACK]), PackedVector2Array())  # black eyes; visible because players have a tinted face
 
 
 func _accessory(h: Vector2, c: Color, hr: float) -> void:
