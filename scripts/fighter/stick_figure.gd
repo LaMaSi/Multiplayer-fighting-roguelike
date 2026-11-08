@@ -314,9 +314,9 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 				draw_colored_polygon(quad, col.darkened(0.6))
 				draw_polyline(PackedVector2Array([quad[0], quad[1], quad[2], quad[3], quad[0]]), col, 3.0, true)
 				draw_line(head_c - sn * hw * 0.6, head_c + sn * hw * 0.6, Color(1.8, 1.8, 2.0), 1.5, true)
-					for gp: Vector2 in [hand_f, hand_b]:  # both fists wrap the shaft
-						draw_circle(gp, 4.6, col)
-						draw_circle(gp, 2.2, Color(1.8, 1.8, 2.0))
+				for gp: Vector2 in [hand_f, hand_b]:  # both fists wrap the shaft
+					draw_circle(gp, 4.6, col)
+					draw_circle(gp, 2.2, Color(1.8, 1.8, 2.0))
 		"magic":
 			if not halo:
 				var t := Time.get_ticks_msec() / 1000.0
