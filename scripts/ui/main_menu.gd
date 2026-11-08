@@ -61,7 +61,7 @@ func _items() -> Array:
 			return [["streets", "STREETS FULL TEST LEVEL", ""], ["shop", "SHOP PREVIEW", ""], ["back", "BACK", ""]]
 	if _page == "meta":
 		return [["back", "BACK", ""]]
-	return [["run", "NEW RUN", "STREETS"], ["training", "TRAINING ROOM", ""],
+	return [["run", "NEW RUN", "STREETS"], ["solo", "SOLO RUN  (1 PAD)", "PLAYTEST"], ["training", "TRAINING ROOM", ""],
 		["options", "OPTIONS", ""], ["testing", "TESTING", ""], ["quit", "QUIT", ""]]
 
 
@@ -94,7 +94,7 @@ func _physics_process(_delta: float) -> void:
 
 ## Row of the main list that opens a sub page (so B returns to it).
 func _main_index(page: String) -> int:
-	return {"options": 2, "testing": 3}.get(page, 0)
+	return {"options": 3, "testing": 4}.get(page, 0)
 
 
 func _side(id: String, dx: int) -> void:
@@ -126,17 +126,20 @@ func _activate(id: String) -> void:
 			_go_page("testing")
 		"quit":
 			get_tree().quit()
-		"run":
+		"run", "solo":
 			Sfx.play("pickup")
+			RunState.solo = id == "solo"  # solo: P1 only, no team combo bonus
 			RunSetup.mode = "run"  # weapon choice and the move reveal happen on the next screen
 			get_tree().change_scene_to_file("res://scenes/run_setup.tscn")
 		"training":
 			Sfx.play("pickup")
+			RunState.solo = false
 			RunSetup.mode = "training"
 			get_tree().change_scene_to_file("res://scenes/run_setup.tscn")
 		"streets":
 			Sfx.play("pickup")
 			RunState.end_run()
+			RunState.solo = false
 			get_tree().change_scene_to_file("res://scenes/streets.tscn")
 		"shop":
 			Sfx.play("pickup")

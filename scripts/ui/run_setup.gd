@@ -89,6 +89,10 @@ func _ready() -> void:
 		var idx := OPTIONS.find(RunState.classes[i])
 		cursor[i] = maxi(idx, 0)
 	_update_figures(true)
+	if RunState.solo:
+		# solo playtest: P2 is auto locked in with its remembered class (never "random")
+		locked[1] = true
+		choice[1] = String(RunState.classes[1]) if RunState.classes[1] in ["brawler", "sword", "hammer", "magic"] else "brawler"
 
 
 # ------------------------------------------------------------------ logic
@@ -166,7 +170,7 @@ func _physics_process(delta: float) -> void:
 		_flash_t[p] = maxf(0.0, _flash_t[p] - delta)
 	if phase == "reveal":
 		reveal_t += delta
-	for p in 2:
+	for p in (1 if RunState.solo else 2):
 		var inp: PlayerInput = Inp.players[p]
 		var d := inp.digital_dir()
 		var edge := d != _last[p] and d != Vector2i.ZERO
@@ -181,7 +185,7 @@ func _physics_process(delta: float) -> void:
 			elif inp.pressed(PlayerInput.Btn.B):
 				if locked[p]:
 					unlock(p)
-				elif not locked[0] and not locked[1]:
+				elif not locked[0] and (RunState.solo or not locked[1]):
 					_goto("res://scenes/main_menu.tscn")
 					return
 		else:
@@ -190,6 +194,8 @@ func _physics_process(delta: float) -> void:
 					reveal_t = REVEAL_END  # skip the roll
 				else:
 					ready_flags[p] = true
+					if RunState.solo:
+						ready_flags[1] = true
 					Sfx.play("ui")
 					if ready_flags[0] and ready_flags[1]:
 						_go_map()

@@ -25,6 +25,8 @@ signal finished
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if RunState.solo:
+		_phase[1] = "done"  # no P2 in solo playtests
 	if overlay:
 		_pool = _build_pool()
 		return
@@ -67,7 +69,7 @@ func _build_pool() -> Array:
 		if pool.size() < 2:
 			pool.append(c)
 	# a new weapon move for each class in play (only that class can take it)
-	for p in 2:
+	for p in (1 if RunState.solo else 2):
 		var cid: String = RunState.classes[p]
 		for c in RunState.make_cards(p, "level"):
 			if String(c["kind"]) == "move" and not _has_move(pool, String(c["id"])):
@@ -139,7 +141,7 @@ func _reroll(p: int) -> void:
 		_flash[p] = "NO REROLLS LEFT"
 		Sfx.play("ui", 0.7)
 		return
-	if _phase[0] != "choose" or _phase[1] != "choose":
+	if _phase[0] != "choose" or (_phase[1] != "choose" and not RunState.solo):
 		_flash[p] = "SOMEONE ALREADY PICKED"
 		Sfx.play("ui", 0.7)
 		return
