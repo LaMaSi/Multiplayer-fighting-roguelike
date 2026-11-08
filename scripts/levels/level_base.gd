@@ -576,7 +576,7 @@ func _spawn_bonus_pole() -> void:
 	if exit_x <= 0.0:
 		return
 	var pole := BonusPole.new()
-	var px := exit_x - 330.0
+	var px := exit_x + 50.0  # right above the middle of the finish strip: crossing the line is the one try
 	pole.ground_y = ground_top(px)
 	pole.position = Vector2(px, pole.ground_y)
 	add_child(pole)

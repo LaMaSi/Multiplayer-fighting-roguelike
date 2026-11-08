@@ -122,7 +122,7 @@ const STEP_MAX := 100.0  # a jump rises ~178 px, enemies must be able to follow 
 ## Ground pieces, pits, steps, platforms (tiers 150 / 270 px above the local ground, the high tier reached from
 ## the low one) and props. Encounter arenas (and the start / exit) stay flat at the base height.
 func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
-	var flats: Array = [Vector2(0.0, 400.0), Vector2(level_w - 600.0, level_w)]
+	var flats: Array = [Vector2(0.0, 400.0), Vector2(minf(level_w - 600.0, exit_x - FINISH_CLEAR), level_w)]  # the finish zone stays flat
 	for e in encounters:
 		flats.append(Vector2(float(e["x"]) - 800.0, float(e["x"]) + 800.0))
 	flats.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
@@ -156,9 +156,10 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		if room < 260.0:
 			x = zone.x
 			continue
-		if tunnels.size() < max_tunnels and room > 820.0 and top == base and x + room - 130.0 < exit_x - FINISH_CLEAR - 40.0 and rng.randf() < 0.55:
+		var tunnel_end := minf(x + room - 130.0, exit_x - FINISH_CLEAR - 40.0)  # the tunnel must end before the finish safe zone
+		if tunnels.size() < max_tunnels and room > 820.0 and top == base and tunnel_end - (x + 130.0) >= 460.0 and rng.randf() < 0.55:
 			# a tunnel on flat ground: walk through it, or jump up and cross over the roof
-			var tl := rng.randf_range(460.0, minf(640.0, room - 260.0))
+			var tl := rng.randf_range(460.0, minf(640.0, tunnel_end - (x + 130.0)))
 			var tx := x + 130.0
 			tunnels.append(Vector2(tx, tl))
 			x = tx + tl + 130.0
@@ -275,6 +276,15 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		var roof := Rect2(tn.x, ground_top(tn.x + tn.y * 0.5) - 150.0, tn.y, PLAT_H)
 		platforms.append(roof)
 		tunnel_roofs.append(roof)
+
+	# the finish zone is nearly empty: no movers, and at most one platform
+	moving_specs = moving_specs.filter(func(m: Dictionary) -> bool: return not near_finish((m["rect"] as Rect2).get_center().x))
+	var kept_near := [0]  # an array: lambdas capture plain variables by value
+	platforms = platforms.filter(func(pl3: Rect2) -> bool:
+		if not near_finish(pl3.get_center().x):
+			return true
+		kept_near[0] += 1
+		return kept_near[0] <= 1)
 
 	# doors: one or two per fight / elite level on solid ground between the arenas (challenge room or move shop)
 	doors_spec = []

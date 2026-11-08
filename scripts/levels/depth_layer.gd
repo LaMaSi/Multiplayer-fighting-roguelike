@@ -91,8 +91,8 @@ func _draw() -> void:
 			draw_platform(self, r, np, _vp, true)
 
 
-## The finish line: a checkered strip across the whole floor depth, a light curtain above it, two posts with checkered
-## pennants and a FINISH sign. Walking past it (once the fights are done) ends the level.
+## The finish line: only a ground effect, a checkered strip across the whole depth of the floor with a soft glow along
+## its edges. Walking past it (once the fights are done) ends the level.
 func _draw_finish() -> void:
 	if level.exit_x <= 0.0:
 		return
@@ -103,6 +103,13 @@ func _draw_finish() -> void:
 	var w := 100.0
 	var rows := 9
 	var cols := 4
+	var glow := Color(1.3, 1.8, 2.2)
+	# a soft glow on the floor around the strip
+	var g0 := _floor_pt(x0 - 26.0, y, 0.0)
+	var g1 := _floor_pt(x0 + w + 26.0, y, 0.0)
+	var g2 := _floor_pt(x0 + w + 26.0, y, 1.0)
+	var g3 := _floor_pt(x0 - 26.0, y, 1.0)
+	draw_polygon(PackedVector2Array([g0, g1, g2, g3]), PackedColorArray([Color(glow.r, glow.g, glow.b, 0.10), Color(glow.r, glow.g, glow.b, 0.10), Color(glow.r, glow.g, glow.b, 0.05), Color(glow.r, glow.g, glow.b, 0.05)]))
 	for r in rows:
 		for c in cols:
 			var t0 := float(r) / float(rows)
@@ -112,23 +119,8 @@ func _draw_finish() -> void:
 			var col := Color(1.7, 1.7, 2.0) if (r + c) % 2 == 0 else Color(0.03, 0.02, 0.06)
 			var pts := PackedVector2Array([_floor_pt(xa, y, t0), _floor_pt(xb, y, t0), _floor_pt(xb, y, t1), _floor_pt(xa, y, t1)])
 			draw_primitive(pts, PackedColorArray([col, col, col, col]), PackedVector2Array())
-	var front := _floor_pt(x0 + w * 0.5, y, 0.0)
-	var back := _floor_pt(x0 + w * 0.5, y, 1.0)
-	var glow := Color(1.3, 1.8, 2.2)
-	# the light curtain
-	var cur := PackedVector2Array([Vector2(front.x - 10.0, front.y), Vector2(front.x + 10.0, front.y), Vector2(front.x + 10.0, front.y - 320.0), Vector2(front.x - 10.0, front.y - 320.0)])
-	draw_polygon(cur, PackedColorArray([Color(glow.r, glow.g, glow.b, 0.30), Color(glow.r, glow.g, glow.b, 0.30), Color(glow.r, glow.g, glow.b, 0.0), Color(glow.r, glow.g, glow.b, 0.0)]))
-	# posts at the near and far edge of the floor, with checkered pennants
-	for pt: Vector2 in [front, back]:
-		var top := pt + Vector2(0.0, -300.0)
-		draw_line(pt, top, Color(0.9, 0.9, 1.1), 4.0, true)
-		for i in 4:
-			for j in 2:
-				var cc := Color(1.7, 1.7, 2.0) if (i + j) % 2 == 0 else Color(0.03, 0.02, 0.06)
-				draw_rect(Rect2(top.x + 4.0 + float(j) * 12.0, top.y + float(i) * 12.0, 12.0, 12.0), cc)
-	var mid := (front + back) * 0.5
-	draw_string(ThemeDB.fallback_font, Vector2(mid.x - 140.0, mid.y - 330.0), "FINISH", HORIZONTAL_ALIGNMENT_CENTER, 280.0, 44, Color(1.9, 1.9, 2.3))
-	draw_string(ThemeDB.fallback_font, Vector2(mid.x - 140.0, mid.y - 296.0), ">>>", HORIZONTAL_ALIGNMENT_CENTER, 280.0, 26, Color(glow.r, glow.g, glow.b, 0.85))
+	draw_line(_floor_pt(x0, y, 0.0), _floor_pt(x0, y, 1.0), Color(glow.r, glow.g, glow.b, 0.8), 2.0, true)
+	draw_line(_floor_pt(x0 + w, y, 0.0), _floor_pt(x0 + w, y, 1.0), Color(glow.r, glow.g, glow.b, 0.8), 2.0, true)
 
 
 ## A point on the floor at x, t = 0 at the front lip, 1 at the far edge.

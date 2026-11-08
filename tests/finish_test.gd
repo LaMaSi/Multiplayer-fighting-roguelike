@@ -52,6 +52,22 @@ func _ready() -> void:
 				bad += 1  # an arena reaching into the safe zone
 				print('  arena seed ', sd, ' enc ', enc['x'], ' exit ', lv.exit_x)
 	check(bad == 0, "nothing spawns within the finish safe zone across 10 seeds (%d violations)" % bad)
+	var worst := 0
+	var movers := 0
+	for sd2 in range(1, 11):
+		lv.queue_free()
+		await frames(2)
+		lv = _make(sd2)
+		await frames(4)
+		var n_pl := 0
+		for r: Rect2 in lv.platforms:
+			if lv.near_finish(r.get_center().x):
+				n_pl += 1
+		worst = maxi(worst, n_pl)
+		for m: Dictionary in lv.moving_specs:
+			if lv.near_finish((m["rect"] as Rect2).get_center().x):
+				movers += 1
+	check(worst <= 1 and movers == 0, "at most one platform and no movers in the finish zone (max %d, movers %d)" % [worst, movers])
 	# 2. door reward
 	var d := Door.new()
 	d.kind = "challenge"
@@ -68,7 +84,7 @@ func _ready() -> void:
 	check(pole != null, "the level has a bonus pole")
 	if pole != null:
 		check(BonusPole.LOW > 250.0, "the pole's lowest point (%.0f px up) is above a single jump (~180)" % BonusPole.LOW)
-		check(absf(pole.position.x - (lv.exit_x - 330.0)) < 1.0, "the pole stands before the finish line")
+		check(absf(pole.position.x - (lv.exit_x + 50.0)) < 1.0, "the pole is right above the finish strip (one try)")
 		var lo := 1.0e9
 		var hi := -1.0e9
 		for i in 400:
