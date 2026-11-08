@@ -367,11 +367,14 @@ static func _build_player() -> void:
 
 	# --- 11 Parry counter -----------------------------------------------
 	_mk({"id": "parry", "name": "Parry Counter", "short": "PARRY", "desc": "Perfect timing: negate and counter.",
-		"total": 42, "tags": ["defensive"],
-		"kf": [[0, {"lean": 0.0, "ua_f": 1.5, "la_f": 1.0, "ua_b": 1.4, "la_b": 1.1, "th_f": 0.3, "kn_f": 0.5}],
-			[4, {"lean": -0.1, "ua_f": 1.7, "la_f": 0.2, "ua_b": 1.6, "la_b": 0.3, "th_f": 0.4, "kn_f": 0.4}],
-			[16, {"lean": 0.1, "ua_f": 1.2, "la_f": 1.4}], [34, _idle()]],
-		"events": [{"at": 3, "type": "parry", "dur": 11}]})
+		"total": 36, "tags": ["defensive"],
+		# a crisp step-in snap: guard flicks up across the body for a tiny window, then a quick flick back down
+		"kf": [[0, {"lean": 0.1, "ua_f": 1.0, "la_f": 1.3, "ua_b": 0.8, "la_b": 1.2, "th_f": 0.6, "kn_f": 0.7, "th_b": -0.4, "kn_b": 0.4, "wp_rot": -0.2}],
+			[3, {"lean": 0.3, "ua_f": 2.0, "la_f": 0.1, "ua_b": 0.4, "la_b": 0.9, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.6, "kn_b": 0.6, "wp_rot": -0.7}],
+			[14, {"lean": 0.3, "ua_f": 2.0, "la_f": 0.1, "ua_b": 0.4, "la_b": 0.9, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.6, "kn_b": 0.6, "wp_rot": -0.7}],
+			[20, {"lean": 0.35, "ua_f": 1.7, "la_f": 0.1, "ua_b": 0.3, "la_b": 0.8, "th_f": 0.9, "kn_f": 0.5, "wp_rot": 0.2}],
+			[30, _idle()]],
+		"events": [{"at": 2, "type": "vel", "vx": 120.0}, {"at": 3, "type": "parry", "dur": 11}]})
 
 	# --- 12 Reflect shield ----------------------------------------------
 	_mk({"id": "reflect", "name": "Reflect Shield", "short": "REFL", "desc": "Bounces projectiles back.",

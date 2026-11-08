@@ -214,7 +214,7 @@ func _spawn_hazards() -> void:
 				add_child(st)
 			"bumper":
 				var bp := Bumper.new()
-				bp.position = pos
+				bp.position = pos + Vector2(0, -110.0)  # floats at juggle height: a pinball target for launched bodies, not a ground obstacle
 				add_child(bp)
 			"spring":
 				spawn_prop("spring", pos + Vector2(0, -1.0))
@@ -508,8 +508,11 @@ func ledge_points() -> Array:
 			if nxt.position.x - g.end.x > 1.0 or nxt.position.y > g.position.y + 10.0:
 				_ledges.append({"p": Vector2(g.end.x, g.position.y), "dir": -1})
 	for r: Rect2 in platforms:
-		_ledges.append({"p": r.position, "dir": 1})
-		_ledges.append({"p": Vector2(r.end.x, r.position.y), "dir": -1})
+		# platform ends are only grabbable over a pit; above solid ground you just drop down
+		if ground_at(r.position.x) == INF:
+			_ledges.append({"p": r.position, "dir": 1})
+		if ground_at(r.end.x) == INF:
+			_ledges.append({"p": Vector2(r.end.x, r.position.y), "dir": -1})
 	return _ledges
 
 

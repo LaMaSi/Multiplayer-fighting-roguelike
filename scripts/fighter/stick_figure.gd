@@ -202,6 +202,25 @@ func _render(halo: bool) -> void:
 	var arm_f_b := _v(ua_f + float(p["la_f"]), LARM * rc_f * arm_scale)
 	var arm_b_a := _v(ua_b, UARM * rc_b * arm_scale)
 	var arm_b_b := _v(ua_b + float(p["la_b"]), LARM * rc_b * arm_scale)
+	if weapon == "hammer":
+		# two-handed grip: the back hand is solved (2-bone IK) onto the shaft just above the front hand, in every pose
+		var hf := shoulder + arm_f_a + arm_f_b
+		var hd := Vector2.from_angle(float(p["wp_rot"]))
+		var l1 := UARM * rc_f * arm_scale
+		var l2 := LARM * rc_f * arm_scale
+		var reach := (l1 + l2) * 0.985
+		var grip := hf
+		for s in [18.0, 14.0, 10.0, 6.0, 3.0, 0.0]:
+			grip = hf + hd * s
+			if grip.distance_to(shoulder) <= reach:
+				break
+		var d := grip - shoulder
+		var dist := clampf(d.length(), 4.0, reach)
+		var ang_d := atan2(d.x, d.y)
+		var bend := acos(clampf(dist / (2.0 * l1), -1.0, 1.0)) if absf(l1 - l2) < 0.01 else acos(clampf((l1 * l1 + dist * dist - l2 * l2) / (2.0 * l1 * dist), -1.0, 1.0))
+		ua_b = ang_d - bend
+		arm_b_a = _v(ua_b, l1)
+		arm_b_b = (d.normalized() * dist) - arm_b_a
 	if not halo:
 		head_pos = head_c
 		hand_f_pos = shoulder + arm_f_a + arm_f_b
@@ -295,6 +314,9 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 				draw_colored_polygon(quad, col.darkened(0.6))
 				draw_polyline(PackedVector2Array([quad[0], quad[1], quad[2], quad[3], quad[0]]), col, 3.0, true)
 				draw_line(head_c - sn * hw * 0.6, head_c + sn * hw * 0.6, Color(1.8, 1.8, 2.0), 1.5, true)
+					for gp: Vector2 in [hand_f, hand_b]:  # both fists wrap the shaft
+						draw_circle(gp, 4.6, col)
+						draw_circle(gp, 2.2, Color(1.8, 1.8, 2.0))
 		"magic":
 			if not halo:
 				var t := Time.get_ticks_msec() / 1000.0

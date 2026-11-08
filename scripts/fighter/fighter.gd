@@ -498,12 +498,12 @@ func on_hit_landed(info: HitInfo, target: Node) -> void:
 func _start_dash() -> void:
 	var dir := signf(input.dir.x) if absf(input.dir.x) > 0.3 else float(facing)
 	state = "dash"
-	_dash_t = 0.17
+	_dash_t = 0.25  # ~175 px: clears a 100 px spike trap plus the body width
 	_dash_cd = 0.7
 	if not is_on_floor():
 		_air_dash_used = true
-	velocity = Vector2(dir * 640.0, 0.0)
-	invuln = maxf(invuln, 0.12)  # a few i-frames at the start only
+	velocity = Vector2(dir * 700.0, 0.0)
+	invuln = maxf(invuln, 0.2)  # i-frames cover most of the dash, so it carries you through floor spikes
 	_ghost = true
 	set_collision_mask_value(5, false)  # phase through barriers
 	Sfx.play("whoosh", 1.2)
@@ -822,6 +822,14 @@ func _loco_pose() -> Dictionary:
 						p[k] = lerpf(float(base[k]), float(p[k]), arm_mix)
 					else:
 						p[k] = base[k]
+	if class_id == "sword" and state == "walk" and not p.is_empty():
+		# running with a blade: sword arm trails behind with the blade streaming back, the off-hand falls to the back too
+		var rm := _run_mix()
+		if rm > 0.0:
+			var bob := cos(_walk_phase)
+			var tgt := {"ua_f": -0.55 - 0.15 * bob, "la_f": 0.25, "wp_rot": 1.0, "ua_b": -1.25 + 0.2 * bob, "la_b": 0.5, "lean": 0.42}
+			for k: String in tgt:
+				p[k] = lerpf(float(p.get(k, 0.0)), float(tgt[k]), rm)
 	if _crouch > 0.01 and not p.is_empty():
 		p = PoseLib.blend(p, PoseLib.crouch(), _crouch)
 	return p

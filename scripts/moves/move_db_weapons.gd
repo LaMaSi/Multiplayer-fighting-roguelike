@@ -145,44 +145,63 @@ static func _sword() -> void:
 		"hits": [_hit(7, 5, Rect2(10, -30, 138, 34), 8, 26, Vector2(90, -330), {"kind": "trip", "low": true, "height": "low", "stop": 4})]}, "weapon", "sword")
 	_mk({"id": "wind_slash", "name": "Wind Slash", "short": "WIND", "desc": "Crescent of wind. Short range projectile.",
 		"total": 46, "tags": ["projectile"],
-		"kf": [[0, _p(SWORD_READY, {"lean": -0.2, "ua_f": -2.0, "la_f": 0.3, "wp_rot": 0.55})],
-			[9, _p(SWORD_READY, {"lean": 0.4, "ua_f": 1.65, "la_f": 0.0, "wp_rot": -0.1, "th_f": 0.9, "kn_f": 0.4})],
-			[30, _idle()]],
-		"events": [MoveDB._proj(9, {"kind": "crescent", "pos": Vector2(60, -82), "vel": Vector2(650, 0), "dmg": 8.0, "stun": 18,
+		# vertical chop: blade raised high over the head, then brought straight down; the crescent flies off the tip
+		"kf": [[0, _p(SWORD_READY, {"lean": -0.35, "ua_f": 2.9, "la_f": 0.2, "ua_b": 2.6, "la_b": 0.3, "wp_rot": -0.9, "th_f": 0.5, "kn_f": 0.6, "th_b": -0.5, "kn_b": 0.5})],
+			[11, _p(SWORD_READY, {"lean": -0.45, "ua_f": 3.1, "la_f": 0.2, "ua_b": 2.8, "la_b": 0.3, "wp_rot": -1.0, "th_f": 0.5, "kn_f": 0.6, "th_b": -0.5, "kn_b": 0.5})],
+			[14, _p(SWORD_READY, {"lean": 0.6, "ua_f": 1.2, "la_f": 0.0, "ua_b": 1.0, "la_b": 0.2, "wp_rot": 0.5, "th_f": 0.9, "kn_f": 0.4, "th_b": -0.7, "kn_b": 0.4})],
+			[34, _idle()]],
+		"events": [MoveDB._proj(14, {"kind": "crescent", "pos": Vector2(60, -82), "vel": Vector2(650, 0), "dmg": 8.0, "stun": 18,
 			"kb": Vector2(200, 0), "life": 0.5, "radius": 24.0, "color": Color(1.9, 1.9, 2.2), "sfx": "whoosh"})]}, "weapon", "sword")
 	_mk({"id": "deflect_stance", "name": "Deflect Stance", "short": "DEFLCT", "desc": "Parries projectiles and sends them back. No counter.",
 		"total": 54, "tags": ["defensive"],
-		"kf": [[0, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.6, "la_f": 0.2, "wp_rot": -1.45, "th_f": 0.6, "kn_f": 0.8})],
-			[8, _p(SWORD_READY, {"lean": -0.1, "ua_f": 1.8, "la_f": 0.1, "wp_rot": -1.6})],
-			[40, _idle()]],
+		# planted wide, blade fanned left-right in front of the body like a windscreen wiper
+		"kf": [[0, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.6, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": -2.2, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
+			[6, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.9, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": -2.2, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
+			[12, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.4, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": 0.1, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
+			[18, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.9, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": -2.2, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
+			[24, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.4, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": 0.1, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
+			[30, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.9, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": -2.2, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
+			[36, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.4, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": 0.1, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
+			[46, _idle()]],
 		"events": [{"at": 3, "type": "reflect", "dur": 40}, {"at": 3, "type": "sfx", "name": "buff"}]}, "weapon", "sword")
 	_mk({"id": "riposte_step", "name": "Riposte Step", "short": "RIPOST", "desc": "Hop back. If struck during the step, counter.",
 		"total": 44, "tags": ["defensive"],
-		"kf": [[0, _p(SWORD_READY, {"lean": -0.35, "ua_f": 1.2, "la_f": 0.3, "wp_rot": -0.7, "th_f": 0.4, "kn_f": 0.9, "th_b": -0.9, "kn_b": 0.4})],
-			[10, _p(SWORD_READY, {"lean": -0.1, "ua_f": 1.5, "la_f": 0.1, "wp_rot": -0.9})],
+		# deep backward crouch: blade trails low behind you, empty hand held out as bait; afterimages mark the hop
+		"kf": [[0, _p(SWORD_READY, {"lean": -0.6, "ua_f": -0.7, "la_f": 0.3, "ua_b": 1.9, "la_b": 0.3, "wp_rot": 1.3, "th_f": 0.5, "kn_f": 1.3, "th_b": -1.0, "kn_b": 0.9})],
+			[14, _p(SWORD_READY, {"lean": -0.5, "ua_f": -0.7, "la_f": 0.3, "ua_b": 1.9, "la_b": 0.3, "wp_rot": 1.3, "th_f": 0.5, "kn_f": 1.3, "th_b": -1.0, "kn_b": 0.9})],
+			[22, _p(SWORD_READY, {"lean": 0.2, "ua_f": 1.5, "la_f": 0.1, "wp_rot": -0.2})],
 			[32, _idle()]],
-		"events": [{"at": 2, "type": "vel", "vx": -430.0, "vy": -180.0}, {"at": 2, "type": "parry", "dur": 22}, {"at": 2, "type": "sfx", "name": "whoosh"}]}, "weapon", "sword")
+		"events": [{"at": 2, "type": "vel", "vx": -430.0, "vy": -180.0}, {"at": 2, "type": "parry", "dur": 22}, {"at": 2, "type": "sfx", "name": "whoosh"},
+			{"at": 4, "type": "ghost"}, {"at": 8, "type": "ghost"}, {"at": 12, "type": "ghost"}]}, "weapon", "sword")
 
 
 # ------------------------------------------------------------------ Hammer B (8 new)
 
 static func _hammer() -> void:
 	_mk({"id": "overhead_smash", "name": "Overhead Smash", "short": "SMASH", "desc": "Huge downward smash. Spikes and ground-bounces.",
-		"total": 96,
-		"kf": [[0, HAMMER_UP], [32, _p(HAMMER_UP, {"lean": -0.55, "ua_f": 3.2, "wp_rot": -1.6})],
-			[36, _p(HAMMER_UP, {"lean": 0.9, "ua_f": 1.0, "la_f": 0.1, "ua_b": 0.8, "la_b": 0.3, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.8, "kn_b": 0.6, "wp_rot": 0.8})],
-			[66, _idle()]],
-		"events": [{"at": 36, "type": "ring", "radius": 150.0, "sfx": "boom", "shake": 0.6}, {"at": 35, "type": "sfx", "name": "whoosh"}],
-		"hits": [_hit(36, 4, Rect2(55, -150, 120, 160), 22, 34, Vector2(170, 500), {"kind": "spike", "height": "high", "stop": 9, "shake": 0.5, "prop_power": 2.5, "punch": 0.05}),
-			_hit(37, 3, Rect2(-70, -44, 280, 48), 8, 26, Vector2(150, -540), {"radial": true, "kind": "launch", "stop": 4})]}, "weapon", "hammer")
+		"total": 100,
+		# heave up (knee bend, arch back), hang at the top (the tell), a 3-frame chop, then a long recovery with the hammer stuck in the ground
+		"kf": [[0, _p(HAMMER_UP, {"lean": 0.15, "ua_f": 1.3, "la_f": 0.5, "ua_b": 1.1, "la_b": 0.5, "wp_rot": -0.2, "th_f": 0.7, "kn_f": 0.9, "th_b": -0.7, "kn_b": 0.9})],
+			[13, _p(HAMMER_UP, {"lean": -0.7, "ua_f": 3.3, "la_f": 0.1, "ua_b": 3.0, "la_b": 0.2, "wp_rot": -1.8, "th_f": 0.4, "kn_f": 0.4, "th_b": -0.4, "kn_b": 0.4})],
+			[23, _p(HAMMER_UP, {"lean": -0.78, "ua_f": 3.4, "la_f": 0.1, "ua_b": 3.1, "la_b": 0.2, "wp_rot": -1.9, "th_f": 0.4, "kn_f": 0.4, "th_b": -0.4, "kn_b": 0.4})],
+			[26, _p(HAMMER_UP, {"lean": 1.0, "ua_f": 1.0, "la_f": 0.1, "ua_b": 0.8, "la_b": 0.3, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.8, "kn_b": 0.6, "wp_rot": 0.9})],
+			[66, _p(HAMMER_UP, {"lean": 0.95, "ua_f": 1.0, "la_f": 0.1, "ua_b": 0.8, "la_b": 0.3, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.8, "kn_b": 0.6, "wp_rot": 0.9})],
+			[100, _idle()]],
+		"events": [{"at": 26, "type": "ring", "radius": 150.0, "sfx": "boom", "shake": 0.6}, {"at": 25, "type": "sfx", "name": "whoosh"}],
+		"hits": [_hit(26, 4, Rect2(55, -150, 120, 160), 22, 34, Vector2(170, 500), {"kind": "spike", "height": "high", "stop": 9, "shake": 0.5, "prop_power": 2.5, "punch": 0.05}),
+			_hit(27, 3, Rect2(-70, -44, 280, 48), 8, 26, Vector2(150, -540), {"radial": true, "kind": "launch", "stop": 4})]}, "weapon", "hammer")
 	_mk({"id": "side_sweep", "name": "Side Sweep", "short": "SWEEP", "desc": "Wide swing with very long reach and big knockback.",
-		"total": 72,
-		"kf": [[0, _p(HAMMER_UP, {"lean": -0.4, "ua_f": -1.3, "la_f": 0.3, "ua_b": -1.6, "la_b": 0.2, "wp_rot": 3})],
-			[22, _p(HAMMER_UP, {"lean": -0.5, "ua_f": -1.5, "la_f": 0.3, "wp_rot": 3})],
-			[26, _p(HAMMER_UP, {"lean": 0.8, "ua_f": 1.6, "la_f": 0.0, "ua_b": 1.3, "la_b": 0.2, "th_f": 1.0, "kn_f": 0.4, "th_b": -0.9, "kn_b": 0.4, "wp_rot": 0.1})],
-			[52, _idle()]],
-		"events": [{"at": 25, "type": "vel", "vx": 140.0}, {"at": 25, "type": "sfx", "name": "whoosh"}, {"at": 26, "type": "ghost"}],
-		"hits": [_hit(26, 6, Rect2(45, -104, 205, 84), 16, 32, Vector2(720, -80), {"kind": "push", "stop": 7, "shake": 0.35})]}, "weapon", "hammer")
+		"total": 60,
+		# quick low-to-high golf swing with a lunging step: short start-up, follow-through hangs (compare: Overhead Smash)
+		"kf": [[0, _p(HAMMER_UP, {"lean": -0.3, "ua_f": -1.1, "la_f": 0.3, "ua_b": -1.4, "la_b": 0.3, "wp_rot": 3.0, "th_f": 0.8, "kn_f": 0.5, "th_b": -0.9, "kn_b": 0.5})],
+			[11, _p(HAMMER_UP, {"lean": -0.6, "ua_f": -1.5, "la_f": 0.3, "ua_b": -1.6, "la_b": 0.2, "wp_rot": 3.1, "th_f": 0.8, "kn_f": 0.5, "th_b": -0.9, "kn_b": 0.5})],
+			[15, _p(HAMMER_UP, {"lean": 0.8, "ua_f": 1.6, "la_f": 0.0, "ua_b": 1.3, "la_b": 0.2, "th_f": 1.0, "kn_f": 0.4, "th_b": -0.9, "kn_b": 0.4, "wp_rot": 0.1})],
+			[24, _p(HAMMER_UP, {"lean": 1.0, "ua_f": 2.2, "la_f": 0.2, "ua_b": 2.0, "la_b": 0.3, "th_f": 1.0, "kn_f": 0.4, "th_b": -0.9, "kn_b": 0.4, "wp_rot": -0.9})],
+			[42, _p(HAMMER_UP, {"lean": 0.9, "ua_f": 2.2, "la_f": 0.2, "ua_b": 2.0, "la_b": 0.3, "th_f": 1.0, "kn_f": 0.4, "th_b": -0.9, "kn_b": 0.4, "wp_rot": -0.8})],
+			[60, _idle()]],
+		"drive": [{"from": 12, "to": 24, "vx": 320.0}],
+		"events": [{"at": 14, "type": "sfx", "name": "whoosh"}, {"at": 15, "type": "ghost"}],
+		"hits": [_hit(15, 6, Rect2(45, -104, 205, 84), 16, 32, Vector2(720, -80), {"kind": "push", "stop": 7, "shake": 0.35})]}, "weapon", "hammer")
 	_mk({"id": "sky_launcher", "name": "Sky Launcher", "short": "SKYLCH", "desc": "Upward swing with a huge launch.",
 		"total": 78, "tags": ["launcher"],
 		"kf": [[0, _p(HAMMER_UP, {"lean": 0.5, "ua_f": 0.2, "la_f": 0.3, "ua_b": 0.1, "la_b": 0.3, "th_f": 0.9, "kn_f": 1.3, "th_b": -0.8, "kn_b": 1.2, "wp_rot": 2.4})],
@@ -193,8 +212,10 @@ static func _hammer() -> void:
 		"hits": [_hit(30, 5, Rect2(25, -245, 135, 245), 14, 34, Vector2(60, -1000), {"kind": "launch", "stop": 8, "shake": 0.4})]}, "weapon", "hammer")
 	_mk({"id": "quake_line", "name": "Quake Line", "short": "QUAKE", "desc": "Slam that sends a shockwave along the ground. Trips.",
 		"total": 82, "tags": ["projectile", "low"], "ground_only": true,
-		"kf": [[0, HAMMER_UP], [26, _p(HAMMER_UP, {"lean": -0.5, "ua_f": 3.2, "wp_rot": -1.6})],
-			[30, _p(HAMMER_UP, {"lean": 0.9, "ua_f": 1.1, "la_f": 0.1, "ua_b": 0.9, "la_b": 0.3, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.8, "wp_rot": 0.8})],
+		# low and fast: crouch with the hammer dragged behind, then a short ground chop out of the crouch
+		"kf": [[0, _p(HAMMER_UP, {"lean": 0.4, "ua_f": 0.6, "la_f": 0.5, "ua_b": 0.5, "la_b": 0.6, "wp_rot": 2.4, "th_f": 0.9, "kn_f": 1.4, "th_b": -0.9, "kn_b": 1.3})],
+			[26, _p(HAMMER_UP, {"lean": -0.15, "ua_f": 0.9, "la_f": 0.4, "ua_b": 0.8, "la_b": 0.4, "wp_rot": 2.9, "th_f": 1.0, "kn_f": 1.5, "th_b": -1.0, "kn_b": 1.4})],
+			[30, _p(HAMMER_UP, {"lean": 1.1, "ua_f": 0.9, "la_f": 0.1, "ua_b": 0.7, "la_b": 0.2, "wp_rot": 1.1, "th_f": 1.1, "kn_f": 1.6, "th_b": -0.9, "kn_b": 1.2})],
 			[58, _idle()]],
 		"events": [{"at": 30, "type": "ring", "radius": 90.0, "sfx": "boom", "shake": 0.45},
 			MoveDB._proj(30, {"kind": "quake", "pos": Vector2(70, -16), "vel": Vector2(540, 0), "dmg": 9.0, "stun": 26,
@@ -210,23 +231,29 @@ static func _hammer() -> void:
 			_hit(46, 5, Rect2(-200, -100, 400, 78), 11, 30, Vector2(280, -400), {"radial": true, "kind": "launch", "stop": 6, "shake": 0.3})]}, "weapon", "hammer")
 	_mk({"id": "guard_breaker", "name": "Guard Breaker", "short": "GBREAK", "desc": "Hold to charge a slam that breaks shields and armour and stuns.",
 		"total": 100, "hold": true, "hold_frame": 30, "hold_max": 90,
-		"kf": [[0, HAMMER_UP], [28, _p(HAMMER_UP, {"lean": -0.6, "ua_f": 3.25, "wp_rot": -1.6})],
-			[40, _p(HAMMER_UP, {"lean": 0.9, "ua_f": 1.0, "la_f": 0.1, "ua_b": 0.8, "la_b": 0.3, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.8, "wp_rot": 0.8})],
+		# lift the hammer flat overhead like a barbell (armoured, shaking with the charge), then drive it down in a big stride
+		"kf": [[0, _p(HAMMER_UP, {"lean": 0.0, "ua_f": 2.0, "la_f": 0.6, "ua_b": 1.9, "la_b": 0.7, "wp_rot": -0.2, "th_f": 0.8, "kn_f": 0.8, "th_b": -0.8, "kn_b": 0.8})],
+			[28, _p(HAMMER_UP, {"lean": -0.15, "ua_f": 3.05, "la_f": 0.05, "ua_b": 3.05, "la_b": 0.05, "wp_rot": 0.0, "th_f": 0.9, "kn_f": 0.7, "th_b": -0.9, "kn_b": 0.7})],
+			[40, _p(HAMMER_UP, {"lean": 0.7, "ua_f": 1.3, "la_f": 0.1, "ua_b": 1.1, "la_b": 0.2, "th_f": 1.1, "kn_f": 0.5, "th_b": -0.9, "kn_b": 0.5, "wp_rot": 1.3})],
 			[72, _idle()]],
 		"events": [{"at": 0, "type": "armor", "dur": 80}, {"at": 40, "type": "ring", "radius": 130.0, "sfx": "boom", "shake": 0.5}],
 		"hits": [_hit(40, 4, Rect2(50, -135, 135, 135), 18, 70, Vector2(160, -300), {"kind": "launch", "guard_break": true, "stop": 9, "shake": 0.5})]}, "weapon", "hammer")
 	_mk({"id": "home_run", "name": "Home Run", "short": "HOMER", "desc": "Launches enemies or your partner far across the screen.",
-		"total": 74, "tags": ["team"],
-		"kf": [[0, _p(HAMMER_UP, {"lean": -0.4, "ua_f": -1.3, "la_f": 0.3, "ua_b": -1.6, "la_b": 0.2, "wp_rot": 3})],
-			[24, _p(HAMMER_UP, {"lean": -0.5, "ua_f": -1.5, "la_f": 0.3, "wp_rot": 3})],
-			[28, _p(HAMMER_UP, {"lean": 0.8, "ua_f": 1.5, "la_f": 0.0, "ua_b": 1.3, "la_b": 0.2, "th_f": 1.0, "kn_f": 0.4, "th_b": -0.9, "wp_rot": 0.1})],
-			[54, _idle()]],
-		"events": [{"at": 27, "type": "sfx", "name": "whoosh"}],
-		"hits": [_hit(28, 6, Rect2(40, -112, 125, 92), 14, 34, Vector2(1000, -260), {"kind": "launch", "stop": 8, "shake": 0.45, "partner_safe": true})]}, "weapon", "hammer")
+		"total": 92, "tags": ["team"],
+		# batter's stance: sink low with the hammer behind, wobble/tell, then one huge level swing that finishes over the shoulder
+		"kf": [[0, _p(HAMMER_UP, {"lean": -0.3, "ua_f": -0.9, "la_f": 0.6, "ua_b": -1.1, "la_b": 0.5, "wp_rot": 2.7, "th_f": 1.0, "kn_f": 1.2, "th_b": -1.0, "kn_b": 1.2})],
+			[20, _p(HAMMER_UP, {"lean": -0.65, "ua_f": -1.4, "la_f": 0.4, "ua_b": -1.5, "la_b": 0.3, "wp_rot": 3.0, "th_f": 1.1, "kn_f": 1.3, "th_b": -1.1, "kn_b": 1.3})],
+			[32, _p(HAMMER_UP, {"lean": -0.7, "ua_f": -1.5, "la_f": 0.4, "ua_b": -1.6, "la_b": 0.3, "wp_rot": 3.05, "th_f": 1.1, "kn_f": 1.3, "th_b": -1.1, "kn_b": 1.3})],
+			[36, _p(HAMMER_UP, {"lean": 0.9, "ua_f": 1.5, "la_f": 0.0, "ua_b": 1.4, "la_b": 0.1, "wp_rot": 0.0, "th_f": 0.9, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.3})],
+			[48, _p(HAMMER_UP, {"lean": 0.7, "ua_f": 2.6, "la_f": 0.5, "ua_b": 2.4, "la_b": 0.5, "wp_rot": -2.7, "th_f": 0.8, "kn_f": 0.3, "th_b": -0.8, "kn_b": 0.3})],
+			[92, _idle()]],
+		"events": [{"at": 35, "type": "sfx", "name": "whoosh"}, {"at": 36, "type": "ghost"}],
+		"hits": [_hit(36, 7, Rect2(40, -112, 125, 92), 14, 34, Vector2(1000, -260), {"kind": "launch", "stop": 8, "shake": 0.45, "partner_safe": true})]}, "weapon", "hammer")
 	_mk({"id": "bulwark_plant", "name": "Bulwark Plant", "short": "BULWRK", "desc": "Plant the hammer: a barrier that blocks projectiles and melee for 4 s.",
 		"total": 64, "tags": ["defensive"],
-		"kf": [[0, HAMMER_UP], [20, _p(HAMMER_UP, {"lean": -0.4, "ua_f": 3.2, "wp_rot": -1.6})],
-			[24, _p(HAMMER_UP, {"lean": 0.7, "ua_f": 1.1, "la_f": 0.1, "ua_b": 0.9, "la_b": 0.3, "th_f": 0.9, "kn_f": 0.6, "wp_rot": 0.8})],
+		# hammer hoisted point-down like a flag, one big stride, then planted upright in front of you; you stand tall behind it
+		"kf": [[0, _p(HAMMER_UP, {"lean": 0.0, "ua_f": 2.2, "la_f": 0.3, "ua_b": 2.0, "la_b": 0.4, "wp_rot": 1.2, "th_f": 0.8, "kn_f": 0.6, "th_b": -0.8, "kn_b": 0.6})],
+			[24, _p(HAMMER_UP, {"lean": 0.25, "ua_f": 1.5, "la_f": 0.1, "ua_b": 1.4, "la_b": 0.2, "wp_rot": 1.57, "th_f": 1.0, "kn_f": 0.5, "th_b": -0.7, "kn_b": 0.7})],
 			[46, _idle()]],
 		"events": [{"at": 24, "type": "pillar", "dx": 100.0, "life": 4.0}, {"at": 24, "type": "ring", "radius": 80.0, "sfx": "boom", "shake": 0.35}]}, "weapon", "hammer")
 
@@ -250,14 +277,18 @@ static func _magic() -> void:
 			_hit(56, 3, Rect2(30, -98, 360, 48), 5, 20, Vector2(200, -120), {"kind": "launch", "stop": 4, "shake": 0.15})]}, "weapon", "magic")
 	_mk({"id": "gravity_well", "name": "Gravity Well", "short": "WELL", "desc": "Leaves a zone that drags enemies toward its centre for 4 seconds. Gather a crowd for a team combo.",
 		"total": 70, "tags": ["utility"],
-		"kf": [[0, {"lean": 0.0, "ua_f": 1.9, "la_f": 0.3, "ua_b": -1.9, "la_b": -0.3, "th_f": 0.2, "kn_f": 0.3, "th_b": -0.2, "kn_b": 0.2}],
-			[10, {"lean": -0.1, "ua_f": 1.6, "la_f": 0.0, "ua_b": 1.4, "la_b": 0.1, "th_f": 0.4, "kn_f": 0.4, "th_b": -0.4, "kn_b": 0.3}],
+		# hunch and slam both palms into the floor: the zone opens under your hands
+		"kf": [[0, {"lean": 0.1, "ua_f": 2.4, "la_f": 0.3, "ua_b": 2.2, "la_b": 0.3, "th_f": 0.3, "kn_f": 0.4}],
+			[10, {"lean": 0.7, "ua_f": 0.5, "la_f": 0.1, "ua_b": 0.2, "la_b": 0.1, "th_f": 0.9, "kn_f": 1.4, "th_b": -0.8, "kn_b": 1.2}],
+			[40, {"lean": 0.7, "ua_f": 0.5, "la_f": 0.1, "ua_b": 0.2, "la_b": 0.1, "th_f": 0.9, "kn_f": 1.4, "th_b": -0.8, "kn_b": 1.2}],
 			[64, _idle()]],
 		"events": [{"at": 12, "type": "ring", "radius": 200.0, "sfx": "buff", "shake": 0.1}, {"at": 12, "type": "well", "radius": 200.0, "life": 4.0, "dist": 240.0}],
 		"hits": []}, "weapon", "magic")
 	_mk({"id": "mirror_ward", "name": "Mirror Ward", "short": "WARD", "desc": "A shield bubble on your partner (or you): absorbs one hit.",
 		"total": 36, "tags": ["buff"],
-		"kf": [[0, {"lean": 0.0, "ua_f": 2.2, "la_f": 0.3, "ua_b": -2.2, "la_b": -0.3}],
-			[8, {"lean": -0.05, "ua_f": 1.5, "la_f": 0.1, "ua_b": 1.5, "la_b": 0.1}],
-			[26, _idle()]],
-		"events": [{"at": 8, "type": "ward"}]}, "weapon", "magic")
+		# arms sweep up and over the head in a wide arc, then wrap inward: a cloak of light settles on the target
+		"kf": [[0, {"lean": 0.1, "ua_f": 0.3, "la_f": 0.4, "ua_b": 0.2, "la_b": 0.4, "th_f": 0.3, "kn_f": 0.4}],
+			[10, {"lean": -0.2, "ua_f": 3.0, "la_f": 0.2, "ua_b": 3.0, "la_b": 0.2, "th_f": 0.3, "kn_f": 0.2, "th_b": -0.2, "kn_b": 0.2}],
+			[18, {"lean": 0.1, "ua_f": 1.6, "la_f": 1.7, "ua_b": 1.5, "la_b": 1.7}],
+			[28, _idle()]],
+		"events": [{"at": 18, "type": "ward"}]}, "weapon", "magic")
