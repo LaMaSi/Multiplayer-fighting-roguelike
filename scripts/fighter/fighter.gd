@@ -184,6 +184,7 @@ func _control(delta: float) -> void:
 			_locomotion(delta)
 
 
+var _air_spring := false
 var _sprint := 0  ## 0 or the direction (-1/1) of a running sprint
 var _tap_dir := 0
 var _tap_t := 9.0
@@ -810,9 +811,9 @@ func _loco_pose_base() -> Dictionary:
 		"land":
 			p = PoseLib.land()
 		"jump":
-			p = PoseLib.rise()
+			p = PoseLib.rise(velocity.y, Time.get_ticks_msec() / 1000.0 + player_index)
 		"fall":
-			p = PoseLib.fall()
+			p = PoseLib.fall(velocity.y, Time.get_ticks_msec() / 1000.0 + player_index)
 		"ledge":
 			p = PoseLib.hang()
 		"walk":
@@ -832,6 +833,16 @@ func _loco_pose_base() -> Dictionary:
 
 func _update_visuals(delta: float) -> void:
 	super._update_visuals(delta)
+	# loose, springy limbs while airborne (underdamped pose spring = natural overshoot and settle)
+	var airborne := (state == "jump" or state == "fall") and not attack.active
+	if airborne:
+		figure.follow_speed = 24.0
+		figure.zeta = 0.5
+		_air_spring = true
+	elif _air_spring and not attack.active:
+		_air_spring = false
+		figure.follow_speed = 36.0
+		figure.zeta = 1.0
 	# eyes follow the stick (falling back to the facing direction); figure space is flipped by facing
 	var aim_w := input.dir if input.dir.length() > 0.2 else Vector2(facing, 0)
 	figure.aim = Vector2(aim_w.x * facing, aim_w.y)

@@ -75,19 +75,26 @@ static func walk_enemy(phase: float) -> Dictionary:
 	}
 
 
-static func rise() -> Dictionary:
+## In the air the arms go up and the limbs hang loose: they swing a little with the fall speed (animation only, not physics).
+static func rise(vy := -400.0, t := 0.0) -> Dictionary:
+	var s := clampf(-vy / 900.0, 0.0, 1.0)  # 1 = fast upward
+	var w := sin(t * 11.0)
 	return {
-		"lean": 0.05,
-		"th_f": 1.0, "kn_f": 1.3, "th_b": -0.35, "kn_b": 0.8,
-		"ua_f": 1.9, "la_f": 0.5, "ua_b": 1.0, "la_b": 0.6,
+		"lean": 0.0,
+		"th_f": 0.9 + 0.2 * s + w * 0.05, "kn_f": 1.2 + 0.2 * s, "th_b": -0.45 + w * 0.06, "kn_b": 0.9 + 0.2 * s,
+		"ua_f": 2.2 + 0.4 * s + w * 0.08, "la_f": 0.45, "ua_b": 1.8 + 0.4 * s - w * 0.08, "la_b": 0.5,
 	}
 
 
-static func fall() -> Dictionary:
+static func fall(vy := 300.0, t := 0.0) -> Dictionary:
+	var s := clampf(vy / 1000.0, 0.0, 1.0)  # 1 = plummeting
+	var w := sin(t * 15.0)
 	return {
-		"lean": 0.08,
-		"th_f": 0.45, "kn_f": 0.35, "th_b": -0.45, "kn_b": 0.30,
-		"ua_f": 1.5, "la_f": 0.3, "ua_b": 0.2, "la_b": 0.3,
+		"lean": -0.02 * s,
+		# legs trail and flap a little, harder the faster we fall
+		"th_f": 0.4 - 0.35 * s + w * 0.10 * s, "kn_f": 0.5 + 0.7 * s, "th_b": -0.45 - 0.2 * s - w * 0.10 * s, "kn_b": 0.6 + 0.8 * s,
+		# arms are thrown up by the rush of air, forearms flopping
+		"ua_f": 2.3 + 0.55 * s + w * 0.14 * s, "la_f": 0.35 + 0.5 * s - w * 0.2 * s, "ua_b": 1.95 + 0.55 * s - w * 0.14 * s, "la_b": 0.4 + 0.5 * s + w * 0.2 * s,
 	}
 
 

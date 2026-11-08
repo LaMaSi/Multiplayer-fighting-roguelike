@@ -157,9 +157,49 @@ static func class_of_weapon_move(move_id: String) -> String:
 	return ""
 
 
-## Run-start loadout: 3 random starred B moves (B, B_UP, B_SIDE), 1 random X, 1 random Y. No reroll.
-## One of the B moves is always usable at mid range (non-projectile / not a pure close-range tool).
+## Fast, close-range attacks: every starting loadout needs at least one on a neutral button, so you always have a basic hit.
+const CLOSE_ATTACKS := {
+	"X": ["off_hand_jab"],
+	"Y": ["uppercut", "sweep", "spin_kick", "flurry", "slide_strike"],
+	"brawler": ["jab", "dash_punch", "haymaker", "popup_kick"],
+	"sword": ["long_slash", "thrust_lunge", "low_cut", "rising_slash"],
+	"hammer": ["side_sweep", "overhead_smash", "sky_launcher"],
+	"magic": ["spread_shot", "teleport_strike", "fireball"],
+}
+## Moves that do not hurt anyone on their own (defence, support, utility).
+const NON_OFFENSIVE: Array[String] = [
+	"guard", "heal_pulse", "rage_taunt", "boost_spark", "pull_hook", "ally_toss", "pocket_mine",
+	"parry", "deflect_stance", "riposte_step", "mirror_ward", "bulwark_plant", "gravity_well", "counter_palm",
+]
+
+
+## A starting loadout is fine when at least one neutral button holds a close attack and at most 2 of the 5 moves are non-offensive.
+static func loadout_ok(class_id: String, lo: Dictionary) -> bool:
+	var close := false
+	for slot in ["X", "Y", "B"]:
+		var id: String = String(lo.get(slot, ""))
+		var key: String = slot if slot != "B" else class_id
+		if id in (CLOSE_ATTACKS.get(key, []) as Array):
+			close = true
+	var passive := 0
+	for id in lo.values():
+		if String(id) in NON_OFFENSIVE:
+			passive += 1
+	return close and passive <= 2
+
+
+## Rolls a loadout (re-rolling internally until it passes loadout_ok).
 static func roll_loadout(class_id: String, rng: RandomNumberGenerator) -> Dictionary:
+	var out := _roll_raw(class_id, rng)
+	for i in 60:
+		if loadout_ok(class_id, out):
+			break
+		out = _roll_raw(class_id, rng)
+	return out
+
+
+## Run-start loadout: 3 random B moves (B, B_UP, B_SIDE), 1 random X, 1 random Y. Each player may reroll twice in the setup.
+static func _roll_raw(class_id: String, rng: RandomNumberGenerator) -> Dictionary:
 	# Meta progression is off for now: EVERY move of the class is a candidate (no starred subset), plus any X and any Y.
 	var c := get_class_data(class_id)
 	var pool: Array = (c["b_pool"] as Array).duplicate()

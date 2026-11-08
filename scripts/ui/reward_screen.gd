@@ -126,9 +126,28 @@ func _physics_process(delta: float) -> void:
 		_last[p] = d
 		if inp.pressed(PlayerInput.Btn.JUMP):
 			_confirm(p)
+		elif inp.pressed(PlayerInput.Btn.Y):
+			_reroll(p)
 	if not _all_done and _phase[0] == "done" and _phase[1] == "done":
 		_all_done = true
 		get_tree().create_timer(0.7).timeout.connect(_leave)
+
+
+## Spend a reroll token to reshuffle the offered picks. Only before anyone has picked.
+func _reroll(p: int) -> void:
+	if RunState.reroll_tokens <= 0:
+		_flash[p] = "NO REROLLS LEFT"
+		Sfx.play("ui", 0.7)
+		return
+	if _phase[0] != "choose" or _phase[1] != "choose":
+		_flash[p] = "SOMEONE ALREADY PICKED"
+		Sfx.play("ui", 0.7)
+		return
+	RunState.reroll_tokens -= 1
+	_pool = _build_pool()
+	_cursor = [0, 0]
+	_flash = ["", ""]
+	Sfx.play("relay")
 
 
 func _confirm(p: int) -> void:
@@ -181,6 +200,7 @@ func _draw() -> void:
 		return
 	_txt(Vector2(0, 50), "REWARD", 40, Color(1, 1, 1), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	_txt(Vector2(0, 80), "Both players choose from the same picks, at the same time", 16, Color(1, 1, 1, 0.6), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
+	_txt(Vector2(0, 104), "REROLLS: %d    (Y: reroll the picks)" % RunState.reroll_tokens, 15, Color(1.8, 1.6, 2.2) if RunState.reroll_tokens > 0 else Color(1, 1, 1, 0.4), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	for p in 2:
 		var pc := _c(Fighter.PLAYER_COLORS[p])
 		var status := "choosing..."
@@ -206,7 +226,7 @@ func _draw() -> void:
 		else:
 			draw_rect(pr, Color(0.05, 0.03, 0.12, 0.45))
 			draw_rect(pr, Color(pc2.r, pc2.g, pc2.b, 0.3), false, 2.0)
-			_txt(pr.position + Vector2(0, 112), "LEFT / RIGHT: choose     A: take", 18, Color(1, 1, 1, 0.75), pr.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+			_txt(pr.position + Vector2(0, 112), "LEFT / RIGHT: choose     A: take     Y: reroll", 18, Color(1, 1, 1, 0.75), pr.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 			if String(_flash[p]) != "":
 				_txt(pr.position + Vector2(0, 150), String(_flash[p]), 20, Color(1.0, 0.5, 0.4), pr.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 

@@ -196,6 +196,15 @@ func _physics_process(delta: float) -> void:
 						return
 			elif inp.pressed(PlayerInput.Btn.B) and ready_flags[p]:
 				ready_flags[p] = false
+			elif inp.pressed(PlayerInput.Btn.Y) and reveal_t >= REVEAL_END and not ready_flags[p]:
+				if RunState.reroll_loadout(p):
+					Sfx.play("relay")
+					reveal_t = 0.0  # replay the roll
+					_settled = [[false, false, false, false, false], [false, false, false, false, false]]
+					ready_flags = [false, false]
+				else:
+					_say(p, "NO REROLLS LEFT")
+					Sfx.play("ui", 0.7)
 
 
 # ------------------------------------------------------------------ figures
@@ -381,7 +390,7 @@ func _paint_reveal(c: Control, p: int, r: Rect2) -> void:
 func _paint_prompt(c: Control) -> void:
 	if reveal_t < REVEAL_END:
 		return
-	var txt := "A  START THE RUN"
+	var txt := "A  START THE RUN        Y  REROLL MY MOVES  (P1: %d  P2: %d LEFT)" % [RunState.setup_rerolls[0], RunState.setup_rerolls[1]]
 	var col := Color(1, 1, 1, 0.55 + 0.45 * sin(_t * 5.0))
 	if ready_flags[0] or ready_flags[1]:
 		var waiting := 1 if ready_flags[0] and not ready_flags[1] else 0

@@ -28,6 +28,8 @@ var magic_unlocked := true  ## Magic is unlocked from the start (meta progressio
 var picker := 0  ## who picks first this round (alternates every level)
 var queue: Array = []  ## [{player, kind: "move" | "level"}]
 var bonus_picks: Array = []  ## extra picks earned in door rooms: appended to the next reward queue
+var reroll_tokens := 0  ## team resource: spend one on the reward screen to reroll the offered picks. Earned by clearing fights.
+var setup_rerolls: Array[int] = [2, 2]  ## rerolls of the starting moves, per player (run setup)
 var finished := false
 var won := false
 var best_combo := 0
@@ -52,6 +54,8 @@ func start_run(seed_value := -1) -> void:
 	queue.clear()
 	bonus_picks.clear()
 	best_combo = 0
+	reroll_tokens = 0
+	setup_rerolls = [2, 2]
 	if seed_value >= 0:
 		_rng.seed = seed_value
 	else:
@@ -64,6 +68,15 @@ func start_run(seed_value := -1) -> void:
 			max_hp[i] = float(ClassData.get_class_data(cid)["hp"])
 			hp[i] = max_hp[i]
 	_generate()
+
+
+## Re-rolls one player's starting moves (run setup only). Returns false when none are left.
+func reroll_loadout(p: int) -> bool:
+	if setup_rerolls[p] <= 0 or classes[p] == "":
+		return false
+	setup_rerolls[p] -= 1
+	loadouts[p] = ClassData.roll_loadout(classes[p], _rng)
+	return true
 
 
 func end_run() -> void:
@@ -206,7 +219,11 @@ func _queue_rewards(type: String) -> void:
 		"fight":
 			for p in order:
 				queue.append({"player": p, "kind": "move" if _rng.randf() < 0.55 else "level"})
+			if _rng.randf() < 0.6:
+				reroll_tokens += 1
+				Coop.say("+1 REROLL", Color(1.8, 1.6, 2.2))
 		"elite":
+			reroll_tokens += 1
 			for p in order:
 				queue.append({"player": p, "kind": "move"})
 			for p in order:
