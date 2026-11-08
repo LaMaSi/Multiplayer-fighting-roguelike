@@ -104,7 +104,7 @@ X has 5 slots (X, X+Up, X+Forward, X+Down, X+Back) and a pool of **10** moves, s
 | 3 | ✔ Guard Block | F | H/M | Hold to block high and mid hits (not low); chip damage | perfect-block window fills Style meter | **Back-to-back:** when blocking within about 1.5 m of the partner, damage taken by both is reduced |
 | 4 | ✔ Grab & Throw ★ | M | M | Grab a close enemy and throw it as a projectile that bowls over others | longer throw | A thrown enemy is a **relay hit** target for the partner |
 | 5 | ✔ Pull Hook | M | M | Hook pulls an enemy to you | pulls and stuns | Pull enemies **onto the partner's charged move**, or pull a downed partner out of a hazard |
-| 6 | ✔ Ally Toss | S | - | Throw the partner as a flying kick; the partner can steer slightly | extra distance and damage | Crosses gaps; the partner arrives with a relay hit |
+| 6 | ✔ Grapple Dash (replaced Ally Toss) | S | - | Hook the nearest enemy and reel yourself in with a hard hit | longer hook range | Closes any gap; the opposite of Pull Hook |
 | 7 | ✔ Heal Pulse | M | - | Area heal pulse (cooldown about 15 s). **Partner heals 100%, you heal about 25%** | wider radius | You cannot heal yourself well, so you need the partner (and vice versa) |
 | 8 | ✔ Taunt Roar (was Rage Taunt) | M | - | Draws enemy aggro to you for about 4 s with 30% damage reduction | wider and longer | The "tank" move. Lets the partner flank, channel or revive |
 | 9 | ✔ Boost Spark | F | - | Buffs the **partner's** next hit (more damage and knockback) if within range; gives nothing to you | buffs the next two hits | Pure partner-enabling; stacks with relay hits |

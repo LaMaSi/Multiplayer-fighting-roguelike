@@ -190,7 +190,7 @@ func _run() -> void:
 	await clear_enemies()
 	var dist := {"fireball": 220, "boomerang": 220, "spread_shot": 220, "ground_wave": 220, "pull_hook": 250,
 		"teleport_strike": 300, "pocket_mine": 40, "shockwave": 60, "dive_kick": 130, "cyclone": 40, "back_kick": -70}
-	var no_damage := ["guard", "parry", "reflect", "rage_taunt", "boost_spark", "ally_toss", "grab_throw", "pull_hook", "dive_kick"]
+	var no_damage := ["guard", "parry", "reflect", "rage_taunt", "boost_spark", "grab_throw", "pull_hook", "dive_kick"]
 	for id in MoveDB.POOL:
 		await clear_enemies()
 		Coop.reset_run()
@@ -364,16 +364,16 @@ func _run() -> void:
 	check(f1.state != "downed" and f1.hp > 0.0, "partner revives P1 (hp %.0f, state %s)" % [f1.hp, f1.state])
 	check(Coop.revives_left == 2, "revive budget decreased (%d)" % Coop.revives_left)
 
-	print("[ally toss]")
+	print("[grapple dash]")
 	await clear_enemies()
 	place(f1, Vector2(1000, 599), 1)
-	place(f2, Vector2(1050, 599), 1)
-	f1.loadout["Y"] = "ally_toss"
-	var td := await spawn_dummy(Vector2(1500, 599))
+	place(f2, Vector2(700, 599), 1)
+	f1.loadout["Y"] = "grapple_dash"
+	var td := await spawn_dummy(Vector2(1400, 599))
 	var tdh := td.hp
 	await tap(p1, Y)
-	await frames(100)
-	check(td.hp < tdh or f2.global_position.x > 1250.0, "partner flies when tossed (x=%.0f, dummy dmg %.1f)" % [f2.global_position.x, tdh - td.hp])
+	await frames(60)
+	check(f1.global_position.x > 1200.0 and td.hp < tdh, "grapple dash reels the user to the enemy (x=%.0f, dummy dmg %.1f)" % [f1.global_position.x, tdh - td.hp])
 	f1.loadout = MoveDB.STARTER.duplicate()
 
 	print("[game over when both down]")

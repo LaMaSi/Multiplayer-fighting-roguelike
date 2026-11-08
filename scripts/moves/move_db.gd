@@ -9,7 +9,7 @@ const POOL: Array[String] = [
 	"parry", "reflect", "pocket_mine", "spin_kick", "cyclone",
 	"stomp", "dive_kick", "rising_dragon", "anti_air", "haymaker",
 	"wall_elbow", "flurry", "shockwave", "pull_hook", "teleport_strike",
-	"ally_toss", "heal_pulse", "rage_taunt", "boost_spark", "pillar_smash",
+	"grapple_dash", "heal_pulse", "rage_taunt", "boost_spark", "pillar_smash",
 ]
 
 ## Every move a player can equip (legacy 30-move POOL plus the weapon-class moves).
@@ -277,7 +277,8 @@ static func _build_player() -> void:
 		"kf": [[0, {"lean": -0.2, "th_f": 0.5, "kn_f": 1.4, "th_b": -0.4, "kn_b": 0.8, "ua_f": 0.8, "la_f": 1.8}],
 			[6, {"lean": -0.45, "th_f": 1.5, "kn_f": 0.05, "th_b": -0.3, "kn_b": 0.3, "ua_f": 0.4, "la_f": 1.0, "ua_b": 1.0}],
 			[20, _idle()]],
-		"events": [{"at": 5, "type": "vel", "vx": 180.0}, {"at": 5, "type": "sfx", "name": "whoosh"}],
+		"drive": [{"from": 5, "to": 10, "vx": 340.0}],
+		"events": [{"at": 5, "type": "sfx", "name": "whoosh"}],
 		"hits": [_hit(6, 4, Rect2(10, -66, 72, 34), 10, 24, Vector2(330, -300), {"kind": "launch", "stop": 6, "shake": 0.3})]})
 
 	# --- 2 Uppercut (X+Up) ----------------------------------------------
@@ -286,6 +287,7 @@ static func _build_player() -> void:
 		"kf": [[0, {"lean": 0.3, "th_f": 0.8, "kn_f": 1.4, "th_b": -0.6, "kn_b": 1.4, "ua_f": 0.5, "la_f": 2.0}],
 			[6, {"lean": -0.15, "th_f": 0.2, "kn_f": 0.1, "th_b": -0.2, "kn_b": 0.1, "ua_f": 3.1, "la_f": 0.1, "ua_b": 2.0, "la_b": 0.3}],
 			[26, _idle()]],
+		"drive": [{"from": 6, "to": 14, "vx": 100.0}],
 		"events": [{"at": 6, "type": "vel", "vx": 80.0, "vy": -430.0}, {"at": 5, "type": "sfx", "name": "whoosh"}],
 		"hits": [_hit(6, 5, Rect2(0, -145, 62, 115), 9, 30, Vector2(70, -760), {"kind": "launch", "stop": 5, "shake": 0.3})]})
 
@@ -305,7 +307,8 @@ static func _build_player() -> void:
 		"kf": [[0, {"lean": 0.35, "th_f": 1.2, "kn_f": 2.2, "th_b": -0.8, "kn_b": 2.0, "ua_f": 1.0, "la_f": 1.0}],
 			[6, {"lean": -0.3, "th_f": 1.5, "kn_f": 0.0, "th_b": -0.5, "kn_b": 2.2, "ua_f": -0.5, "la_f": 0.3, "ua_b": 1.3, "la_b": 0.5}],
 			[22, _idle()]],
-		"events": [{"at": 5, "type": "vel", "vx": 120.0}, {"at": 5, "type": "sfx", "name": "whoosh"}],
+		"drive": [{"from": 4, "to": 14, "vx": 380.0}],
+		"events": [{"at": 5, "type": "sfx", "name": "whoosh"}, {"at": 5, "type": "ghost"}, {"at": 9, "type": "ghost"}],
 		"hits": [_hit(6, 5, Rect2(0, -24, 88, 26), 7, 26, Vector2(90, -330), {"kind": "trip", "low": true, "stop": 4})]})
 
 	# --- 5 Back kick (X+Back) -------------------------------------------
@@ -314,6 +317,7 @@ static func _build_player() -> void:
 		"kf": [[0, {"lean": 0.3, "th_f": 0.4, "kn_f": 0.8, "ua_f": 1.0, "la_f": 1.5}],
 			[6, {"lean": 0.7, "th_b": -1.55, "kn_b": 0.0, "th_f": 0.3, "kn_f": 0.6, "ua_f": 1.3, "la_f": 0.6, "ua_b": 0.9}],
 			[20, _idle()]],
+		"drive": [{"from": 5, "to": 12, "vx": 320.0}],
 		"events": [{"at": 5, "type": "sfx", "name": "whoosh"}],
 		"hits": [_hit(6, 4, Rect2(-98, -68, 82, 34), 11, 22, Vector2(-300, -140), {"kind": "push", "stop": 4})]})
 
@@ -389,10 +393,10 @@ static func _build_player() -> void:
 	# --- 14 Spin kick ---------------------------------------------------
 	var spin_hits: Array = []
 	for i in 3:
-		spin_hits.append(_hit(8 + i * 8, 3, Rect2(-88, -78, 176, 46), 5, 16, Vector2(220, 0), {"radial": true, "stop": 3}))
+		spin_hits.append(_hit(8 + i * 8, 3, Rect2(-88, -78, 176, 46), 5, 16, Vector2(220, 0), {"radial": true, "kind": "pull", "pull_speed": 420.0, "stop": 3}))
 	spin_hits[2] = _hit(24, 4, Rect2(-90, -80, 180, 50), 7, 28, Vector2(260, -380), {"radial": true, "kind": "launch", "stop": 6, "shake": 0.25})
-	_mk({"id": "spin_kick", "name": "Spin Kick", "short": "SPIN", "desc": "360 multi-hit.",
-		"total": 46, "steer": 0.35, "spin": {"at": 6, "dur": 28, "turns": 2.0}, "cancel_from": 30,
+	_mk({"id": "spin_kick", "name": "Spin Kick", "short": "SPIN", "desc": "Travelling spin that draws enemies in before the launch.",
+		"total": 46, "steer": 0.35, "drive": [{"from": 6, "to": 30, "vx": 200.0}], "spin": {"at": 6, "dur": 28, "turns": 2.0}, "cancel_from": 30,
 		"kf": [[0, {"lean": 0.2, "th_f": 0.5, "kn_f": 1.0, "ua_f": 1.0, "la_f": 1.0}],
 			[6, {"lean": -0.1, "th_f": 1.55, "kn_f": 0.0, "th_b": -0.2, "kn_b": 0.2, "ua_f": 1.57, "la_f": 0.0, "ua_b": -1.57, "la_b": 0.0}],
 			[34, _idle()]],
@@ -402,15 +406,15 @@ static func _build_player() -> void:
 	# --- 15 Cyclone -----------------------------------------------------
 	var cy_hits: Array = []
 	for i in 8:
-		cy_hits.append(_hit(8 + i * 9, 3, Rect2(-80, -80, 160, 56), 4, 14, Vector2(160, 0), {"radial": true, "stop": 2}))
+		cy_hits.append(_hit(8 + i * 9, 3, Rect2(-80, -80, 160, 56), 4, 14, Vector2(160, 0), {"radial": true, "kind": "pull", "pull_speed": 520.0, "stop": 2}))
 	cy_hits[7] = _hit(80, 4, Rect2(-84, -84, 168, 62), 6, 26, Vector2(260, -420), {"radial": true, "kind": "launch", "stop": 6})
-	_mk({"id": "cyclone", "name": "Cyclone", "short": "CYCLN", "desc": "Moving whirlwind. Steer with the stick.",
+	_mk({"id": "cyclone", "name": "Cyclone", "short": "CYCLN", "desc": "Moving whirlwind. Steer with the stick; sucks enemies in, then throws them.",
 		"total": 98, "steer": 0.75, "spin": {"at": 6, "dur": 80, "turns": 6.0},
 		"kf": [[0, {"lean": 0.3, "th_f": 0.6, "kn_f": 1.0}],
 			[6, {"lean": 0.0, "th_f": 0.9, "kn_f": 0.3, "th_b": -0.9, "kn_b": 0.3, "ua_f": 1.5, "la_f": 0.0, "ua_b": -1.5, "la_b": 0.0}],
 			[88, _idle()]],
 		"events": [{"at": 6, "type": "sfx", "name": "whoosh"}, {"at": 30, "type": "sfx", "name": "whoosh"}, {"at": 54, "type": "sfx", "name": "whoosh"}, {"at": 76, "type": "sfx", "name": "whoosh"}],
-		"drive": [{"from": 6, "to": 84, "vx": 150.0}],
+		"drive": [{"from": 6, "to": 84, "vx": 260.0}],
 		"hits": cy_hits})
 
 	# --- 16 Shockwave stomp ---------------------------------------------
@@ -450,7 +454,7 @@ static func _build_player() -> void:
 		"kf": [[0, {"lean": 0.2, "ua_f": -0.4, "la_f": 1.0, "th_f": 0.4, "kn_f": 0.6}],
 			[5, {"lean": -0.35, "ua_f": 2.5, "la_f": 0.1, "ua_b": 0.5, "th_f": 0.3, "kn_f": 0.3}],
 			[18, _idle()]],
-		"events": [{"at": 4, "type": "sfx", "name": "whoosh"}],
+		"events": [{"at": 4, "type": "sfx", "name": "whoosh"}, {"at": 5, "type": "vel", "vx": -60.0, "vy": -330.0}],
 		"hits": [_hit(5, 4, Rect2(-5, -215, 105, 150), 9, 26, Vector2(120, -640), {"kind": "launch", "stop": 4, "shake": 0.2})]})
 
 	# --- 20 Heavy haymaker ----------------------------------------------
@@ -461,7 +465,8 @@ static func _build_player() -> void:
 			[22, {"lean": -1.0, "ua_f": -1.8, "la_f": 0.6, "th_f": 0.7, "kn_f": 1.1, "root_x": -8.0}],
 			[24, {"lean": 1.05, "ua_f": 1.57, "la_f": 0.0, "ua_b": -0.4, "th_f": 1.0, "kn_f": 0.2, "th_b": -0.9, "kn_b": 0.3}],
 			[44, _idle()]],
-		"events": [{"at": 6, "type": "armor", "dur": 20}, {"at": 24, "type": "vel", "vx": 220.0}, {"at": 23, "type": "sfx", "name": "whoosh"}],
+		"events": [{"at": 6, "type": "armor", "dur": 20}, {"at": 23, "type": "sfx", "name": "whoosh"}],
+		"drive": [{"from": 24, "to": 31, "vx": 420.0}],
 		"hits": [_hit(24, 4, Rect2(5, -92, 86, 50), 24, 40, Vector2(780, -200), {"kind": "launch", "stop": 10, "shake": 0.6, "punch": 0.06})]})
 
 	# --- 21 Wall-bounce elbow -------------------------------------------
@@ -487,7 +492,7 @@ static func _build_player() -> void:
 	fl_kf.append([46, {"lean": 0.9, "ua_f": 1.57, "la_f": 0.0, "th_f": 1.0, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.4}])
 	fl_kf.append([62, _idle()])
 	_mk({"id": "flurry", "name": "Flurry", "short": "FLURRY", "desc": "Rapid jabs, low knockback.",
-		"total": 64, "steer": 0.2, "drive": [{"from": 4, "to": 44, "vx": 55.0}],
+		"total": 64, "steer": 0.2, "drive": [{"from": 4, "to": 44, "vx": 150.0}],
 		"kf": fl_kf, "hits": fl_hits})
 
 	# --- 23 Grab & throw ------------------------------------------------
@@ -528,14 +533,15 @@ static func _build_player() -> void:
 		"events": [{"at": 4, "type": "vis", "v": false}, {"at": 4, "type": "tp"}, {"at": 10, "type": "vis", "v": true}],
 		"hits": [_hit(12, 4, Rect2(0, -84, 66, 44), 12, 24, Vector2(260, -100), {"kind": "push", "stop": 5, "shake": 0.2})]})
 
-	# --- 26 Ally toss ---------------------------------------------------
-	_mk({"id": "ally_toss", "name": "Ally Toss", "short": "TOSS", "desc": "Throw your partner as a flying kick!",
-		"total": 64, "tags": ["team"], "ground_only": true,
-		"kf": [[0, {"lean": 0.3, "ua_f": 1.5, "la_f": 0.1, "ua_b": 1.5, "la_b": 0.1, "th_f": 0.5, "kn_f": 0.6}],
-			[10, {"lean": -0.1, "ua_f": 3.0, "la_f": 0.1, "ua_b": 2.9, "la_b": 0.1}],
-			[30, {"lean": 0.7, "ua_f": 1.0, "la_f": 0.2, "ua_b": 1.0, "la_b": 0.2, "th_f": 0.8, "kn_f": 0.5}],
-			[64, _idle()]],
-		"events": [{"at": 6, "type": "toss_grab"}, {"at": 12, "type": "whiff_skip", "to": 44}, {"at": 30, "type": "toss"}]})
+	# --- 26 Grapple Dash (replaced Ally Toss): the hook drags the user to the enemy -----------
+	_mk({"id": "grapple_dash", "name": "Grapple Dash", "short": "GRAPPLE", "desc": "Hook the nearest enemy and reel yourself in with a hard hit. Closes any gap.",
+		"total": 48, "tags": ["utility"],
+		"kf": [[0, {"lean": 0.0, "ua_f": 0.4, "la_f": 1.8, "th_f": 0.4, "kn_f": 0.5}],
+			[6, {"lean": 0.3, "ua_f": 1.55, "la_f": 0.0, "th_f": 0.6, "kn_f": 0.4, "th_b": -0.5}],
+			[10, {"lean": 0.9, "th_f": 1.0, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.3, "ua_f": 1.4, "la_f": 0.2, "ua_b": 1.0}],
+			[34, _idle()]],
+		"events": [{"at": 6, "type": "reel", "range": 460.0, "frames": 14}, {"at": 7, "type": "ghost"}, {"at": 10, "type": "ghost"}, {"at": 13, "type": "ghost"}],
+		"hits": [_hit(10, 14, Rect2(0, -92, 72, 70), 9, 24, Vector2(300, -60), {"stop": 5, "shake": 0.2, "color": CYAN})]})
 
 	# --- 27 Heal pulse --------------------------------------------------
 	_mk({"id": "heal_pulse", "name": "Heal Pulse", "short": "HEAL", "desc": "Damages nearby enemies, heals you and your partner.",
@@ -569,6 +575,7 @@ static func _build_player() -> void:
 			[20, {"lean": -0.5, "ua_f": 3.2, "la_f": 0.0, "ua_b": 3.1, "la_b": 0.0}],
 			[22, {"lean": 0.9, "ua_f": 1.0, "la_f": 0.1, "ua_b": 0.9, "la_b": 0.1, "th_f": 0.9, "kn_f": 0.6, "th_b": -0.7, "kn_b": 0.5}],
 			[44, _idle()]],
+		"drive": [{"from": 6, "to": 18, "vx": -150.0}, {"from": 22, "to": 30, "vx": 300.0}],
 		"events": [{"at": 22, "type": "ring", "radius": 110.0, "sfx": "boom", "shake": 0.5}],
 		"hits": [_hit(22, 4, Rect2(12, -125, 108, 128), 14, 34, Vector2(170, 430), {"kind": "spike", "stop": 8, "shake": 0.5, "prop_power": 2.2, "punch": 0.04})]})
 

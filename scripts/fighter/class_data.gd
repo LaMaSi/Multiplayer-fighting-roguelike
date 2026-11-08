@@ -11,7 +11,7 @@ const IDS: Array[String] = ["brawler", "sword", "hammer", "magic"]
 ## X: universal off-hand moves (10)
 const X_POOL: Array[String] = [
 	"off_hand_jab", "spark_shot", "guard", "shockwave", "pull_hook",
-	"ally_toss", "heal_pulse", "rage_taunt", "boost_spark", "pocket_mine",
+	"grapple_dash", "heal_pulse", "rage_taunt", "boost_spark", "pocket_mine",
 ]
 ## Y: adaptive moves (10)
 const Y_POOL: Array[String] = [
@@ -168,7 +168,7 @@ const CLOSE_ATTACKS := {
 }
 ## Moves that do not hurt anyone on their own (defence, support, utility).
 const NON_OFFENSIVE: Array[String] = [
-	"guard", "heal_pulse", "rage_taunt", "boost_spark", "pull_hook", "ally_toss", "pocket_mine",
+	"guard", "heal_pulse", "rage_taunt", "boost_spark", "pull_hook", "pocket_mine",
 	"parry", "deflect_stance", "riposte_step", "mirror_ward", "bulwark_plant", "gravity_well", "counter_palm",
 ]
 

@@ -23,6 +23,8 @@ var _tilt := 0.0
 var _spun := false
 var _kf_air := false
 var _spd_acc := 0.0
+var _reel_t := 0  ## Grapple Dash: frames left of being reeled towards the hooked enemy
+var _reel_target: Actor = null
 
 
 func _init(a: Actor = null) -> void:
@@ -48,6 +50,8 @@ func start(m: MoveData, btn := -1) -> void:
 	_tilt = 0.0
 	_spun = false
 	_spd_acc = 0.0
+	_reel_t = 0
+	_reel_target = null
 	actor.figure.follow_speed = 52.0
 	actor.figure.zeta = 0.36  # under-damped spring: strong overshoot + settle
 	actor.squash = Vector2(0.76, 1.26)  # anticipation: coil up before the strike
@@ -159,6 +163,20 @@ func _spin_drive() -> void:
 			_spun = false
 	elif _tilt != 0.0 or fig.rot != 0.0:
 		fig.rot = lerpf(fig.rot, _tilt, 0.4)
+	if _reel_t > 0:
+		_reel_t -= 1
+		var ra := actor
+		if _reel_target != null and is_instance_valid(_reel_target) and _reel_target.is_targetable():
+			var rdx := _reel_target.global_position.x - ra.global_position.x
+			if absf(rdx) > 52.0:
+				ra.velocity.x = signf(rdx) * 1150.0
+			else:
+				ra.velocity.x = 0.0
+				_reel_t = 0
+		else:
+			ra.velocity.x = float(ra.facing) * 800.0
+		if _reel_t == 0:
+			ra.velocity.x *= 0.3
 	for d in move.drive:
 		if frame >= int(d["from"]) and frame <= int(d["to"]):
 			actor.velocity.x = float(d["vx"]) * actor.facing + actor.move_input_x * actor.run_speed * move.steer
@@ -245,6 +263,19 @@ func _do_event(e: Dictionary) -> void:
 					grabbed.thrown(Vector2(float(e["vx"]) * a.facing, float(e["vy"])), a)
 					Sfx.play("throw")
 					grabbed = null
+		"reel":
+			# Grapple Dash: a hook flies out and the user is yanked to the nearest enemy (a short dash when nothing is hooked)
+			var rt := a.nearest_target(float(e.get("range", 460.0)))
+			var from_p := a.global_position + Vector2(a.facing * 25.0, -70.0)
+			if rt != null:
+				a.facing = 1 if rt.global_position.x >= a.global_position.x else -1
+				_reel_target = rt
+				Fx.beam(parent, from_p, rt.global_position + Vector2(0, -60), a.figure.color, 0.25)
+			else:
+				_reel_target = null
+				Fx.beam(parent, from_p, from_p + Vector2(a.facing * 220.0, 0), a.figure.color, 0.15)
+			_reel_t = int(e.get("frames", 14))
+			Sfx.play("throw", 1.2)
 		"toss_grab":
 			var p := Coop.partner_of(a)
 			if p != null and p.can_be_grabbed() and absf(p.global_position.x - a.global_position.x) < 130.0 and absf(p.global_position.y - a.global_position.y) < 60.0:
@@ -430,6 +461,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.punch = float(h.get("punch", 0.0))
 	info.prop_power = float(h.get("prop_power", 1.0))
 	info.wallbounce = bool(h.get("wallbounce", false))
+	info.pull_speed = float(h.get("pull_speed", 900.0))
 	info.heal_self = float(h.get("heal_self", 0.0))
 	info.ignite = float(h.get("ignite", 0.0))
 	info.shock = float(h.get("shock", 0.0))
