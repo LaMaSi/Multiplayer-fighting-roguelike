@@ -12,6 +12,7 @@ var kind := "challenge"
 var x0 := 0.0
 var cleared := false
 var exit_x := 0.0
+var pick_move := false  ## the challenge reward includes a move choice (decided by the door)
 var _wave := 0
 var _t := 0.0
 var _hp_before := 1.0
@@ -162,15 +163,19 @@ func _physics_process(_delta: float) -> void:
 				_try_buy(f)
 
 
+## Coins paid by a challenge room at the current depth (the door shows this amount).
+static func challenge_coins() -> int:
+	return 60 + 25 * (RunState.levels_cleared if RunState.active else 0)
+
+
 func _finish_challenge() -> void:
 	cleared = true
-	var depth := RunState.levels_cleared if RunState.active else 0
-	var coins := 60 + 25 * depth
+	var coins := challenge_coins()
 	_msg = "+%d COINS" % coins
 	var pick := false
 	if RunState.active:
 		RunState.coins += coins
-		pick = randf() < 0.4
+		pick = pick_move
 		if pick:
 			_msg += "  +  CHOOSE A MOVE"
 	level.hud.banner("CLEARED!", Color(2.0, 1.8, 0.6))

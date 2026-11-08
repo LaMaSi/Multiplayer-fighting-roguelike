@@ -72,6 +72,7 @@ func _ready() -> void:
 	_spawn_props()
 	_spawn_doors()
 	_spawn_hazards()
+	_spawn_bonus_pole()
 	hud = Hud.new()
 	hud.level = self
 	hud.objective = objective
@@ -209,13 +210,21 @@ func near_door(x: float) -> bool:
 	for d in doors_spec:
 		if absf(x - float(d["x"])) < DOOR_CLEAR:
 			return true
-	if exit_x > 0.0 and absf(x - (exit_x + 60.0)) < DOOR_CLEAR:
-		return true  # the exit door too
 	return false
+
+
+## Nothing at all is placed within half a screen of the finish line.
+const FINISH_CLEAR := 1280.0 / CameraRig.MAX_ZOOM * 0.5  ## about 753 px
+
+
+func near_finish(x: float) -> bool:
+	return exit_x > 0.0 and absf(x - exit_x) < FINISH_CLEAR
 
 
 func _spawn_props() -> void:
 	for s in props_spec:
+		if near_finish(float(s[0])):
+			continue  # the finish line has a safe zone of half a screen
 		if s.size() <= 2 and near_door(float(s[0])):
 			continue  # ground containers keep clear of doors (platform ones are somewhere else)
 		var y: float = s[2] if s.size() > 2 else ground_top(float(s[0]))
@@ -225,8 +234,8 @@ func _spawn_props() -> void:
 func _spawn_hazards() -> void:
 	for hz in hazards_spec:
 		var x := float(hz["x"])
-		if String(hz["kind"]) != "ceiling_spikes" and near_door(x):
-			continue  # nothing on the ground around a door
+		if String(hz["kind"]) != "ceiling_spikes" and (near_door(x) or near_finish(x)):
+			continue  # nothing on the ground around a door or in the finish zone
 		var pos := Vector2(x, ground_top(x))
 		match String(hz["kind"]):
 			"spikes":
@@ -508,7 +517,7 @@ func _paint_ground(c: CanvasItem) -> void:
 			c.draw_line(Vector2(g.end.x, g.position.y), Vector2(g.end.x, g.position.y + 700.0), Color(ng.r, ng.g, ng.b, 0.55), 3.0, true)
 	c.draw_line(Vector2(0, -1500), Vector2(0, ground_y), ng, 3.0)
 	c.draw_line(Vector2(level_w, -1500), Vector2(level_w, ground_y), ng, 3.0)
-	# (the exit door is drawn in depth by DepthLayer)
+	# (the finish line is drawn by DepthLayer)
 	var np: Color = theme["neon_plat"]
 	for r: Rect2 in platforms:
 		if Backdrop.variant == 0:
@@ -555,10 +564,22 @@ func _spawn_doors() -> void:
 	for d in doors_spec:
 		var door := Door.new()
 		door.kind = String(d["kind"])
+		door.pick_move = bool(d.get("pick", false))
 		door.level = self
 		var x := float(d["x"])
 		door.position = Vector2(x, ground_top(x))
 		add_child(door)
+
+
+## The optional bonus pole near the finish line (only levels that have one).
+func _spawn_bonus_pole() -> void:
+	if exit_x <= 0.0:
+		return
+	var pole := BonusPole.new()
+	var px := exit_x - 330.0
+	pole.ground_y = ground_top(px)
+	pole.position = Vector2(px, pole.ground_y)
+	add_child(pole)
 
 
 func enter_room(door: Door) -> void:
@@ -567,6 +588,7 @@ func enter_room(door: Door) -> void:
 	in_room = true
 	_room_door = door
 	_room = DoorRoom.new().setup(self, door.kind)
+	_room.pick_move = door.pick_move
 	_room.enter()
 
 

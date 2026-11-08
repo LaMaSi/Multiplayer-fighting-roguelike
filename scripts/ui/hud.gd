@@ -183,6 +183,10 @@ func _flame(c: Control, x: float, y: float, w: float, strength: float) -> void:
 		c.draw_colored_polygon(PackedVector2Array([Vector2(fx - 2.5, y), Vector2(fx, y - hgt * 0.6), Vector2(fx + 2.5, y)]), Color(2.4, 2.0, 1.0, 0.95))
 
 
+const LOW_HP := 0.3  ## below this share of health the HP bar turns red and the panel pulses
+const LOW_RED := Color(2.1, 0.22, 0.26)
+
+
 func _paint_player(c: Control, f: Fighter, i: int) -> void:
 	var flip := i == 1
 	var col := UiKit.player_color(i)
@@ -191,10 +195,19 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 	var meter := clampf(f.meter / 100.0, 0.0, 1.0)
 	var x0 := 24.0
 	var y0 := 18.0
+	# low health: the HP blocks turn red (the frame and ring keep the player's colour) and the whole panel pulses a little,
+	# faster the lower it gets, so the weak player is easy to spot at a glance
+	var low := hp > 0.0 and hp <= LOW_HP
+	var bar_col := LOW_RED if low else col
+	var base := Transform2D.IDENTITY
+	if low:
+		var k := 1.0 + 0.032 * (0.5 + 0.5 * sin(_clock * (5.0 + 5.0 * (1.0 - hp / LOW_HP))))
+		var anchor := Vector2(1280.0 - x0, y0) if flip else Vector2(x0, y0)
+		base = Transform2D(0.0, Vector2(k, k), 0.0, anchor * (1.0 - k))
 	var cx := 1280.0 - (x0 + 38.0) if flip else x0 + 38.0
 	var cy := y0 + 38.0
 	var mx := Transform2D(Vector2(-1, 0), Vector2(0, 1), Vector2(1280, 0)) if flip else Transform2D.IDENTITY
-	c.draw_set_transform_matrix(mx)
+	c.draw_set_transform_matrix(base * mx)
 	var hx := x0 + 62.0
 	var hy := y0 + 10.0
 	var frame := PackedVector2Array([
@@ -209,10 +222,10 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 		var t0 := float(b) / 10.0
 		var t1 := float(b + 1) / 10.0
 		if hp >= t1:
-			c.draw_rect(r, col)
+			c.draw_rect(r, bar_col)
 		elif hp > t0:
-			c.draw_rect(Rect2(r.position, Vector2(r.size.x * (hp - t0) * 10.0, r.size.y)), col)
-			c.draw_rect(r, Color(col.r, col.g, col.b, 0.3), false, 2.0)
+			c.draw_rect(Rect2(r.position, Vector2(r.size.x * (hp - t0) * 10.0, r.size.y)), bar_col)
+			c.draw_rect(r, Color(bar_col.r, bar_col.g, bar_col.b, 0.3), false, 2.0)
 		elif trail > t0:
 			c.draw_rect(r, Color(0.95, 0.4, 0.25, 0.85) if trail >= t1 else Color(0.95, 0.4, 0.25, 0.5))
 		else:
@@ -243,7 +256,7 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 	UiKit.poly_line(c, mframe, Color(2.0, 1.6, 0.8) if usable else Color(1.0, 0.95, 0.8), 2.5)
 	if full:
 		_flame(c, mxp + 16.0, myp + 1.0, mw - 40.0, 0.7 + 0.3 * pulse)
-	c.draw_set_transform_matrix(Transform2D.IDENTITY)
+	c.draw_set_transform_matrix(base)
 	# ring: HP number and player tag
 	var rc := Vector2(cx, cy)
 	c.draw_circle(rc, 36.0, Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.9))
@@ -264,6 +277,7 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 		bx += 50.0 * side
 	if f.shield_hits > 0:
 		UiKit.txt(c, UiKit.body(), Vector2(bx - (80.0 if flip else 0.0), by), "SHIELD %d" % f.shield_hits, 13, Color(0.6, 0.9, 1.0), HORIZONTAL_ALIGNMENT_LEFT, 80.0, 3)
+	c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	if show_moves:
 		_paint_moves(c, f, i, 140.0)
 

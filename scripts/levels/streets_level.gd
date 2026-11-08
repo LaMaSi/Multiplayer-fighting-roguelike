@@ -50,13 +50,13 @@ func _generated(node: Dictionary, depth: int) -> void:
 	var t: String = node["type"]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(node["seed"])
-	level_w = {"fight": 6200.0, "elite": 8000.0, "treasure": 5000.0, "boss": 2800.0}.get(t, 3800.0)
+	level_w = {"fight": 6800.0, "elite": 8000.0, "treasure": 5000.0, "boss": 2800.0}.get(t, 3800.0)
 	enemy_hp_mult = (1.0 + 0.12 * depth) * (1.35 if t == "elite" else 1.0)
 	enemy_dmg_mult = 1.0 + 0.06 * depth
 	if t != "boss":
 		exit_x = level_w - 260.0
-	objective = {"fight": "Break through to the exit", "elite": "Defeat the elite guard, then reach the exit",
-		"treasure": "Smash the loot, then reach the exit", "boss": "Take down the boss"}.get(t, "Reach the exit")
+	objective = {"fight": "Break through to the finish line", "elite": "Defeat the elite guard, then cross the finish line",
+		"treasure": "Smash the loot, then cross the finish line", "boss": "Take down the boss"}.get(t, "Reach the finish line")
 
 	# encounters first: their arenas stay flat, everything between them is terrain
 	match t:
@@ -156,7 +156,7 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		if room < 260.0:
 			x = zone.x
 			continue
-		if tunnels.size() < max_tunnels and room > 820.0 and top == base and rng.randf() < 0.55:
+		if tunnels.size() < max_tunnels and room > 820.0 and top == base and x + room - 130.0 < exit_x - FINISH_CLEAR - 40.0 and rng.randf() < 0.55:
 			# a tunnel on flat ground: walk through it, or jump up and cross over the roof
 			var tl := rng.randf_range(460.0, minf(640.0, room - 260.0))
 			var tx := x + 130.0
@@ -286,6 +286,8 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			for z: Vector2 in flats:
 				if cx >= z.x and cx <= z.y:
 					in_flat = true
+			if near_finish(cx):
+				continue
 			var in_tunnel := false
 			for tn2: Rect2 in tunnel_roofs:
 				if cx >= tn2.position.x - 160.0 and cx <= tn2.end.x + 160.0:
@@ -293,12 +295,22 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			if g2.size.x >= 300.0 and not in_flat and not in_tunnel:
 				cands.append(cx)
 		if cands.is_empty():
-			cands.append(level_w - 540.0)  # always at least one door: in the flat stretch before the exit
+			# always at least one door: on flat ground just outside the finish line's safe zone (and clear of tunnels)
+			var fx := exit_x - FINISH_CLEAR - 120.0
+			while fx > 900.0:
+				var blocked := false
+				for tn3: Rect2 in tunnel_roofs:
+					if fx >= tn3.position.x - 200.0 and fx <= tn3.end.x + 200.0:
+						blocked = true
+				if not blocked and absf(ground_at(fx) - ground_y) < 2.0 and is_safe_ground(Vector2(fx, ground_y)):
+					break
+				fx -= 60.0
+			cands.append(fx)
 		var kinds: Array = ["challenge", "shop"] if rng.randf() < 0.5 else ["shop", "challenge"]
 		var n_doors := 1 + (1 if rng.randf() < 0.4 else 0)
 		for i in mini(n_doors, cands.size()):
 			var ci := rng.randi() % cands.size()
-			doors_spec.append({"x": cands[ci], "kind": kinds[i % 2]})
+			doors_spec.append({"x": cands[ci], "kind": kinds[i % 2], "pick": rng.randf() < 0.4})
 			cands.remove_at(ci)
 
 	# floor hazards: spike traps, bumpers and throwable springs inside every arena (so enemies can be thrown into them),
@@ -315,7 +327,7 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 	for i in 2:
 		for tries in 10:
 			var hx := rng.randf_range(400.0, level_w - 600.0)
-			if is_safe_ground(Vector2(hx, ground_at(hx))) and not near_door(hx):
+			if is_safe_ground(Vector2(hx, ground_at(hx))) and not near_door(hx) and not near_finish(hx):
 				hazards_spec.append({"kind": "spikes" if rng.randf() < 0.7 else "spring", "x": hx})
 				break
 
@@ -329,7 +341,7 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		else:
 			for tries in 12:
 				var px2 := rng.randf_range(300.0, level_w - 400.0)
-				if is_safe_ground(Vector2(px2, ground_at(px2))) and not near_door(px2):
+				if is_safe_ground(Vector2(px2, ground_at(px2))) and not near_door(px2) and not near_finish(px2):
 					props_spec.append([px2, kind])
 					break
 	# the way over the tunnel is the rewarding one: containers on the roof, and one inside for the way through

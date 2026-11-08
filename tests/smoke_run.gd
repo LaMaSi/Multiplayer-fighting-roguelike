@@ -130,7 +130,7 @@ func _run() -> void:
 	var node: Dictionary = RunState.map[0][0]
 	RunState.choose(node)
 	await load_level("res://scenes/streets.tscn")
-	check(level.level_w == 6200.0 and level.exit_x > 0.0 and level.encounters.size() == 2, "fight level: width %d, exit at %d, %d encounters" % [level.level_w, level.exit_x, level.encounters.size()])
+	check(level.level_w == 6800.0 and level.exit_x > 0.0 and level.encounters.size() == 2, "fight level: width %d, exit at %d, %d encounters" % [level.level_w, level.exit_x, level.encounters.size()])
 	var lf1: Fighter = level.fighters[0]
 	var lf2: Fighter = level.fighters[1]
 	lf1.global_position = Vector2(float(level.encounters[0]["x"]) + 50.0, 599)

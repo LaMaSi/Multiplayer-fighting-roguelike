@@ -76,7 +76,7 @@ func _draw() -> void:
 	segs.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.y > b.position.y)
 	for g: Rect2 in segs:
 		_draw_floor(g, ng, vx0, vx1)
-	_draw_exit()
+	_draw_finish()
 	if Backdrop.variant == 0:
 		return  # the legacy flat look keeps its own platforms
 	# platforms: farthest (highest) first so lower ones overlap them
@@ -91,26 +91,49 @@ func _draw() -> void:
 			draw_platform(self, r, np, _vp, true)
 
 
-## The exit door, set back in the floor's depth like every other door (smaller, higher, with a soft shadow).
-func _draw_exit() -> void:
+## The finish line: a checkered strip across the whole floor depth, a light curtain above it, two posts with checkered
+## pennants and a FINISH sign. Walking past it (once the fights are done) ends the level.
+func _draw_finish() -> void:
 	if level.exit_x <= 0.0:
 		return
-	var cx: float = level.exit_x + 60.0
-	if cx < _view.position.x - 300.0 or cx > _view.end.x + 300.0:
+	var x0: float = level.exit_x
+	if x0 < _view.position.x - 300.0 or x0 > _view.end.x + 300.0:
 		return
-	var gy: float = level.ground_top(cx)
-	var depth := Door.DEPTH
-	var sc := EYE / (EYE + depth)
-	var base := P(Vector2(cx, gy), depth, _vp)
-	draw_colored_polygon(_ellipse(base, 70.0, 10.0), Color(0.0, 0.0, 0.03, 0.35))
-	draw_set_transform(base, 0.0, Vector2(sc, sc))
-	var door := Rect2(-60.0, -190.0, 120.0, 190.0)
-	var col := Pal.interact()
-	draw_rect(door, Color(0.1, 0.07, 0.02))
-	draw_rect(door, col, false, 4.0)
-	draw_rect(Rect2(door.position + Vector2(14, 14), door.size - Vector2(28, 14)), Color(1.0, 0.8, 0.2, 0.18))
-	draw_string(ThemeDB.fallback_font, door.position + Vector2(0, -12), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, door.size.x, 26, col)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var y: float = level.ground_top(x0)
+	var w := 100.0
+	var rows := 9
+	var cols := 4
+	for r in rows:
+		for c in cols:
+			var t0 := float(r) / float(rows)
+			var t1 := float(r + 1) / float(rows)
+			var xa := x0 + w * float(c) / float(cols)
+			var xb := x0 + w * float(c + 1) / float(cols)
+			var col := Color(1.7, 1.7, 2.0) if (r + c) % 2 == 0 else Color(0.03, 0.02, 0.06)
+			var pts := PackedVector2Array([_floor_pt(xa, y, t0), _floor_pt(xb, y, t0), _floor_pt(xb, y, t1), _floor_pt(xa, y, t1)])
+			draw_primitive(pts, PackedColorArray([col, col, col, col]), PackedVector2Array())
+	var front := _floor_pt(x0 + w * 0.5, y, 0.0)
+	var back := _floor_pt(x0 + w * 0.5, y, 1.0)
+	var glow := Color(1.3, 1.8, 2.2)
+	# the light curtain
+	var cur := PackedVector2Array([Vector2(front.x - 10.0, front.y), Vector2(front.x + 10.0, front.y), Vector2(front.x + 10.0, front.y - 320.0), Vector2(front.x - 10.0, front.y - 320.0)])
+	draw_polygon(cur, PackedColorArray([Color(glow.r, glow.g, glow.b, 0.30), Color(glow.r, glow.g, glow.b, 0.30), Color(glow.r, glow.g, glow.b, 0.0), Color(glow.r, glow.g, glow.b, 0.0)]))
+	# posts at the near and far edge of the floor, with checkered pennants
+	for pt: Vector2 in [front, back]:
+		var top := pt + Vector2(0.0, -300.0)
+		draw_line(pt, top, Color(0.9, 0.9, 1.1), 4.0, true)
+		for i in 4:
+			for j in 2:
+				var cc := Color(1.7, 1.7, 2.0) if (i + j) % 2 == 0 else Color(0.03, 0.02, 0.06)
+				draw_rect(Rect2(top.x + 4.0 + float(j) * 12.0, top.y + float(i) * 12.0, 12.0, 12.0), cc)
+	var mid := (front + back) * 0.5
+	draw_string(ThemeDB.fallback_font, Vector2(mid.x - 140.0, mid.y - 330.0), "FINISH", HORIZONTAL_ALIGNMENT_CENTER, 280.0, 44, Color(1.9, 1.9, 2.3))
+	draw_string(ThemeDB.fallback_font, Vector2(mid.x - 140.0, mid.y - 296.0), ">>>", HORIZONTAL_ALIGNMENT_CENTER, 280.0, 26, Color(glow.r, glow.g, glow.b, 0.85))
+
+
+## A point on the floor at x, t = 0 at the front lip, 1 at the far edge.
+func _floor_pt(x: float, y: float, t: float) -> Vector2:
+	return Vector2(x, y + FLOOR_FRONT).lerp(P(Vector2(x, y), FLOOR_BACK, _vp), t)
 
 
 ## A tunnel: a dark far wall and lights under a thick roof. The way through is at ground level; the roof is a platform.

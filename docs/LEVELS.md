@@ -57,3 +57,14 @@ ground heights and higher platforms, and characters pass through each other inst
 ## Doors: set back, with a clear zone
 - **Challenge, shop and exit doors stand in the depth of the floor** (`Door.DEPTH` = 100 px behind the walking line): drawn smaller and higher in the shared depth camera, with a soft shadow, and behind containers and fighters (z -8). The interaction is unchanged (stand at the door's x on the walking line, press RB), and the prompt stays on the walking line.
 - **Clear zone:** no container, spike trap, spring or bumper is placed on the ground within `LevelBase.DOOR_CLEAR` (190 px) of a door or the exit door (`near_door()`), both in generation and as a guard when spawning, so it also holds for hand-made levels. Containers on platforms above a door are still allowed.
+
+## Finish line (replaces the exit door)
+- `exit_x` is now a **finish line**: a checkered strip across the whole floor depth with a light curtain, two posts with checkered pennants and a FINISH sign (`DepthLayer._draw_finish`). Once the fights are done, walking both players across it ends the level (unchanged trigger).
+- **Safe zone:** nothing is placed within `LevelBase.FINISH_CLEAR` (half a screen, about 753 px) of the line: no containers (platform ones included), spikes, springs, bumpers, doors, tunnels or arenas. Fight levels are 600 px longer (6800) so the tunnel, arenas and doors still fit.
+- **Bonus pole** (`BonusPole`, before the line): a vertical pole sliding up and down high above the ground, bottom edge between 300 and 410 px up, so a single jump (~180) cannot reach it: a double jump gets the low end and a partner throw the high end. Players' attacks and projectiles can hit it; each hit pays 3 to 8 coins (more when it is high), up to 12 hits. Test: `tests/finish_test.tscn`.
+
+## Doors (revised)
+- Challenge doors are lit (bright outline, halo, floor glow). Standing close shows a panel with the reward: `+N COINS` and, on some doors, `+ MOVE`. Whether a challenge door pays a move choice is decided when the level is built (`doors_spec.pick`), so the panel is truthful.
+
+## HUD: low health
+- At 30% health or less the HP blocks turn red (the frame and the ring keep the player's colour), and that player's whole panel pulses gently, faster the lower it gets (`Hud.LOW_HP`).
