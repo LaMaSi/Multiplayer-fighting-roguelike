@@ -6,6 +6,8 @@ extends RefCounted
 
 const HAMMER_UP := {"lean": -0.3, "ua_f": 3.0, "la_f": 0.1, "ua_b": 2.5, "la_b": 0.4,
 	"th_f": 0.5, "kn_f": 0.8, "th_b": -0.5, "kn_b": 0.8, "wp_rot": -1.45}
+const LANCE_READY := {"lean": 0.15, "th_f": 0.65, "kn_f": 0.85, "th_b": -0.55, "kn_b": 0.5,
+	"ua_f": 1.2, "la_f": 0.2, "ua_b": 1.0, "la_b": 0.5, "wp_rot": -0.25}
 const SWORD_READY := {"lean": 0.2, "th_f": 0.7, "kn_f": 0.9, "th_b": -0.6, "kn_b": 0.5,
 	"ua_f": 1.45, "la_f": 0.1, "ua_b": 0.3, "la_b": 0.5, "wp_rot": -0.95}
 
@@ -37,6 +39,7 @@ static func build() -> void:
 	_sword()
 	_hammer()
 	_magic()
+	_lance()
 
 
 # ------------------------------------------------------------------ X: universal (off-hand)
@@ -265,3 +268,88 @@ static func _magic() -> void:
 			[8, {"lean": -0.05, "ua_f": 1.5, "la_f": 0.1, "ua_b": 1.5, "la_b": 0.1}],
 			[26, _idle()]],
 		"events": [{"at": 8, "type": "ward"}]}, "weapon", "magic")
+
+
+# ------------------------------------------------------------------ Lance B (8 new + the air Thrust)
+# Aerial relay (docs/AERIAL.md). Every Lance move works on the ground and in the air; the shared air rules (hang after an
+# air hit, air dash / jump refund, jump-cancel out of launchers) do most of the work. Poses: wp_rot is relative to the
+# front forearm (0 = the lance runs along the arm, negative = tip raised), like the sword.
+
+static func _lance() -> void:
+	_mk({"id": "pole_vault", "name": "Pole Vault", "short": "VAULT", "desc": "Jab-launch that carries you up with the enemy. Jump-cancel it to follow.",
+		"total": 44, "tags": ["launcher"], "cancel_from": 12,
+		"kf": [[0, _p(LANCE_READY, {"lean": 0.4, "th_f": 1.1, "kn_f": 1.5, "th_b": -0.6, "kn_b": 1.2, "ua_f": 0.6, "la_f": 0.7, "ua_b": 0.8, "la_b": 0.6, "wp_rot": 0.9})],
+			[8, _p(LANCE_READY, {"lean": -0.1, "th_f": 0.3, "kn_f": 0.2, "th_b": -0.3, "kn_b": 0.2, "ua_f": 2.6, "la_f": 0.1, "ua_b": 2.4, "la_b": 0.2, "wp_rot": 0.0})],
+			[28, _idle()]],
+		"events": [{"at": 6, "type": "vel", "vx": 70.0, "vy": -640.0}, {"at": 6, "type": "sfx", "name": "whoosh"},
+			{"at": 7, "type": "ghost"}, {"at": 11, "type": "ghost"}],
+		"hits": [_hit(8, 5, Rect2(10, -215, 90, 205), 8, 26, Vector2(50, -780), {"kind": "launch", "stop": 4, "shake": 0.2})]}, "weapon", "lance")
+
+	_mk({"id": "thrust", "name": "Thrust", "short": "THRUST", "desc": "Long narrow thrust that pierces. In the air it stabs down at 45 degrees.",
+		"total": 30, "cancel_from": 11, "air_variant": "thrust_air",
+		"kf": [[0, _p(LANCE_READY, {"lean": 0.05, "ua_f": 0.7, "la_f": 1.2, "wp_rot": 0.0, "th_f": 0.9, "kn_f": 1.1})],
+			[5, _p(LANCE_READY, {"lean": 0.7, "ua_f": 1.5, "la_f": 0.0, "wp_rot": 0.0, "th_f": 1.1, "kn_f": 0.25, "th_b": -0.9, "kn_b": 0.3})],
+			[20, _idle()]],
+		"events": [{"at": 4, "type": "vel", "vx": 420.0}, {"at": 4, "type": "sfx", "name": "whoosh"}, {"at": 5, "type": "ghost"}],
+		"hits": [_hit(5, 6, Rect2(24, -88, 176, 26), 7, 20, Vector2(240, 0), {"kind": "push", "stop": 3})]}, "weapon", "lance")
+	_mk({"id": "thrust_air", "name": "Air Thrust", "short": "ATHRST", "desc": "The airborne Thrust: stabs down and forward. Pops a juggled enemy.",
+		"total": 28, "tags": ["air"], "cancel_from": 10,
+		"kf": [[0, _p(LANCE_READY, {"lean": 0.2, "ua_f": 1.0, "la_f": 0.9, "wp_rot": 0.0})],
+			[5, _p(LANCE_READY, {"lean": 0.5, "ua_f": 0.6, "la_f": 0.3, "wp_rot": 0.0, "th_f": 1.0, "kn_f": 0.3})],
+			[18, _idle()]],
+		"events": [{"at": 4, "type": "vel", "vx": 200.0, "vy": 120.0}, {"at": 4, "type": "sfx", "name": "whoosh"}, {"at": 5, "type": "ghost"}],
+		"hits": [_hit(5, 6, Rect2(20, -40, 140, 150), 8, 20, Vector2(200, 100), {"stop": 3})]}, "weapon", "lance")
+
+	_mk({"id": "plunge", "name": "Plunge", "short": "PLUNGE", "desc": "Dive lance-first. Pins whatever it lands on for about a second.",
+		"total": 34, "air_only": true, "land_wait": 8, "tags": ["air"],
+		"kf": [[0, _p(LANCE_READY, {"lean": 0.3, "th_f": 1.0, "kn_f": 1.4, "th_b": 0.3, "kn_b": 1.4, "ua_f": 2.2, "la_f": 0.4, "ua_b": 2.0, "la_b": 0.4, "wp_rot": 0.0})],
+			[8, _p(LANCE_READY, {"lean": 0.2, "th_f": 0.35, "kn_f": 0.0, "th_b": -0.1, "kn_b": 0.2, "ua_f": 0.3, "la_f": 0.1, "ua_b": 0.3, "la_b": 0.1, "wp_rot": 0.0})],
+			[20, _idle()]],
+		"events": [{"at": 8, "type": "dive", "vx": 140.0, "vy": 1250.0}, {"at": 8, "type": "tilt", "rot": -0.35},
+			{"at": 9, "type": "tilt", "rot": 0.0}, {"at": 9, "type": "ring", "radius": 70.0, "sfx": "land", "shake": 0.3}],
+		"hits": [_hit(8, 1, Rect2(-6, -30, 60, 120), 11, 55, Vector2(0, 0), {"stop": 6, "shake": 0.3}),
+			_hit(9, 3, Rect2(-10, -30, 120, 60), 4, 55, Vector2(0, 0), {"stop": 4})]}, "weapon", "lance")
+
+	var wm_hits: Array = []
+	for i in 3:
+		wm_hits.append(_hit(8 + i * 8, 3, Rect2(-130, -110, 260, 100), 4, 16, Vector2(190, -120), {"radial": true, "stop": 2}))
+	wm_hits[2] = _hit(24, 4, Rect2(-135, -115, 270, 105), 6, 26, Vector2(220, -440), {"radial": true, "kind": "launch", "stop": 5, "shake": 0.2})
+	_mk({"id": "windmill", "name": "Windmill", "short": "WINDML", "desc": "Spinning lance, hits both sides and keeps you afloat. The last hit launches.",
+		"total": 56, "cancel_from": 30, "steer": 0.4, "spin": {"at": 6, "dur": 24, "turns": 2.0},
+		"kf": [[0, _p(LANCE_READY, {"lean": 0.1, "ua_f": 1.2, "la_f": 0.3, "wp_rot": 0.0})],
+			[6, _p(LANCE_READY, {"lean": -0.05, "th_f": 1.2, "kn_f": 0.5, "th_b": -0.3, "kn_b": 0.5, "ua_f": 1.57, "la_f": 0.0, "ua_b": -1.57, "la_b": 0.0, "wp_rot": 0.0})],
+			[36, _idle()]],
+		"events": [{"at": 6, "type": "sfx", "name": "whoosh"}, {"at": 14, "type": "sfx", "name": "whoosh"}, {"at": 22, "type": "sfx", "name": "whoosh"},
+			{"at": 7, "type": "vel", "vx": 0.0, "vy": -150.0}, {"at": 15, "type": "vel", "vx": 0.0, "vy": -130.0}],
+		"hits": wm_hits}, "weapon", "lance")
+
+	_mk({"id": "skyhook", "name": "Skyhook", "short": "SKYHK", "desc": "Hooks an enemy that is already flying and carries it higher. Restores a worn-out juggle.",
+		"total": 38, "tags": ["launcher"], "cancel_from": 12,
+		"kf": [[0, _p(LANCE_READY, {"lean": 0.3, "th_f": 0.9, "kn_f": 1.3, "ua_f": 0.3, "la_f": 0.4, "wp_rot": 0.5})],
+			[6, _p(LANCE_READY, {"lean": -0.3, "th_f": 0.3, "kn_f": 0.2, "th_b": -0.3, "kn_b": 0.2, "ua_f": 2.8, "la_f": 0.1, "ua_b": 2.2, "la_b": 0.3, "wp_rot": 0.0})],
+			[26, _idle()]],
+		"events": [{"at": 5, "type": "vel", "vx": 50.0, "vy": -420.0}, {"at": 5, "type": "sfx", "name": "whoosh"}, {"at": 7, "type": "ghost"}],
+		"hits": [_hit(6, 5, Rect2(0, -250, 100, 220), 6, 22, Vector2(40, -900), {"kind": "launch", "stop": 4, "shake": 0.2, "reset_juggle": true})]}, "weapon", "lance")
+
+	_mk({"id": "vault_over", "name": "Vault Over", "short": "VLTOVR", "desc": "Leap over an enemy or your partner and land behind. Invulnerable in the air.",
+		"total": 42, "tags": ["utility"], "spin": {"at": 4, "dur": 20, "turns": 1.0},
+		"kf": [[0, _p(LANCE_READY, {"lean": 0.3, "th_f": 1.0, "kn_f": 1.4, "th_b": -0.5, "kn_b": 1.2})],
+			[4, _p(LANCE_READY, {"lean": -0.2, "th_f": 1.6, "kn_f": 1.7, "th_b": 1.4, "kn_b": 1.7, "ua_f": 2.2, "la_f": 0.4, "ua_b": 2.0, "la_b": 0.4, "wp_rot": -0.2})],
+			[26, _p(LANCE_READY, {})], [34, _idle()]],
+		"events": [{"at": 2, "type": "invuln", "dur": 28}, {"at": 3, "type": "vel", "vx": 520.0, "vy": -760.0}, {"at": 3, "type": "sfx", "name": "whoosh"},
+			{"at": 4, "type": "ghost"}, {"at": 9, "type": "ghost"}, {"at": 14, "type": "ghost"}]}, "weapon", "lance")
+
+	_mk({"id": "javelin", "name": "Javelin", "short": "JAVLN", "desc": "Throws the lance. Whatever it hits is pinned in place for over a second.",
+		"total": 52, "tags": ["projectile"],
+		"kf": [[0, _p(LANCE_READY, {"lean": -0.3, "ua_f": -2.0, "la_f": 0.3, "ua_b": 1.2, "la_b": 0.4, "wp_rot": 0.0, "th_f": 0.8, "kn_f": 1.0})],
+			[10, _p(LANCE_READY, {"lean": 0.5, "ua_f": 1.6, "la_f": 0.0, "wp_rot": 0.0, "th_f": 1.0, "kn_f": 0.3, "th_b": -0.8, "kn_b": 0.3})],
+			[34, _idle()]],
+		"events": [MoveDB._proj(10, {"kind": "orb", "pos": Vector2(60, -82), "vel": Vector2(760, 0), "dmg": 9.0, "stun": 70,
+			"kb": Vector2(0, 0), "life": 0.7, "radius": 11.0, "color": Color(1.9, 1.9, 2.2), "sfx": "whoosh"})]}, "weapon", "lance")
+
+	_mk({"id": "air_parry", "name": "Air Parry", "short": "APARRY", "desc": "Timed parry. A parry in the air bounces you up and refunds your air options.",
+		"total": 46, "tags": ["defensive"],
+		"kf": [[0, _p(LANCE_READY, {"lean": 0.0, "ua_f": 1.6, "la_f": 0.2, "wp_rot": -1.4, "th_f": 0.6, "kn_f": 0.8})],
+			[8, _p(LANCE_READY, {"lean": -0.1, "ua_f": 1.8, "la_f": 0.1, "wp_rot": -1.55})],
+			[32, _idle()]],
+		"events": [{"at": 3, "type": "parry", "dur": 24}, {"at": 3, "type": "sfx", "name": "buff"}]}, "weapon", "lance")

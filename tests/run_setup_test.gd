@@ -54,7 +54,9 @@ func _ready() -> void:
 	check("Magic is under P2's cursor", RunSetup.OPTIONS[s.cursor[1]] == "magic")
 	await tap(1, Vector2.ZERO, A)
 	check("a locked class cannot be chosen", not s.locked[1])
-	# P2 -> Random
+	# P2 -> Lance (available from the start) -> Random
+	await tap(1, Vector2(0, 1))
+	check("Lance is under P2's cursor", RunSetup.OPTIONS[s.cursor[1]] == "lance")
 	await tap(1, Vector2(0, 1))
 	await tap(0, Vector2.ZERO, A)
 	check("A locks P1 in as Sword", s.locked[0] and s.choice[0] == "sword")
@@ -63,7 +65,7 @@ func _ready() -> void:
 	await tap(0, Vector2.ZERO, A)
 	await tap(1, Vector2.ZERO, A)
 	check("both locked starts the run (reveal phase)", s.phase == "reveal" and RunState.active)
-	check("Random resolved to a real, available class", s.was_random[1] and s.choice[1] in ["brawler", "sword", "hammer"])
+	check("Random resolved to a real, available class", s.was_random[1] and s.choice[1] in ["brawler", "sword", "hammer", "lance"])
 	check("RunState has the chosen classes", RunState.classes[0] == "sword" and RunState.classes[1] == s.choice[1])
 	# which moves were rolled
 	var slots_ok := true

@@ -37,6 +37,10 @@ var figure: StickFigure
 var attack: AttackRunner
 var last_hitter: Actor = null
 var juggle_hits := 0
+var hang_t := 0  ## frames of low gravity left after an air hit connected (air combo hang, docs/AERIAL.md)
+var launch_hang := 0  ## frames of low gravity left while launched: an enemy hit in the air or caught from the partner hangs
+var catch_pass := false  ## set inside take_hit: a different player hits an enemy their partner launched
+var _air_hit_counted := false  ## the air refund is granted once per move
 var buffs: Dictionary = {}
 var upgrades: Dictionary = {}  ## move_id -> {dmg, spd, kb} multipliers earned from rewards
 var squash := Vector2.ONE
@@ -223,6 +227,7 @@ func take_hit(info: HitInfo) -> bool:
 		Coop.stat_damage += dmg
 	if info.ignite > 0.0 and hp > 0.0:
 		burn_t = maxf(burn_t, info.ignite)
+	catch_pass = state == "launched" and atk is Fighter and last_hitter is Fighter and atk.team != team and last_hitter != atk
 	if atk != null and atk.team != team:
 		last_hitter = atk
 	var lethal := hp <= 0.0
@@ -269,7 +274,10 @@ func take_hit(info: HitInfo) -> bool:
 func _start_launch(info: HitInfo, lethal: bool) -> void:
 	var kb := info.kb
 	var was_launched := state == "launched"
-	var sc := maxf(0.5, 1.0 - 0.1 * juggle_hits) if was_launched else 1.0
+	# a different player catching the enemy, or a Skyhook, restores a full-strength launch: passing an enemy between the
+	# players keeps the juggle going instead of wearing it down
+	var renew := catch_pass or info.reset_juggle
+	var sc := maxf(0.5, 1.0 - 0.1 * juggle_hits) if was_launched and not renew else 1.0
 	if info.kind == "spike":
 		velocity = Vector2(kb.x * 0.3, absf(kb.y))
 	else:
@@ -280,7 +288,14 @@ func _start_launch(info: HitInfo, lethal: bool) -> void:
 			velocity.y = -380.0
 		if lethal and absf(velocity.x) < 160.0:
 			velocity.x = 160.0 * (-1 if facing > 0 else 1)
-	juggle_hits = juggle_hits + 1 if was_launched else 0
+	juggle_hits = 0 if renew else (juggle_hits + 1 if was_launched else 0)
+	launch_hang = 0
+	if info.kind != "spike" and info.attacker is Fighter:
+		if catch_pass:
+			launch_hang = 12
+		elif not (info.attacker as Fighter).is_on_floor():
+			launch_hang = 6
+	catch_pass = false
 	state = "launched"
 	_launch_t = 0.0
 	_bounced = false
@@ -354,6 +369,7 @@ func thrown(vel: Vector2, by: Actor) -> void:
 	thrown_by = by
 	last_hitter = by if by.team != team else last_hitter
 	juggle_hits = 0
+	launch_hang = 0
 	_launch_t = 0.0
 	_bounced = true
 	_bumped.clear()
@@ -414,6 +430,7 @@ func _fell_out() -> void:
 
 func start_attack(m: MoveData, btn := -1) -> void:
 	state = "attack"
+	_air_hit_counted = false
 	attack.start(m, btn)
 
 
@@ -425,7 +442,12 @@ func _st_attack(delta: float) -> void:
 		velocity.y = 50.0
 		velocity.x = move_toward(velocity.x, 0.0, 2400.0 * delta)
 	else:
-		velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL)
+		var g := GRAVITY
+		if hang_t > 0:  # after an air hit the attacker hangs for a moment so the combo can continue
+			hang_t -= 1
+			g *= 0.3
+			velocity.y = minf(velocity.y, 220.0)
+		velocity.y = minf(velocity.y + g * delta, MAX_FALL)
 		velocity.x = move_toward(velocity.x, 0.0, 300.0 * delta)
 	attack.tick()
 	move_and_slide()
@@ -449,7 +471,11 @@ func _st_hurt(delta: float) -> void:
 
 func _st_launched(delta: float) -> void:
 	_launch_t += delta
-	velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL)
+	var g := GRAVITY
+	if launch_hang > 0:
+		launch_hang -= 1
+		g *= 0.25
+	velocity.y = minf(velocity.y + g * delta, MAX_FALL)
 	velocity.x = move_toward(velocity.x, 0.0, 160.0 * delta)
 	var vx_before := velocity.x
 	var vy_before := velocity.y
@@ -519,6 +545,7 @@ func _land_from_launch(vy: float) -> void:
 	Sfx.play("land", 0.8)
 	Juice.shake(clampf(vy / 3000.0, 0.05, 0.3))
 	juggle_hits = 0
+	launch_hang = 0
 	thrown_by = null
 	_bumped.clear()
 	figure.rot = fmod(figure.rot + PI, TAU) - PI

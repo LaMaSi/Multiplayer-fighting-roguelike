@@ -26,3 +26,5 @@ var shake := 0.12
 var punch := 0.0
 var prop_power := 1.0
 var pull_speed := 900.0
+var reset_juggle := false  ## a launched victim gets a full-strength launch again (Lance Skyhook)
+var sky_relay := false  ## a relay hit made while the attacker is airborne

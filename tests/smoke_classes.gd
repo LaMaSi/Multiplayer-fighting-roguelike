@@ -118,10 +118,11 @@ func _ready() -> void:
 	print("[every new move runs]")
 	var dist := {"off_hand_jab": 55, "ground_wave": 220, "fireball": 220, "boomerang": 220, "spread_shot": 220, "pull_hook": 250, "teleport_strike": 300, "wind_slash": 220, "quake_line": 240, "arcane_beam": 120, "gravity_well": 230, "spark_shot": 200,
 		"counter_palm": 70, "riposte_step": 70, "deflect_stance": 70, "pocket_mine": 40, "mirror_ward": 70,
-		"bulwark_plant": 70, "slide_strike": 70, "home_run": 80, "whirlwind_haul": 80}
-	var no_damage := ["parry", "counter_palm", "riposte_step", "deflect_stance", "mirror_ward", "bulwark_plant", "gravity_well", "guard_breaker"]
+		"bulwark_plant": 70, "slide_strike": 70, "home_run": 80, "whirlwind_haul": 80,
+		"javelin": 250, "plunge": 40, "pole_vault": 60}
+	var no_damage := ["parry", "counter_palm", "riposte_step", "deflect_stance", "mirror_ward", "bulwark_plant", "gravity_well", "guard_breaker", "vault_over", "air_parry"]
 	var ids: Array = ["off_hand_jab", "spark_shot", "slide_strike"]
-	for cid in ["brawler", "sword", "hammer", "magic"]:
+	for cid in ["brawler", "sword", "hammer", "magic", "lance"]:
 		for id in (ClassData.get_class_data(cid)["b_pool"] as Array):
 			if not (id in ids):
 				ids.append(id)
@@ -156,6 +157,39 @@ func _ready() -> void:
 			var moved := dm.hp < h0 or absf(dm.global_position.x - x0) > 12.0 or dm.state != "idle"
 			check(moved, "%s: affects the dummy (dmg %.1f)" % [id, h0 - dm.hp])
 	f1.apply_class("sword")
+
+	print("[lance and air rules]")
+	var lance := ClassData.get_class_data("lance")
+	check(float(lance["jump"]) > 1.0 and float(lance["speed"]) > ClassData.get_class_data("sword")["speed"] * 1.0, "lance jumps higher and runs faster than the sword")
+	check(int(ClassData.air("lance")["refunds"]) > int(ClassData.air("sword")["refunds"]), "lance gets more air refunds than the base classes")
+	check(int(ClassData.air("lance")["hang"]) > int(ClassData.air("hammer")["hang"]), "lance hangs longer after an air hit")
+	check(MoveDB.get_move("thrust").air_variant == "thrust_air" and MoveDB.has_move("thrust_air"), "thrust has an air variant")
+	check(MoveDB.get_move("skyhook").hits[0].get("reset_juggle", false), "skyhook restores the juggle")
+	f1.apply_class("lance")
+	check(f1.class_jump > 1.0 and f1.innate_double_jump and f1.figure.weapon == "lance", "lance: jump stat wired, innate double jump, weapon attached")
+	f1.apply_class("hammer")
+	check(f1.class_jump < 1.0 and not f1.innate_double_jump, "the class jump stat applies to other classes too (hammer jumps lower)")
+	f1.apply_class("sword")
+	await clear_enemies()
+	var cd := await spawn_dummy(Vector2(1000, 599))
+	var h1 := HitInfo.new()
+	h1.attacker = f2
+	h1.team = "player"
+	h1.kind = "launch"
+	h1.kb = Vector2(100, -700)
+	h1.dmg = 5.0
+	cd.take_hit(h1)
+	check(cd.state == "launched", "a launch puts the dummy in the air")
+	cd.juggle_hits = 5
+	var h2 := HitInfo.new()
+	h2.attacker = f1
+	h2.team = "player"
+	h2.kind = "launch"
+	h2.kb = Vector2(100, -700)
+	h2.dmg = 5.0
+	cd.take_hit(h2)
+	check(cd.juggle_hits == 0 and cd.launch_hang == 12, "the partner catching a launched enemy restores the juggle and makes it hang")
+	await clear_enemies()
 
 	print("[hammer partner launch, barrier, ward]")
 	await clear_enemies()

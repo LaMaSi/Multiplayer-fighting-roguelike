@@ -25,6 +25,7 @@ var air_only := false
 var chain_next := ""
 var chain_from := 0
 var cancel_from := -1  ## frame from which a connected move may be cancelled into another (-1 = after last hit)
+var air_variant := ""  ## id of the move performed instead when this slot is pressed in the air (Lance Thrust -> Air Thrust)
 var hold := false
 var hold_frame := 0
 var hold_max := 600

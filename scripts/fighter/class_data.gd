@@ -6,7 +6,7 @@ extends RefCounted
 ## Move tiers:  WEAPON (B slots, 8 per class, class-locked)  /  ADAPTIVE (Y, same move for everyone but
 ## reshaped by the modifier table)  /  UNIVERSAL (X, identical for everyone).
 
-const IDS: Array[String] = ["brawler", "sword", "hammer", "magic"]
+const IDS: Array[String] = ["brawler", "sword", "hammer", "magic", "lance"]
 
 ## X: universal off-hand moves (10)
 const X_POOL: Array[String] = [
@@ -93,10 +93,44 @@ static func _build() -> void:
 	}
 
 
+	_db["lance"] = {
+		"id": "lance", "name": "Lance", "weapon": "lance", "role": "Aerial relay",
+		"desc": "Long narrow reach, high jump. Keeps enemies in the air and passes them on.",
+		"speed": 1.05, "hp": 95.0, "jump": 1.15,
+		"mods": {"reach": 1.6, "startup": 0.95, "recovery": 1.0, "dmg": 0.95, "kb": 0.9, "guard_break": false},
+		# air rules (docs/AERIAL.md): hits in the air refund the air dash / jump up to `refunds` times per air time,
+		# `hang` frames of low gravity after an air hit, and the lance starts with a double jump.
+		"air": {"refunds": 3, "hang": 18, "double_jump": true},
+		"b_pool": ["pole_vault", "thrust", "plunge", "windmill", "skyhook", "vault_over", "javelin", "air_parry"],
+		"b_stars": ["pole_vault", "thrust", "plunge"],
+		"base": {
+			"lean": 0.06, "head": -0.02,
+			"th_f": 0.45, "kn_f": 0.6, "th_b": -0.35, "kn_b": 0.4,
+			"ua_f": 0.75, "la_f": 0.85, "ua_b": 1.3, "la_b": 0.7,  # lance hand low at the hip, the other hand steadies the shaft
+			"wp_rot": -0.8,
+		},
+		"bob": 0.02, "hover": 0.0,
+		"stance": Vector3(15, -13, 38),
+	}
+
+
 static func get_class_data(id: String) -> Dictionary:
 	if _db.is_empty():
 		_build()
 	return _db.get(id, _db["brawler"])
+
+
+## Air-combat rules of a class (docs/AERIAL.md). Every class gets the small base values; a class overrides them with an
+## "air" entry (the Lance: more refunds, a longer hang and an innate double jump).
+const AIR_DEFAULT := {"refunds": 1, "hang": 8, "double_jump": false}
+
+
+static func air(id: String) -> Dictionary:
+	var out: Dictionary = AIR_DEFAULT.duplicate()
+	var c := get_class_data(id)
+	if c.has("air"):
+		out.merge(c["air"] as Dictionary, true)
+	return out
 
 
 static func has_class(id: String) -> bool:
@@ -123,8 +157,8 @@ static func base_pose(id: String, t: float = 0.0) -> Dictionary:
 	p["ua_b"] = float(p["ua_b"]) - b
 	if float(c["hover"]) > 0.0:
 		p["root_y"] = float(p.get("root_y", 0.0)) - float(c["hover"]) * (0.5 + 0.5 * sin(t * 2.2))
-	if String(c["weapon"]) == "sword":
-		p["wp_rot"] = float(p["wp_rot"]) + sin(t * 1.7) * 0.07  # the blade tip drifts
+	if String(c["weapon"]) == "sword" or String(c["weapon"]) == "lance":
+		p["wp_rot"] = float(p["wp_rot"]) + sin(t * 1.7) * 0.07  # the blade / spear tip drifts
 	return PoseLib.level_feet(p)
 
 

@@ -3,7 +3,7 @@ extends Control
 ## players on screen showing the class they picked. Pages: main, options, testing.
 ## Stick up/down moves, left/right changes a value, A selects, B goes back. Either player can drive it.
 
-const CLASS_CYCLE := ["brawler", "sword", "hammer", "magic"]
+const CLASS_CYCLE := ["brawler", "sword", "hammer", "magic", "lance"]
 
 class View extends Control:
 	var menu: Control

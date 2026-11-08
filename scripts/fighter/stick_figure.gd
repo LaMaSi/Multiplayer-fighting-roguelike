@@ -30,7 +30,7 @@ const NEUTRAL := {
 
 var color := Color(0.3, 1.5, 1.8)
 var style := ""  ## "", "helmet", "crown", "cap", "horns", "hood"
-var weapon := ""  ## "", "sword", "hammer", "magic": drawn on the hands (code-drawn, no sprites)
+var weapon := ""  ## "", "sword", "hammer", "lance", "magic": drawn on the hands (code-drawn, no sprites)
 var weapon_scale := 1.0
 ## body build (enemies differ from the round-headed, line-only players)
 var arm_scale := 1.0  ## limb lengths (players have longer arms and legs)
@@ -95,7 +95,7 @@ func _process(delta: float) -> void:
 			_vel[key] = v
 			pose[key] = p + v * dt
 		if trail_on:
-			_trail.push_back([to_global(weapon_tip if weapon in ["sword", "hammer"] else hand_f_pos), to_global(hand_b_pos), to_global(foot_f_pos), to_global(foot_b_pos)])
+			_trail.push_back([to_global(weapon_tip if weapon in ["sword", "hammer", "lance"] else hand_f_pos), to_global(hand_b_pos), to_global(foot_f_pos), to_global(foot_b_pos)])
 			if _trail.size() > 8:
 				_trail.pop_front()
 		elif not _trail.is_empty():
@@ -274,6 +274,24 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 				draw_colored_polygon(PackedVector2Array([base + n * 4.0, tip, base - n * 4.0]), col.darkened(0.55))
 				draw_polyline(PackedVector2Array([base + n * 4.0, tip, base - n * 4.0]), col, 2.5, true)
 				draw_line(base, tip - wd * 6.0, Color(2.0, 2.0, 2.2), 1.5, true)    # bright edge
+		"lance":
+			# like the sword, the lance runs along the front forearm rotated by wp_rot; the butt sticks out behind the hand
+			var shaft_l := 104.0 * ws * maxf(arm_scale, 1.0)
+			var butt := hand_f - wd * 24.0
+			var tip_l := hand_f + wd * shaft_l
+			if not halo:
+				weapon_tip = tip_l
+			var head_b := tip_l - wd * 24.0  # where the leaf-shaped head starts
+			var head_pts := PackedVector2Array([head_b, head_b + wd * 11.0 + n * 7.0 * ws, tip_l, head_b + wd * 11.0 - n * 7.0 * ws])
+			if halo:
+				draw_line(butt, tip_l, dark, 9.0 * ws)
+				draw_colored_polygon(head_pts, dark)
+			else:
+				draw_line(butt, head_b + wd * 4.0, col.darkened(0.3), 4.0, true)            # shaft
+				draw_colored_polygon(head_pts, col.darkened(0.55))
+				draw_polyline(PackedVector2Array([head_pts[0], head_pts[1], head_pts[2], head_pts[3], head_pts[0]]), col, 2.5, true)
+				draw_line(head_b, tip_l - wd * 3.0, Color(2.0, 2.0, 2.2), 1.5, true)         # bright edge
+				draw_line(head_b - n * 6.0, head_b + n * 6.0, col, 3.0, true)                # collar
 		"hammer":
 			# the hammer angle is absolute in figure space (0 = forward, + = down, -PI/2 = straight up, PI = back)
 			var hd := Vector2.from_angle(float(pose["wp_rot"]))

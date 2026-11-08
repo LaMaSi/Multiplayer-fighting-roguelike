@@ -9,7 +9,7 @@ extends Control
 
 static var mode := "run"  ## "run" or "training", set by the main menu before opening this scene
 
-const OPTIONS := ["brawler", "sword", "hammer", "magic", "random"]
+const OPTIONS := ["brawler", "sword", "hammer", "magic", "lance", "random"]
 const REVEAL_SLOTS := ["B", "B_UP", "B_SIDE", "X", "Y"]
 const SLOT_LABEL := {"B": "B", "B_UP": "UP + B", "B_SIDE": "SIDE + B", "X": "X", "Y": "Y"}
 const ROLL_START := 0.35
@@ -98,7 +98,7 @@ func _available(cid: String) -> bool:
 
 
 func _resolve_random() -> String:
-	var pool: Array[String] = ["brawler", "sword", "hammer"]
+	var pool: Array[String] = ["brawler", "sword", "hammer", "lance"]
 	if RunState.magic_unlocked:
 		pool.append("magic")
 	return pool[randi() % pool.size()]
@@ -251,6 +251,11 @@ func paint(c: Control) -> void:
 		_paint_prompt(c)
 
 
+## Vertical pitch of the class list: 54 px for five rows; more rows squeeze together so the stat block still fits the panel.
+func _row_pitch() -> float:
+	return minf(54.0, 270.0 / float(OPTIONS.size()))
+
+
 func _class_label(cid: String) -> String:
 	return "RANDOM" if cid == "random" else String(ClassData.get_class_data(cid)["name"]).to_upper()
 
@@ -270,9 +275,10 @@ func _paint_pick(c: Control, p: int, r: Rect2) -> void:
 	_panel(c, p, r, "LOCKED IN" if locked[p] else "CHOOSING")
 	# class list
 	var lx := r.position.x + 290.0
+	var pitch := _row_pitch()
 	for i in OPTIONS.size():
 		var o: String = OPTIONS[i]
-		var br := Rect2(lx, r.position.y + 70 + i * 54.0, 295, 46)
+		var br := Rect2(lx, r.position.y + 70 + i * pitch, 295, pitch - 8.0)
 		var sel := i == cursor[p]
 		var avail := _available(o)
 		var poly := UiKit.chamfer(br, 11.0)
@@ -292,7 +298,7 @@ func _paint_pick(c: Control, p: int, r: Rect2) -> void:
 	if _flash_t[p] > 0.0:
 		UiKit.txt(c, UiKit.head(), Vector2(r.position.x + 90, r.position.y + 34), _flash[p], 16, Color(1.0, 0.45, 0.45), HORIZONTAL_ALIGNMENT_LEFT, -1.0)
 	# details of the hovered option
-	var dy := r.position.y + 70 + OPTIONS.size() * 54.0 + 8.0
+	var dy := r.position.y + 70 + OPTIONS.size() * _row_pitch() + 8.0
 	c.draw_rect(Rect2(lx, dy - 4, 295, 2), Color(1, 1, 1, 0.12))
 	if opt == "random":
 		UiKit.txt(c, UiKit.head(), Vector2(lx, dy + 28), "RANDOM", 20, UiKit.TEXT)

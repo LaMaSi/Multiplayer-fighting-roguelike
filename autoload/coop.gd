@@ -99,6 +99,9 @@ func pre_hit(info: HitInfo, victim: Actor) -> void:
 		info.dmg *= 1.5
 		info.stop += 4
 		info.color = RELAY_COLOR
+		if not (info.attacker as Fighter).is_on_floor():
+			info.sky_relay = true  # the partner catches the enemy while airborne themselves
+			info.dmg *= 1.25
 		if info.kind == "spike":
 			info.alley_oop = true
 			info.dmg *= 1.5
@@ -119,7 +122,7 @@ func post_hit(info: HitInfo, victim: Actor, dmg: float) -> void:
 		relay += 1
 		stat_relay_hits += 1
 		atk.meter = minf(100.0, atk.meter + 8.0)
-		say("ALLEY-OOP!" if info.alley_oop else "RELAY x%d" % relay, RELAY_COLOR, victim.global_position + Vector2(0, -130))
+		say("ALLEY-OOP!" if info.alley_oop else (("SKY RELAY x%d" if info.sky_relay else "RELAY x%d") % relay), RELAY_COLOR, victim.global_position + Vector2(0, -130))
 		Juice.shake(0.25)
 	combo_changed.emit()
 

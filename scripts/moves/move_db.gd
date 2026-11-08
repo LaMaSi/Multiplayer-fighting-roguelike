@@ -107,7 +107,7 @@ static func _make_variant(m: MoveData, class_id: String) -> MoveData:
 		if PoseLib.is_idle(pose):
 			v.kf[i][1] = base.duplicate()
 		else:
-			if weapon == "sword" and not pose.has("wp_rot"):
+			if weapon in ["sword", "lance"] and not pose.has("wp_rot"):
 				# arm strikes (extended arm) run along the blade, so the hit visibly leaves the sword tip
 				var extended: bool = pose.has("ua_f") and float(pose.get("la_f", 1.0)) < 0.8
 				pose["wp_rot"] = 0.0 if extended else float(base["wp_rot"])
@@ -115,7 +115,7 @@ static func _make_variant(m: MoveData, class_id: String) -> MoveData:
 				# adaptive moves: the head extends along the front forearm
 				var fa: float = float(pose.get("ua_f", 0.95)) + float(pose.get("la_f", 1.55))
 				pose["wp_rot"] = PI * 0.5 - fa
-			if weapon in ["sword", "hammer"]:
+			if weapon in ["sword", "hammer", "lance"]:
 				pose["fist_f"] = pose.get("fist_f", 1.0)
 				pose["fist_b"] = pose.get("fist_b", 1.0)
 				pose["fist_f"] = minf(float(pose["fist_f"]), 1.5)  # no oversized fists around a weapon

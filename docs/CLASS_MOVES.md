@@ -2,6 +2,8 @@
 
 Status: proposal for review. The names of the existing moves (✔ = already implemented) come from `PLAN.md`. Sections: B (2-5), X (6), Y (7), overview and totals (8), supers (9). Everything marked NEW still needs to be built. Overrides: `DESIGN.md` wins on the co-op rules.
 
+> **Lance (5th class, aerial relay):** designed in `AERIAL.md` together with the shared air-combat rules. Its 8 B moves are implemented but not yet playtested.
+
 ## 1. Rules for B moves
 
 - 5 B slots: **B, B+Up, B+Forward, B+Down, B+Back** (forward/back relative to facing). Every class has **8 B moves**, so 5 are unlocked later **through the personal level-up** (`DESIGN.md` §3.2), and B moves are never part of the shared X/Y card choice.

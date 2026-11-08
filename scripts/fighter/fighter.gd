@@ -43,6 +43,10 @@ var _dash_cd := 0.0
 var _air_dash_used := false  ## one dash per air time; reset on landing
 var class_id := ""  ## "brawler" / "sword" / "hammer" / "magic", "" = legacy
 var class_speed := 1.0
+var class_jump := 1.0  ## class jump multiplier (ClassData "jump")
+var innate_double_jump := false  ## the Lance starts with a double jump
+var _air_refunds := 0  ## air dash / jump refunds used this air time
+var _cancel_jump_ready := true  ## the one launcher jump-cancel per air time (self-lifting launchers like Uppercut leave the ground first)
 var double_jump := false  ## unlocked by a level-up card
 var _air_jump_ready := true
 var _crouch := 0.0  ## 0..1, eases in over ~7 frames while holding down on the ground
@@ -92,10 +96,14 @@ func apply_class(id: String) -> void:
 	class_id = id
 	if id == "":
 		class_speed = 1.0
+		class_jump = 1.0
+		innate_double_jump = false
 		figure.weapon = ""
 		return
 	var c := ClassData.get_class_data(id)
 	class_speed = float(c["speed"])
+	class_jump = float(c.get("jump", 1.0))
+	innate_double_jump = bool(ClassData.air(id)["double_jump"])
 	figure.weapon = String(c["weapon"])
 	if not RunState.active:
 		max_hp = float(c["hp"])
@@ -198,6 +206,9 @@ func _locomotion(delta: float) -> void:
 		_jumping = false
 		_air_dash_used = false
 		_air_jump_ready = true
+		_air_refunds = 0
+		_cancel_jump_ready = true
+		hang_t = 0
 		velocity.y = 50.0
 	else:
 		_coyote -= delta
@@ -213,15 +224,15 @@ func _locomotion(delta: float) -> void:
 			_start_drop()
 			_jump_buf = 0.0
 		elif _coyote > 0.0:
-			velocity.y = JUMP_V
+			velocity.y = JUMP_V * class_jump
 			_coyote = 0.0
 			_jump_buf = 0.0
 			_jumping = true
 			squash = Vector2(0.8, 1.25)
 			Sfx.play("jump")
 			Fx.dust(get_parent(), global_position, 6)
-		elif double_jump and _air_jump_ready and not on_floor:
-			velocity.y = JUMP_V * 0.92
+		elif (double_jump or innate_double_jump) and _air_jump_ready and not on_floor:
+			velocity.y = JUMP_V * 0.92 * class_jump
 			_air_jump_ready = false
 			_jump_buf = 0.0
 			_jumping = true
@@ -345,6 +356,10 @@ func _try_slot(slot: String, btn: int) -> bool:
 	var m := MoveDB.get_move_for(id, class_id)
 	if m == null:
 		return false
+	if m.air_variant != "" and not is_on_floor():  # some moves have their own airborne version (Lance Thrust)
+		var av := MoveDB.get_move_for(m.air_variant, class_id)
+		if av != null:
+			m = av
 	if m.ground_only and not is_on_floor():
 		return false
 	# left and right share a slot: the move goes the way the stick points
@@ -376,6 +391,22 @@ func _attack_extra(_delta: float) -> void:
 			if attack.can_cancel() and id != head and _try_slot(_buf_slot, _buf_btn):
 				_buf_t = 0.0
 				return
+	# jump-cancel: a connected launcher can be cancelled into a jump to follow the enemy up (docs/AERIAL.md)
+	if input.pressed(PlayerInput.Btn.JUMP) and attack.can_cancel() and "launcher" in attack.move.tags:
+		var airborne := not is_on_floor()
+		if not airborne or _cancel_jump_ready:
+			attack.interrupt()
+			velocity.y = JUMP_V * class_jump * 1.05
+			if airborne:
+				_cancel_jump_ready = false
+			_jumping = true
+			_jump_buf = 0.0
+			_coyote = 0.0
+			state = "idle"
+			squash = Vector2(0.8, 1.25)
+			Sfx.play("jump", 1.1)
+			Fx.dust(get_parent(), global_position, 6)
+			return
 	# dash cancel on hit
 	if input.pressed(PlayerInput.Btn.DASH) and _dash_cd <= 0.0 and attack.can_cancel() and (is_on_floor() or not _air_dash_used):
 		attack.interrupt()
@@ -392,6 +423,17 @@ func on_hit_landed(info: HitInfo, target: Node) -> void:
 	super.on_hit_landed(info, target)
 	if info.source == "melee" and target is Actor and (target as Actor).team == "enemy":
 		meter = minf(100.0, meter + 1.0)
+		if not is_on_floor() and not info.friendly:
+			# air combo rules (docs/AERIAL.md): a hit in the air makes you hang, and refunds the air dash / jump once per move
+			var air := ClassData.air(class_id)
+			hang_t = int(air["hang"])
+			if not _air_hit_counted:
+				_air_hit_counted = true
+				if _air_refunds < int(air["refunds"]):
+					_air_refunds += 1
+					_air_dash_used = false
+					_air_jump_ready = true
+					_cancel_jump_ready = true
 
 
 # ------------------------------------------------------------------ dash / carry / toss / revive
@@ -603,6 +645,12 @@ func _do_parry(info: HitInfo) -> void:
 	meter = minf(100.0, meter + 20.0)
 	Coop.say("PARRY!", Color(2.2, 2.0, 1.0), global_position + Vector2(0, -110))
 	attack.hit_connected = true
+	if not is_on_floor():  # a parry in the air bounces you up and refunds the air options (Lance Air Parry, Sword Parry...)
+		velocity.y = -520.0
+		_air_dash_used = false
+		_air_jump_ready = true
+		_cancel_jump_ready = true
+		hang_t = int(ClassData.air(class_id)["hang"])
 	var atk := info.attacker as Actor
 	if atk != null and atk.team != team and atk.is_targetable():
 		var c := HitInfo.new()

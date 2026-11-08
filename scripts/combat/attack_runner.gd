@@ -379,6 +379,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.wallbounce = bool(h.get("wallbounce", false))
 	info.heal_self = float(h.get("heal_self", 0.0))
 	info.ignite = float(h.get("ignite", 0.0))
+	info.reset_juggle = bool(h.get("reset_juggle", false))
 	info.color = h.get("color", a.figure.color)
 	if a.team == "enemy" and info.height == "high":
 		info.color = Color(2.4, 2.0, 0.3)  # high attacks spark amber
@@ -411,7 +412,7 @@ func _contact_rects() -> Array:
 	var f := actor.figure
 	if f == null or actor.team != "player":
 		return out
-	if f.weapon in ["sword", "hammer"] and move.tier in ["weapon", "adaptive"]:
+	if f.weapon in ["sword", "hammer", "lance"] and move.tier in ["weapon", "adaptive"]:
 		var tip: Vector2 = f.to_global(f.weapon_tip)
 		if f.weapon == "hammer":
 			var s := 46.0 * f.weapon_scale
