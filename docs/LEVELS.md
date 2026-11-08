@@ -32,3 +32,9 @@ ground heights and higher platforms, and characters pass through each other inst
 - **Contact shadows:** every actor gets a soft ellipse on the surface below it (ground, platform or moving platform); it shrinks and fades with height.
 - Tuning constants are at the top of the script: `EYE`, `RISE`, `FLOOR_BACK`, `PLAT_BACK`, `PLAT_FRONT`.
 - Test: `Godot --path . res://tests/shot_depth.tscn -- <out_prefix> [seed]` writes `_start`, `_pit`, `_platform` screenshots.
+
+## Containers and ceiling spikes
+- **Crates, barrels and TNT crates are 3D boxes** drawn in the same depth camera as the platforms (`Prop._draw_box`, `_draw_barrel`): visible top, the side facing the camera, a front face, and a contact shadow. Vases and springs stay flat.
+- **You can stand on them.** Each idle container carries a thin one-way platform on its top (layer 2, like the level's platforms): players and enemies land on it from above, can drop through with down, and walk through the sides (the sides are not solid, in line with "bodies never block each other"). The platform is off while the container is held, flying or dead, and if it is smashed under you, you fall. Containers draw behind fighters (z -1) so a player on top is not covered; held and thrown ones draw in front.
+- **Ceiling spikes** (`SpikeTrap.ceiling`, hazard kind `ceiling_spikes {x, y, w}`) hang under a few raised platforms. They only spawn where the underside is 110 to 270 px above the local ground (`SpikeTrap.AIR_MIN_H` / `AIR_MAX_H`), at most 3 per level. They hurt **enemies only**, and only flying ones (launched, thrown or airborne): a walking enemy, even the tall boss, passes underneath, and players are never hurt. A hit slams the enemy back down for the follow-up.
+- Test: `Godot --path . res://tests/props_test.tscn [-- <out_prefix>]`.

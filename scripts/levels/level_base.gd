@@ -12,7 +12,7 @@ var platforms: Array = []  ## Rect2 (top-left, size)
 var ground_segs: Array = []  ## Rect2 (x, top_y, width, depth) pieces of ground; empty = one flat ground. Gaps between pieces are pits.
 var moving_specs: Array = []  ## {rect: Rect2, vertical: bool, travel: float (half), period: float, phase: float}
 var doors_spec: Array = []  ## {x, kind: "challenge" | "shop"}
-var hazards_spec: Array = []  ## {kind: "spikes" | "bumper" | "spring", x}
+var hazards_spec: Array = []  ## {kind: "spikes" | "bumper" | "spring", x}  or  {kind: "ceiling_spikes", x, y (platform underside), w}
 var in_room := false  ## the players are inside a door room (the level itself is paused in place)
 var _room: DoorRoom = null
 var _room_door: Door = null
@@ -212,6 +212,12 @@ func _spawn_hazards() -> void:
 				var st := SpikeTrap.new()
 				st.position = pos
 				add_child(st)
+			"ceiling_spikes":
+				var cs := SpikeTrap.new()
+				cs.ceiling = true
+				cs.w = float(hz.get("w", 100.0))
+				cs.position = Vector2(x, float(hz["y"]))  # the underside of a platform
+				add_child(cs)
 			"bumper":
 				var bp := Bumper.new()
 				bp.position = pos + Vector2(0, -110.0)  # floats at juggle height: a pinball target for launched bodies, not a ground obstacle

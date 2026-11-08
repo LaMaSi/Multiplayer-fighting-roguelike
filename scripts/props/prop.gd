@@ -23,6 +23,8 @@ var col := Pal.interact()
 var w := 46.0
 var h := 46.0
 
+var _top: StaticBody2D = null  ## one-way platform on top of the container: players and enemies can stand on it
+var _top_cs: CollisionShape2D = null
 var _wobble := 0.0
 var _squash := 0.0
 var _spring_cd: Dictionary = {}
@@ -73,7 +75,39 @@ func _ready() -> void:
 	cs.shape = r
 	cs.position = Vector2(0, -h * 0.5)
 	add_child(cs)
-	z_index = 5
+	z_index = -1  # drawn behind fighters (so one standing on top is not covered); held and thrown ones go in front
+	_make_top()
+
+
+## A thin one-way platform on the top face. Only layer 2 (the platform layer), so it is landed on from above and ignored
+## from the sides and below, exactly like the level's platforms. Off while the container is held, flying or dead.
+func _make_top() -> void:
+	if kind == "spring" or kind == "vase":
+		return
+	_top = StaticBody2D.new()
+	_top.collision_layer = 0
+	_top.set_collision_layer_value(2, true)
+	_top.collision_mask = 0
+	_top_cs = CollisionShape2D.new()
+	var sh := RectangleShape2D.new()
+	sh.size = Vector2(w, 10.0)
+	_top_cs.shape = sh
+	_top_cs.position = Vector2(0, -h + 5.0)
+	_top_cs.one_way_collision = true
+	_top_cs.one_way_collision_margin = 6.0
+	_top.add_child(_top_cs)
+	add_child(_top)
+	add_collision_exception_with(_top)
+
+
+func _sync_top() -> void:
+	if _top == null:
+		return
+	var solid := state == "idle"
+	if _top_cs.disabled == solid:
+		_top_cs.set_deferred("disabled", not solid)
+	_top.set_meta("bottom_y", global_position.y)  # a player dropping through (down) is clear once below this
+	z_index = 5 if (state == "held" or state == "flying") else -1
 
 
 func is_targetable() -> bool:
@@ -136,6 +170,7 @@ func take_hit(info: HitInfo) -> bool:
 
 func _physics_process(delta: float) -> void:
 	_wobble = maxf(0.0, _wobble - delta)
+	_sync_top()
 	if kind == "spring" and state == "idle":
 		_spring_tick(delta)
 	if burn_t > 0.0 and state != "dead":
@@ -314,6 +349,8 @@ func _draw() -> void:
 	var r := Rect2(-w * 0.5, -h * 0.5, w, h)
 	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 3.0 + global_position.x * 0.01)
 	var rim := Color(RIM.r, RIM.g, RIM.b, 0.35 + 0.25 * pulse)
+	# the vanishing point of the depth camera, in this drawing space (the node may be rotated while it flies)
+	var vp := to_local(DepthLayer.vanish_point(self, global_position)) + Vector2(0, h * 0.5)
 	match kind:
 		"vase":
 			# a vase-shaped silhouette with a transparent surround (no filled rectangle behind it)
@@ -327,14 +364,14 @@ func _draw() -> void:
 			draw_polyline(closed, col, UiKit.LINE, true)
 		"explosive":
 			var fuse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 8.0)
-			draw_rect(r, Color(0.22, 0.04, 0.03))
-			draw_rect(r.grow(3.0), rim, false, 3.0)
-			draw_rect(r, col, false, 3.0)
+			var fr := _draw_box(r, vp, col, rim, Color(0.22, 0.04, 0.03))
+			var fw := fr.size.x
+			var fh := fr.size.y
 			for k in [-1, 1]:
-				draw_line(Vector2(-w * 0.5, k * h * 0.36), Vector2(w * 0.5, k * h * 0.36), Color(col.r, col.g, col.b, 0.8), 4.0)
-			draw_rect(Rect2(-w * 0.34, -h * 0.2, w * 0.68, h * 0.4), Color(0.06, 0.02, 0.02))
-			draw_string(ThemeDB.fallback_font, Vector2(-w * 0.5, h * 0.1), "TNT", HORIZONTAL_ALIGNMENT_CENTER, w, 16, Color(2.0, 1.2, 0.4))
-			draw_circle(Vector2(0, -h * 0.5 - 5.0), 3.5 + 1.5 * fuse, Color(2.2, 1.3, 0.3))
+				draw_line(Vector2(fr.position.x, fr.get_center().y + k * fh * 0.36), Vector2(fr.end.x, fr.get_center().y + k * fh * 0.36), Color(col.r, col.g, col.b, 0.8), 4.0)
+			draw_rect(Rect2(fr.get_center().x - fw * 0.34, fr.get_center().y - fh * 0.2, fw * 0.68, fh * 0.4), Color(0.06, 0.02, 0.02))
+			draw_string(ThemeDB.fallback_font, Vector2(fr.position.x, fr.get_center().y + fh * 0.1), "TNT", HORIZONTAL_ALIGNMENT_CENTER, fw, 16, Color(2.0, 1.2, 0.4))
+			draw_circle(Vector2(fr.get_center().x, fr.position.y - 5.0), 3.5 + 1.5 * fuse, Color(2.2, 1.3, 0.3))
 		"spring":
 			var sq := 1.0 - 0.45 * _squash
 			var top := h * 0.5 - (h - 8.0) * sq
@@ -348,18 +385,66 @@ func _draw() -> void:
 			draw_rect(Rect2(-w * 0.5, top, w, 6.0), rim, false, 3.0)
 			draw_rect(Rect2(-w * 0.5, top, w, 6.0), col, false, 2.5)
 		"barrel":
-			draw_rect(r, Color(0.06, 0.03, 0.1))
-			draw_rect(r.grow(3.0), rim, false, 3.0)
-			draw_rect(r, col, false, 3.0)
-			draw_line(Vector2(-w * 0.5, -h * 0.2), Vector2(w * 0.5, -h * 0.2), col, UiKit.LINE)
-			draw_line(Vector2(-w * 0.5, h * 0.2), Vector2(w * 0.5, h * 0.2), col, UiKit.LINE)
+			_draw_barrel(r, vp, rim)
 		_:
-			draw_rect(r, Color(0.06, 0.03, 0.1))
-			draw_rect(r.grow(3.0), rim, false, 3.0)
-			draw_rect(r, col, false, 3.0)
-			draw_line(r.position, r.end, col, UiKit.LINE)
-			draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), col, UiKit.LINE)
+			var fr2 := _draw_box(r, vp, col, rim, Color(0.06, 0.03, 0.1))
+			draw_line(fr2.position, fr2.end, col, UiKit.LINE)
+			draw_line(Vector2(fr2.end.x, fr2.position.y), Vector2(fr2.position.x, fr2.end.y), col, UiKit.LINE)
 	draw_set_transform(Vector2.ZERO, 0.0)
+
+
+## A container as a real box in the shared depth camera (see DepthLayer): the visible top, the side that faces the camera
+## and the front face. Returns the front face rectangle for decorations.
+func _draw_box(r: Rect2, vp: Vector2, c: Color, rim: Color, fill: Color) -> Rect2:
+	var d := w * 0.85  # depth of the box
+	var b := DepthLayer.box(r, -6.0, d, vp)
+	var side := Color(fill.r * 0.5, fill.g * 0.5, fill.b * 0.5)
+	var lit := Color(c.r * 0.22, c.g * 0.22, c.b * 0.22)
+	if vp.x < r.position.x:
+		draw_colored_polygon(PackedVector2Array([b["f_tl"], b["b_tl"], b["b_bl"], b["f_bl"]]), side)
+		draw_polyline(PackedVector2Array([b["f_bl"], b["f_tl"], b["b_tl"], b["b_bl"]]), Color(c.r, c.g, c.b, 0.6), 2.0, true)
+	elif vp.x > r.end.x:
+		draw_colored_polygon(PackedVector2Array([b["f_tr"], b["b_tr"], b["b_br"], b["f_br"]]), side)
+		draw_polyline(PackedVector2Array([b["f_br"], b["f_tr"], b["b_tr"], b["b_br"]]), Color(c.r, c.g, c.b, 0.6), 2.0, true)
+	if vp.y < r.position.y:
+		var top := PackedVector2Array([b["b_tl"], b["b_tr"], b["f_tr"], b["f_tl"]])
+		draw_colored_polygon(top, lit)
+		var closed := top.duplicate()
+		closed.append(top[0])
+		draw_polyline(closed, Color(c.r, c.g, c.b, 0.85), 2.0, true)
+	var fr := Rect2(b["f_tl"], b["f_br"] - b["f_tl"])
+	draw_rect(fr, fill)
+	draw_rect(fr.grow(3.0), rim, false, 3.0)
+	draw_rect(fr, c, false, 3.0)
+	return fr
+
+
+## A barrel: the body with hoops and an elliptical top that follows the camera.
+func _draw_barrel(r: Rect2, vp: Vector2, rim: Color) -> void:
+	var fill := Color(0.06, 0.03, 0.1)
+	var zf := -6.0
+	var zb := w * 0.8
+	var topc := Vector2(0.0, r.position.y)
+	var pf := DepthLayer.P(topc, zf, vp)
+	var pb := DepthLayer.P(topc, zb, vp)
+	var sc := DepthLayer.EYE / (DepthLayer.EYE + (zf + zb) * 0.5)
+	var body := Rect2(pf.x - w * 0.5 * (DepthLayer.EYE / (DepthLayer.EYE + zf)), pf.y, w * (DepthLayer.EYE / (DepthLayer.EYE + zf)), r.end.y - r.position.y)
+	draw_rect(body, fill)
+	draw_rect(body.grow(3.0), rim, false, 3.0)
+	draw_rect(body, col, false, 3.0)
+	draw_line(Vector2(body.position.x, body.position.y + body.size.y * 0.3), Vector2(body.end.x, body.position.y + body.size.y * 0.3), col, UiKit.LINE)
+	draw_line(Vector2(body.position.x, body.position.y + body.size.y * 0.7), Vector2(body.end.x, body.position.y + body.size.y * 0.7), col, UiKit.LINE)
+	if vp.y < r.position.y:
+		var cc := (pf + pb) * 0.5
+		var ry := maxf(absf(pb.y - pf.y) * 0.5, 2.0)
+		var pts := PackedVector2Array()
+		for i in 28:
+			var a := TAU * float(i) / 28.0
+			pts.append(cc + Vector2(cos(a) * w * 0.5 * sc, sin(a) * ry))
+		draw_colored_polygon(pts, Color(col.r * 0.22, col.g * 0.22, col.b * 0.22))
+		var closed := pts.duplicate()
+		closed.append(pts[0])
+		draw_polyline(closed, Color(col.r, col.g, col.b, 0.9), 2.0, true)
 
 
 ## Set the crate on fire: flames in the igniter's colour, it burns down, spreads to neighbours and ignites what it hits.

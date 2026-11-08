@@ -178,6 +178,17 @@ static func draw_platform(c: CanvasItem, r: Rect2, np: Color, vp: Vector2, with_
 	return Rect2(f_tl, f_br - f_tl)
 
 
+## Corners of a box seen from the vanishing point: the front face (depth zf) and the back face (depth zb) of the
+## rectangle `r`. Keys f_tl f_tr f_bl f_br b_tl b_tr b_bl b_br.
+static func box(r: Rect2, zf: float, zb: float, vp: Vector2) -> Dictionary:
+	return {
+		"f_tl": P(r.position, zf, vp), "f_tr": P(Vector2(r.end.x, r.position.y), zf, vp),
+		"f_bl": P(Vector2(r.position.x, r.end.y), zf, vp), "f_br": P(r.end, zf, vp),
+		"b_tl": P(r.position, zb, vp), "b_tr": P(Vector2(r.end.x, r.position.y), zb, vp),
+		"b_bl": P(Vector2(r.position.x, r.end.y), zb, vp), "b_br": P(r.end, zb, vp),
+	}
+
+
 ## Height of the surface under a point: the closest ground, platform or moving platform top at or below `feet`.
 func surface_below(feet: Vector2) -> float:
 	var best := INF
@@ -200,6 +211,7 @@ func surface_below(feet: Vector2) -> float:
 func _draw_shadows() -> void:
 	if level == null:
 		return
+	_draw_prop_shadows()
 	for n in get_tree().get_nodes_in_group("actors"):
 		var a := n as Node2D
 		if a == null or not a.visible or a.modulate.a < 0.3:
@@ -217,6 +229,24 @@ func _draw_shadows() -> void:
 		var c := Vector2(feet.x, sy)
 		_shadows.draw_colored_polygon(_ellipse(c, rx * 1.35, ry * 1.4), Color(0.0, 0.0, 0.03, 0.20 * k))
 		_shadows.draw_colored_polygon(_ellipse(c, rx, ry), Color(0.0, 0.0, 0.03, 0.34 * k))
+
+
+func _draw_prop_shadows() -> void:
+	for n in get_tree().get_nodes_in_group("props"):
+		var pr := n as Prop
+		if pr == null or pr.state == "dead" or pr.state == "held":
+			continue
+		var feet := pr.global_position
+		var sy := surface_below(feet)
+		if sy == INF or sy - feet.y > 900.0:
+			continue
+		var k := clampf(1.0 - maxf(sy - feet.y, 0.0) / 420.0, 0.0, 1.0)
+		if k <= 0.02:
+			continue
+		var rx := pr.w * 0.62 * (0.6 + 0.4 * k)
+		var c := Vector2(feet.x, sy)
+		_shadows.draw_colored_polygon(_ellipse(c, rx * 1.3, rx * 0.3), Color(0.0, 0.0, 0.03, 0.18 * k))
+		_shadows.draw_colored_polygon(_ellipse(c, rx, rx * 0.22), Color(0.0, 0.0, 0.03, 0.30 * k))
 
 
 static func _ellipse(c: Vector2, rx: float, ry: float) -> PackedVector2Array:

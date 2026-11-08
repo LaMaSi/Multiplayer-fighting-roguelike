@@ -295,6 +295,23 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 				hazards_spec.append({"kind": "spikes" if rng.randf() < 0.7 else "spring", "x": hx})
 				break
 
+	# ceiling spikes: hang under a few raised platforms, but only where the underside is at launch height above the local
+	# ground. They hurt enemies only (an anvil for thrown bodies), so they are never a jumping hazard for the players.
+	var ceil_cands: Array = []
+	for pl: Rect2 in platforms:
+		var under_h := ground_top(pl.get_center().x) - pl.end.y
+		if pl.size.x >= 140.0 and under_h >= SpikeTrap.AIR_MIN_H and under_h <= SpikeTrap.AIR_MAX_H:
+			ceil_cands.append(pl)
+	var n_ceil := 0
+	while n_ceil < 3 and not ceil_cands.is_empty():
+		var ci2 := rng.randi() % ceil_cands.size()
+		var cp: Rect2 = ceil_cands[ci2]
+		ceil_cands.remove_at(ci2)
+		if rng.randf() < 0.7:
+			var cw := minf(cp.size.x * 0.6, 120.0)
+			hazards_spec.append({"kind": "ceiling_spikes", "x": cp.get_center().x + rng.randf_range(-cp.size.x * 0.12, cp.size.x * 0.12), "y": cp.end.y + DepthLayer.PLAT_LIP, "w": cw})
+			n_ceil += 1
+
 	# containers: on solid ground or on a platform, never over a pit
 	var n_props: int = {"fight": 10, "elite": 12, "treasure": 22, "boss": 5}.get(t, 10)
 	for i in n_props:
