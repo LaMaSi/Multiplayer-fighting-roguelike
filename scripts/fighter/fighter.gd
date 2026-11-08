@@ -796,10 +796,15 @@ func _loco_pose() -> Dictionary:
 		if state == "idle" or state == "land":
 			p = base.duplicate() if state == "idle" else PoseLib.blend(p, base, 0.5)
 		else:
-			# walk, jump, fall: legs animate, the arms (and weapon) keep the class guard
+			# walk: legs animate, the arms (and weapon) keep the class guard. Jump / fall: the arms mostly follow the air pose
+			# (thrown up, trailing) so a weapon class does not hover in a rigid guard; the weapon stays in the hand
+			var air := state == "jump" or state == "fall"
 			for k in ["ua_f", "la_f", "ua_b", "la_b", "wp_rot", "root_y"]:
 				if base.has(k):
-					p[k] = base[k]
+					if air and k in ["ua_f", "la_f", "ua_b", "la_b"] and p.has(k):
+						p[k] = lerpf(float(base[k]), float(p[k]), 0.8)
+					else:
+						p[k] = base[k]
 	if _crouch > 0.01 and not p.is_empty():
 		p = PoseLib.blend(p, PoseLib.crouch(), _crouch)
 	return p
