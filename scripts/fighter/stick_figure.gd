@@ -257,10 +257,10 @@ func _render(halo: bool) -> void:
 		_draw_weapon(halo, shoulder + arm_f_a, shoulder + arm_f_a + arm_f_b, shoulder + arm_b_a + arm_b_b, col_f)
 
 
-const LANCE_GRIP_GAP := 36.0  ## distance between the two hands on the glaive shaft
-const LANCE_FORE := 104.0  ## shaft + blade in front of the front hand (the reach every Lance hitbox was authored for)
-const LANCE_BUTT := 74.0  ## shaft behind the front hand
-const LANCE_BLADE := 60.0  ## the curved blade is the last part of the forward length
+const LANCE_GRIP_GAP := 52.0  ## distance between the two hands on the lance shaft (spread wide, like a real spear grip)
+const LANCE_FORE := 104.0  ## shaft + head in front of the front hand (the reach every Lance hitbox was authored for)
+const LANCE_BUTT := 96.0  ## shaft behind the front hand (the rear hand grips between the butt and the front hand)
+const LANCE_BLADE := 48.0  ## the slender spearhead at the tip
 
 
 ## Two-bone arm IK: returns [upper arm vector, forearm vector] so the hand lands on `target` (clamped to the arm's
@@ -302,40 +302,40 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 				draw_polyline(PackedVector2Array([base + n * 4.0, tip, base - n * 4.0]), col, 2.5, true)
 				draw_line(base, tip - wd * 6.0, Color(2.0, 2.0, 2.2), 1.5, true)    # bright edge
 		"lance":
-			# a glaive: a long pole held in both hands, mid-shaft, with a curved single-edge blade making up the last
-			# third of the weapon. The axis is the front forearm rotated by wp_rot, like the sword.
+			# a lance: a long straight pole held in both hands, mid-shaft and spread wide, with a slender leaf-shaped
+			# spearhead and a small pennon. The axis is the front forearm rotated by wp_rot, like the sword.
 			var k := ws * maxf(arm_scale, 1.0)
 			var butt := hand_f - wd * (LANCE_BUTT * k)
 			var tip_l := hand_f + wd * (LANCE_FORE * k)
-			var blade_len := LANCE_BLADE * k
-			var head_b := tip_l - wd * blade_len
-			var bw := 15.0 * k  # widest point of the blade
-			var edge := PackedVector2Array()
-			var spine := PackedVector2Array()
-			for i in range(0, 11):
-				var t := float(i) / 10.0
-				var along := head_b + wd * (blade_len * t)
-				var sweep := -n * (9.0 * k * t * t)  # the blade curves back towards the spine
-				edge.append(along + sweep + n * (bw * pow(maxf(sin(PI * pow(t, 0.62)), 0.0), 0.9)))
-				spine.append(along + sweep - n * (bw * 0.16 * sin(PI * t)))
+			var head_len := LANCE_BLADE * k
+			var head_b := tip_l - wd * head_len
+			var hw := 7.5 * k  # half width of the spearhead at its widest
+			var side_a := PackedVector2Array()
+			var side_b := PackedVector2Array()
+			for i in range(0, 9):
+				var t := float(i) / 8.0
+				var w := hw * pow(maxf(sin(PI * pow(t, 0.7)), 0.0), 0.85)
+				side_a.append(head_b + wd * (head_len * t) + n * w)
+				side_b.append(head_b + wd * (head_len * t) - n * w)
 			var outline := PackedVector2Array()
-			outline.append_array(edge)
-			for i in range(spine.size() - 1, -1, -1):
-				outline.append(spine[i])
+			outline.append_array(side_a)
+			for i in range(side_b.size() - 1, -1, -1):
+				outline.append(side_b[i])
 			if not halo:
-				weapon_tip = tip_l - n * (9.0 * k)
+				weapon_tip = tip_l
 			if halo:
 				draw_line(butt, head_b, dark, 9.0 * ws)
 				draw_colored_polygon(outline, dark)
 				draw_polyline(outline, dark, 6.0, true)
 			else:
-				draw_line(butt, head_b + wd * 6.0, col.darkened(0.3), 4.5, true)                          # pole
-				draw_line(butt - wd * 2.0, butt + wd * 7.0, col, 6.0, true)                              # butt cap
+				draw_line(butt, head_b + wd * 4.0, col.darkened(0.3), 4.0, true)                          # pole
+				draw_line(butt - wd * 2.0, butt + wd * 6.0, col, 5.5, true)                              # butt cap
 				draw_colored_polygon(outline, col.darkened(0.55))
-				draw_polyline(edge, col, 2.5, true)                                                       # cutting edge
-				draw_polyline(spine, col.darkened(0.2), 2.0, true)
-				draw_line(head_b + n * 1.0, tip_l - n * (9.0 * k) - wd * 4.0, Color(2.0, 2.0, 2.2), 1.3, true)  # fuller / gleam
-				draw_line(head_b - n * 6.0, head_b + n * 6.0, col, 3.5, true)                            # collar
+				draw_polyline(outline, col, 2.2, true)                                                    # head outline
+				draw_line(head_b + wd * 3.0, tip_l - wd * 3.0, Color(2.0, 2.0, 2.2), 1.4, true)          # central ridge
+				draw_line(head_b - n * 5.0, head_b + n * 5.0, col, 3.5, true)                            # collar
+				var pen := PackedVector2Array([head_b - wd * 2.0, head_b - wd * 20.0 * k + n * 9.0 * k, head_b - wd * 8.0 * k + n * 12.0 * k])
+				draw_colored_polygon(pen, Color(2.0, 0.45, 0.35))                                         # pennon
 		"hammer":
 			# the hammer angle is absolute in figure space (0 = forward, + = down, -PI/2 = straight up, PI = back)
 			var hd := Vector2.from_angle(float(pose["wp_rot"]))

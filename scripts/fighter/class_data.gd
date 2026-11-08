@@ -104,13 +104,13 @@ static func _build() -> void:
 		"b_pool": ["pole_vault", "thrust", "plunge", "windmill", "skyhook", "vault_over", "javelin", "air_parry"],
 		"b_stars": ["pole_vault", "thrust", "plunge"],
 		"base": {
-			"lean": 0.06, "head": -0.02,
+			"lean": 0.14, "head": -0.02,
 			"th_f": 0.45, "kn_f": 0.6, "th_b": -0.35, "kn_b": 0.4,
-			"ua_f": 0.75, "la_f": 0.85, "ua_b": 1.3, "la_b": 0.7,  # lance hand low at the hip, the other hand steadies the shaft
-			"wp_rot": -0.8,
+			"ua_f": 1.05, "la_f": 0.55, "ua_b": 1.3, "la_b": 0.7,  # lance carried forward, level, in both hands (the rear arm is solved onto the pole)
+			"wp_rot": -0.2,
 		},
 		"bob": 0.02, "hover": 0.0,
-		"stance": Vector3(15, -13, 38),
+		"stance": Vector3(21, -19, 34),  # wide, low lunge like the spear reference
 	}
 
 
