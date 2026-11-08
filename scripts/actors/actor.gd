@@ -469,6 +469,11 @@ func start_attack(m: MoveData, btn := -1) -> void:
 		Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 34.0), m.name.to_upper(), Color(minf(c.r + 0.3, 1.6), minf(c.g + 0.3, 1.6), minf(c.b + 0.3, 1.6)), 15)
 
 
+## Hook: poses may be adapted to the state of the actor (e.g. legs in mid-air).
+func adapt_pose(kf: Dictionary, _airborne: bool) -> Dictionary:
+	return kf
+
+
 func _st_attack(delta: float) -> void:
 	_attack_extra(delta)
 	if state != "attack":

@@ -21,6 +21,7 @@ var _hold_frames := 0
 var _wait_frames := 0
 var _tilt := 0.0
 var _spun := false
+var _kf_air := false
 var _spd_acc := 0.0
 
 
@@ -138,9 +139,11 @@ func _keyframes() -> void:
 	for i in move.kf.size():
 		if int(move.kf[i][0]) <= frame:
 			idx = i
-	if idx != _kf_idx and idx >= 0:
+	var air := not actor.is_on_floor()
+	if idx >= 0 and (idx != _kf_idx or air != _kf_air):
 		_kf_idx = idx
-		actor.figure.set_target(move.kf[idx][1])
+		_kf_air = air
+		actor.figure.set_target(actor.adapt_pose(move.kf[idx][1], air))
 
 
 func _spin_drive() -> void:

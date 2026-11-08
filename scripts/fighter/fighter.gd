@@ -354,7 +354,9 @@ func _locomotion(delta: float) -> void:
 	elif absf(velocity.x) > 25.0:
 		state = "walk"
 		var dir_sign := 1.0 if velocity.x * facing >= 0.0 else -1.0
-		_walk_phase += absf(velocity.x) * (0.07 if absf(velocity.x) > RUN_SPEED * 0.7 else 0.085) * delta * dir_sign
+		# the cycle is tied to distance (no foot sliding): ~150 px per two steps walking, ~240 px running
+		var cycle := lerpf(150.0, 240.0, _run_mix())
+		_walk_phase += absf(velocity.x) * TAU / cycle * delta * dir_sign
 	else:
 		state = "idle"
 
@@ -789,6 +791,22 @@ func _dodges(info: HitInfo) -> bool:
 	return false
 
 
+## Attack keyframes are authored with planted feet. In the air the legs of such a pose are swapped for the air pose, so a
+## mid-air jab does not show a ground stance. Kicks (big thigh / knee angles) keep their legs.
+func adapt_pose(kf: Dictionary, airborne: bool) -> Dictionary:
+	if not airborne or kf.is_empty():
+		return kf
+	var out := kf.duplicate()
+	var air := PoseLib.air(velocity.y, Time.get_ticks_msec() / 1000.0 + player_index)
+	for leg in ["f", "b"]:
+		var th := float(kf.get("th_" + leg, 0.0))
+		var kn := float(kf.get("kn_" + leg, 0.0))
+		if absf(th) < 0.95 and kn < 1.3:
+			out["th_" + leg] = lerpf(th, float(air["th_" + leg]), 0.85)
+			out["kn_" + leg] = lerpf(kn, float(air["kn_" + leg]), 0.85)
+	return out
+
+
 func _loco_pose() -> Dictionary:
 	var p := _loco_pose_base()
 	var base := _base_pose()
@@ -799,15 +817,21 @@ func _loco_pose() -> Dictionary:
 			# walk: legs animate, the arms (and weapon) keep the class guard. Jump / fall: the arms mostly follow the air pose
 			# (thrown up, trailing) so a weapon class does not hover in a rigid guard; the weapon stays in the hand
 			var air := state == "jump" or state == "fall"
+			var arm_mix := 0.8 if air else (0.7 * _run_mix() if state == "walk" else 0.0)
 			for k in ["ua_f", "la_f", "ua_b", "la_b", "wp_rot", "root_y"]:
 				if base.has(k):
-					if air and k in ["ua_f", "la_f", "ua_b", "la_b"] and p.has(k):
-						p[k] = lerpf(float(base[k]), float(p[k]), 0.8)
+					if arm_mix > 0.0 and k in ["ua_f", "la_f", "ua_b", "la_b"] and p.has(k):
+						p[k] = lerpf(float(base[k]), float(p[k]), arm_mix)
 					else:
 						p[k] = base[k]
 	if _crouch > 0.01 and not p.is_empty():
 		p = PoseLib.blend(p, PoseLib.crouch(), _crouch)
 	return p
+
+
+## 0 = walking, 1 = running (by ground speed).
+func _run_mix() -> float:
+	return smoothstep(190.0, 300.0, absf(velocity.x))
 
 
 func _loco_pose_base() -> Dictionary:
@@ -823,6 +847,9 @@ func _loco_pose_base() -> Dictionary:
 			p = PoseLib.hang()
 		"walk":
 			p = PoseLib.walk(_walk_phase)
+			var rm := _run_mix()
+			if rm > 0.0:
+				p = PoseLib.blend(p, PoseLib.run(_walk_phase), rm)
 		"dash":
 			return {}
 		"tossed":

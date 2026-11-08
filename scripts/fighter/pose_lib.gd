@@ -64,6 +64,32 @@ static func walk(phase: float) -> Dictionary:
 	}
 
 
+## Run cycle after the classic "run on 6s" sheet: contact, down, passing, up (flight), with a big lean, big arm swing,
+## the trailing heel kicked up and a little vertical bob. phase: 0 = front-leg contact, TAU = one full cycle (two steps).
+const RUN_TH := [0.85, 0.40, -0.05, -0.60, -0.85, -0.45, 0.25, 0.75]
+const RUN_KN := [0.15, 0.55, 0.30, 0.20, 0.45, 1.95, 2.10, 1.00]
+
+
+static func _run_key(tbl: Array, ph: float) -> float:
+	var x := fposmod(ph, TAU) / (TAU / 8.0)
+	var i := int(floorf(x)) % 8
+	var f: float = x - floorf(x)
+	f = f * f * (3.0 - 2.0 * f)
+	return lerpf(float(tbl[i]), float(tbl[(i + 1) % 8]), f)
+
+
+static func run(phase: float) -> Dictionary:
+	var cs := cos(phase)
+	return {
+		"lean": 0.34, "head": -0.16,
+		"th_f": _run_key(RUN_TH, phase), "kn_f": _run_key(RUN_KN, phase),
+		"th_b": _run_key(RUN_TH, phase + PI), "kn_b": _run_key(RUN_KN, phase + PI),
+		"ua_f": 0.5 - 0.95 * cs, "la_f": 1.55 + 0.2 * cs,
+		"ua_b": 0.5 + 0.95 * cs, "la_b": 1.55 - 0.2 * cs,
+		"root_y": -6.0 * (0.5 - 0.5 * cos(2.0 * (phase - PI * 0.25))),
+	}
+
+
 static func walk_enemy(phase: float) -> Dictionary:
 	var s := sin(phase)
 	var c := cos(phase)
