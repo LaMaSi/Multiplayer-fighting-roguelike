@@ -410,6 +410,9 @@ func _make_scenery() -> void:
 	gr.z_index = -10
 	gr.draw.connect(_paint_ground.bind(gr))
 	add_child(gr)
+	var dl := DepthLayer.new()
+	dl.level = self
+	add_child(dl)
 	sky.queue_redraw()
 	gr.queue_redraw()
 
@@ -447,8 +450,11 @@ func _paint_sky(c: CanvasItem) -> void:
 func _paint_ground(c: CanvasItem) -> void:
 	var ng: Color = theme["neon_ground"]
 	var gcol: Color = Pal.BG_GROUND if Backdrop.variant >= 4 else theme["ground"]
-	for g: Rect2 in _ground_rects():
+	for g0: Rect2 in _ground_rects():
+		# the walkable surface (DepthLayer) reaches FLOOR_FRONT below the walking line; the solid front face starts there
+		var g := Rect2(g0.position.x, g0.position.y + DepthLayer.FLOOR_FRONT, g0.size.x, g0.size.y - DepthLayer.FLOOR_FRONT)
 		c.draw_rect(g, gcol)
+		c.draw_rect(Rect2(g.position.x, g.position.y, g.size.x, 20.0), gcol.lerp(Color(minf(ng.r, 1.0), minf(ng.g, 1.0), minf(ng.b, 1.0)), 0.10))
 		c.draw_line(g.position, Vector2(g.end.x, g.position.y), ng, 3.0, true)
 		var gx := g.position.x - fmod(g.position.x, 80.0)
 		while gx < g.end.x:
@@ -475,15 +481,17 @@ func _paint_ground(c: CanvasItem) -> void:
 			c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, 3.5, true)
 			c.draw_line(Vector2(r.position.x, r.end.y), r.end, Color(np.r, np.g, np.b, 0.3), 2.0, true)
 			continue
-		# readable "solid": soft shadow below, a lit slab body, a bright top edge and a dark underside
+		# readable "solid": a top surface that reaches back (DepthLayer), a lit front face with a bright edge, a dark underside
+		var ft := r.position.y + DepthLayer.PLAT_FRONT
+		var fb := r.end.y + DepthLayer.PLAT_LIP
 		for i in 3:
-			c.draw_rect(Rect2(r.position.x + 6 + i * 3, r.end.y + 2 + i * 6, r.size.x - 12 - i * 6, 6), Color(0, 0, 0, 0.22 - i * 0.06))
-		c.draw_rect(r, Color(np.r * 0.16, np.g * 0.16, np.b * 0.16, 1.0))
-		c.draw_rect(Rect2(r.position.x, r.position.y, r.size.x, r.size.y * 0.45), Color(np.r * 0.3, np.g * 0.3, np.b * 0.3, 1.0))
-		c.draw_rect(Rect2(r.position.x, r.end.y - 4.0, r.size.x, 4.0), Color(0.02, 0.01, 0.04, 0.9))
-		c.draw_line(r.position, Vector2(r.end.x, r.position.y), np, UiKit.LINE, true)
-		c.draw_line(Vector2(r.position.x, r.position.y), Vector2(r.position.x, r.end.y), Color(np.r, np.g, np.b, 0.55), UiKit.LINE, true)
-		c.draw_line(Vector2(r.end.x, r.position.y), r.end, Color(np.r, np.g, np.b, 0.55), UiKit.LINE, true)
+			c.draw_rect(Rect2(r.position.x + 6 + i * 3, fb + 2 + i * 6, r.size.x - 12 - i * 6, 6), Color(0, 0, 0, 0.22 - i * 0.06))
+		c.draw_rect(Rect2(r.position.x, ft, r.size.x, fb - ft), Color(np.r * 0.16, np.g * 0.16, np.b * 0.16, 1.0))
+		c.draw_rect(Rect2(r.position.x, ft, r.size.x, (fb - ft) * 0.5), Color(np.r * 0.3, np.g * 0.3, np.b * 0.3, 1.0))
+		c.draw_rect(Rect2(r.position.x, fb - 3.0, r.size.x, 3.0), Color(0.02, 0.01, 0.04, 0.9))
+		c.draw_line(Vector2(r.position.x, ft), Vector2(r.end.x, ft), np, UiKit.LINE, true)
+		c.draw_line(Vector2(r.position.x, ft), Vector2(r.position.x, fb), Color(np.r, np.g, np.b, 0.55), UiKit.LINE, true)
+		c.draw_line(Vector2(r.end.x, ft), Vector2(r.end.x, fb), Color(np.r, np.g, np.b, 0.55), UiKit.LINE, true)
 
 
 # ------------------------------------------------------------------ ledges

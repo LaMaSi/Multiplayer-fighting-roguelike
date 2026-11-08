@@ -23,3 +23,11 @@ ground heights and higher platforms, and characters pass through each other inst
 - A level can contain doors. A door leads to a single-screen room inside the same level (state is kept).
 - Colour + shape say what is inside: red hexagon = challenge room (hard enemies, extra coins or a move choice),
   gold arch = move shop. Both players enter together; leaving returns to the door.
+
+## 2.5D depth (drawing only, collision is unchanged)
+`scripts/levels/depth_layer.gd` adds depth to the flat side view:
+- **Ground:** the surface reaches `FLOOR_BACK` (46 px) behind the walking line and `FLOOR_FRONT` (24 px) in front of it, with a perspective grid, a fogged far edge and a lit front lip. Feet still stand on the original line, which is now inside the floor band.
+- **Platforms (static and moving):** a top surface reaching `PLAT_BACK` / `PLAT_FRONT` px behind and in front of the collision line, plus a front face and a visible side. Sides of platforms and pit edges appear on the side that faces the camera.
+- **Parallax:** the far edge converges toward the camera centre (`VANISH` = 700 px), so floors and platforms shift slightly while the camera moves.
+- **Contact shadows:** every actor gets a soft ellipse on the surface below it (ground, platform or moving platform); it shrinks and fades with height.
+- Test: `Godot --path . res://tests/shot_depth.tscn -- <out_prefix> [seed]` writes `_start`, `_pit`, `_platform` screenshots.
