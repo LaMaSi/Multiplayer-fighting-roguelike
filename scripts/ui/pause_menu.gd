@@ -97,7 +97,9 @@ func _go(page: String, sel := 0) -> void:
 func _testing_items() -> Array:
 	var t: Array = []
 	if not RunState.active:
-		t.append_array([["lo0", "MOVE LAB  -  PLAYER 1", ""], ["lo1", "MOVE LAB  -  PLAYER 2", ""]])
+		t.append(["lo0", "MOVE LAB  -  PLAYER 1", ""])
+		if not RunState.solo:
+			t.append(["lo1", "MOVE LAB  -  PLAYER 2", ""])
 	if level is TrainingLevel:
 		t.append_array([["spawn_kind", "SPAWN ENEMY", String(SPAWNABLE[_spawn_idx]).to_upper()], ["crate", "SPAWN A CRATE", ""], ["heal", "HEAL BOTH PLAYERS", ""]])
 	t.append(["back", "BACK", ""])
@@ -269,8 +271,6 @@ func _title(c: Control, text: String, pos: Vector2, size: int) -> void:
 
 
 func paint(c: Control) -> void:
-	if Coop.fighters.size() < 2:
-		return
 	if _page == "loadout":
 		c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.8))
 		_lv.paint_screen(c)
@@ -304,7 +304,8 @@ func _paint_status(c: Control) -> void:
 	if RunState.active:
 		UiKit.txt(c, UiKit.body(), Vector2(x + 350, 182), "STREETS  ·  %d CLEARED" % RunState.levels_cleared, 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_RIGHT, 326.0)
 	_lv.paint_mini(c, 0, Rect2(x, 230, 370, 232))
-	_lv.paint_mini(c, 1, Rect2(x + 390, 230, 370, 232))
+	if not RunState.solo:
+		_lv.paint_mini(c, 1, Rect2(x + 390, 230, 370, 232))
 
 
 func _paint_lab(c: Control) -> void:

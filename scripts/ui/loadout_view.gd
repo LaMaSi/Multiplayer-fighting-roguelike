@@ -104,7 +104,7 @@ func _say(p: int, text: String) -> void:
 ## Call from the owner's _physics_process (right after Inp polls, so button edges are never missed).
 func update(delta: float) -> void:
 	t += delta
-	for p in 2:
+	for p in (1 if RunState.solo else 2):
 		_flash_t[p] = maxf(0.0, _flash_t[p] - delta)
 		var inp: PlayerInput = Inp.players[p]
 		var d := inp.digital_dir()
@@ -124,7 +124,7 @@ func update(delta: float) -> void:
 			if holding[p] != "":
 				holding[p] = ""
 				Sfx.play("ui", 0.8)
-			elif holding[1 - p] == "":
+			elif RunState.solo or holding[1 - p] == "":
 				close_requested = true
 
 
@@ -167,7 +167,8 @@ func paint_screen(c: Control) -> void:
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	UiKit.txt(c, UiKit.body(), Vector2(40, 104), "SWAP MOVES BETWEEN BUTTONS  ·  BOTH PLAYERS AT ONCE", 18, UiKit.PINK)
 	paint_player(c, 0, Rect2(30, 126, 605, 470))
-	paint_player(c, 1, Rect2(645, 126, 605, 470))
+	if not RunState.solo:
+		paint_player(c, 1, Rect2(645, 126, 605, 470))
 
 
 func paint_player(c: Control, p: int, r: Rect2) -> void:
