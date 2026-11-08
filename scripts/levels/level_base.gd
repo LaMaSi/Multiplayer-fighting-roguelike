@@ -174,7 +174,7 @@ func is_safe_ground(p: Vector2) -> bool:
 
 
 func _spawn_players() -> void:
-	for i in 2:
+	for i in (1 if RunState.solo else 2):
 		var f := Fighter.new()
 		f.player_index = i
 		f.position = Vector2(260 + i * 90, ground_y - 1)

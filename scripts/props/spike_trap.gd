@@ -62,7 +62,7 @@ func _hurt(a: Actor) -> void:
 		info.stun = 12
 		info.kb = Vector2(0.0, -280.0)
 	Fx.sparks(get_parent(), global_position + Vector2(0, -10), COL, 10)
-	Sfx.play("hit2", 0.8)
+	Sfx.impact(18.0)
 	a.take_hit(info)
 
 

@@ -184,7 +184,13 @@ func _do_event(e: Dictionary) -> void:
 			if e.has("vy"):
 				a.velocity.y = float(e["vy"])
 		"sfx":
-			Sfx.play(String(e["name"]))
+			if String(e["name"]) == "whoosh":
+				var top := 0.0
+				for hh: Dictionary in move.hits:
+					top = maxf(top, float(hh["dmg"]))
+				Sfx.swing(top * a.dmg_mult())  # bigger swings sound lower
+			else:
+				Sfx.play(String(e["name"]))
 		"ghost":
 			Fx.afterimage(parent, a.figure, a.figure.color)
 		"proj":
@@ -392,6 +398,10 @@ func _hits() -> void:
 				_connect(h, t, rect)
 
 
+const KB_PLAYER := 1.5  ## player knockback multiplier: enemies reach the partner for team combos
+const KB_EMPOWERED := 0.8  ## empowered moves keep the target close (personal combo starter)
+
+
 func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	var a := actor
 	if h.get("grab", false):
@@ -399,7 +409,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 			t.grab(a)
 			grabbed = t
 			hit_connected = true
-			Sfx.play("hit2", 0.8)
+			Sfx.impact(8.0)
 			Fx.impact(a.get_parent(), rect.get_center(), a.figure.color, 0.5)
 		return
 	var info := HitInfo.new()
@@ -432,7 +442,28 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		info.dmg = 0.0  # a partner launch never hurts the partner
 		info.no_combo = true
 	info.pos = rect.get_center().clamp(t.get_hurt_rect().position, t.get_hurt_rect().end)
-	var kb: Vector2 = (h["kb"] as Vector2) * a.upgrade_mult(move.id, "kb") * (1.2 if empowered else 1.0)
+	var kb: Vector2 = (h["kb"] as Vector2) * a.upgrade_mult(move.id, "kb")
+	if a.team == "player":
+		# Normal moves hit hard enough to send an enemy across to the partner (team combos); an empowered move is a
+		# personal combo starter instead: the target barely leaves the attacker.
+		var fx := KB_EMPOWERED if empowered else KB_PLAYER
+		kb = Vector2(kb.x * fx, kb.y * (1.0 + (fx - 1.0) * 0.4) if kb.y < 0.0 else kb.y)
+	if info.friendly and not bool(h.get("partner_safe", false)):
+		# Player-vs-player: no damage or effects, only a light stagger that interrupts the other player.
+		info.dmg = 0.0
+		info.no_combo = true
+		info.kind = "normal"
+		info.stun = 10
+		info.stop = 3
+		info.shake = 0.0
+		info.punch = 0.0
+		info.ignite = 0.0
+		info.shock = 0.0
+		info.frost = 0.0
+		info.heal_self = 0.0
+		info.wallbounce = false
+		info.guard_break = false
+		kb = Vector2(clampf(kb.x, -140.0, 140.0), 0.0)
 	if bool(h["radial"]):
 		var dx: float = t.get_hurt_rect().get_center().x - a.global_position.x
 		var s := signf(dx) if absf(dx) > 4.0 else float(a.facing)

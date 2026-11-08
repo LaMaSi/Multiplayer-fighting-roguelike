@@ -116,7 +116,7 @@ func take_hit(info: HitInfo) -> bool:
 	_wobble = 0.25
 	_wob_dir = signf(info.kb.x) if info.kb.x != 0.0 else 1.0
 	Fx.impact(get_parent(), info.pos, col, 0.7, info.kb)
-	Sfx.play("hit", 0.8)
+	Sfx.impact(info.dmg)
 	if info.ignite > 0.0:
 		_ignite(info.ignite * 1.6, info.color)
 	if info.kind == "spike" or hp <= 0.0:
@@ -391,9 +391,11 @@ func _spring_tick(delta: float) -> void:
 		var a := n as Actor
 		if not a.is_alive() or a.state == "dead" or a.state == "downed" or a.state == "grabbed" or _spring_cd.has(a.get_instance_id()):
 			continue
+		if a.team == "enemy" and (a._pinball_t > 0.0 or a._pinball_emit_t > 0.0):
+			continue  # an enemy mid pinball chain is not launched again: no spring pinball loops
 		var feet := Rect2(a.global_position.x - 12.0, a.global_position.y - 8.0, 24.0, 12.0)
 		if top.intersects(feet) and a.velocity.y > 40.0 or (top.intersects(feet) and a.is_on_floor()):
-			_spring_cd[a.get_instance_id()] = 1.6  # long enough to fly away; no bounce loops
+			_spring_cd[a.get_instance_id()] = 3.0  # long enough to fly away; no bounce loops
 			_squash = 1.0
 			var sx := a.velocity.x * 0.8
 			if absf(sx) < 240.0:

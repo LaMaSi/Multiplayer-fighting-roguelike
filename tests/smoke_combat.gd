@@ -153,16 +153,8 @@ func _run() -> void:
 	var hp2 := f2.hp
 	await tap(p1, X)
 	await frames(10)
-	check(f2.hp < hp2, "friendly fire damages partner (%.1f)" % (hp2 - f2.hp))
+	check(f2.hp == hp2, "player hits never damage the partner")
 	await frames(60)
-	place(f1, Vector2(1500, 599), 1)
-	place(f2, Vector2(1560, 599), 1)
-	Coop.friendly_fire = false
-	hp2 = f2.hp
-	await tap(p1, X)
-	await frames(10)
-	check(f2.hp == hp2, "friendly fire OFF: no damage")
-	Coop.friendly_fire = true
 	await frames(60)
 
 	print("[crouch avoids HIGH attacks only]")

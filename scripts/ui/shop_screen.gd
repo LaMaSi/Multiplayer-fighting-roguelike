@@ -309,6 +309,8 @@ func _physics_process(_delta: float) -> void:
 			_act(cursor[i], i)
 		elif p.pressed(PlayerInput.Btn.B):
 			vote[i] = -1
+	if RunState.solo:
+		vote[1] = vote[0]
 	if vote[0] == 6 and vote[1] == 6 and not _pickers[0].active and not _pickers[1].active:
 		leave()
 

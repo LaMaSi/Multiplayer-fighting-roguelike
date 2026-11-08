@@ -53,7 +53,7 @@ func _bounce(a: Actor, to: Vector2) -> void:
 		Coop.bonus_hit(a.last_hitter as Actor, a, 0.0)  # keeps a combo alive
 	Fx.ring(get_parent(), _centre(), COL, 90.0, 0.25)
 	Fx.sparks(get_parent(), _centre() + dir * R, COL, 8, dir)
-	Sfx.play("hit2", 1.5)
+	Sfx.play("block", 1.3)
 	Juice.shake(0.12)
 
 

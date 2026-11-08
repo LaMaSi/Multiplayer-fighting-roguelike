@@ -89,7 +89,7 @@ func _spawn_result_backdrop() -> void:
 		{"lean": -0.05, "head": -0.12, "root_y": -4.0, "th_f": 0.35, "kn_f": 0.3, "th_b": -0.35, "kn_b": 0.3, "ua_f": 2.7, "la_f": 0.3, "ua_b": 2.9, "la_b": 0.2},
 		{"lean": 0.0, "head": -0.15, "root_y": -10.0, "th_f": 0.25, "kn_f": 0.7, "th_b": -0.25, "kn_b": 0.7, "ua_f": 2.5, "la_f": 0.4, "ua_b": 3.0, "la_b": 0.1},
 	]
-	for i in 2:
+	for i in (1 if RunState.solo else 2):
 		var f := StickFigure.new()
 		f.color = UiKit.player_color(i)
 		f.arm_scale = 1.22

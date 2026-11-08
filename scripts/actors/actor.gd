@@ -62,6 +62,8 @@ var _bumped: Dictionary = {}
 var _pinball_gen := 0  ## how many enemy-into-enemy bounces deep this launch is (a throw or a hit by a player = 0)
 var _pinball_t := 0.0  ## seconds during which this enemy cannot be pinballed again
 const PINBALL_MAX_GEN := 2
+var _pinball_emit_t := 0.0  ## after knocking into someone, this body cannot pinball again for a moment
+const PINBALL_COOLDOWN := 1.0
 var _bounced := false
 var _wallbounce := false
 var _victim_freeze := false
@@ -121,10 +123,10 @@ func hit_targets() -> Array:
 		for n in get_tree().get_nodes_in_group("hurt_enemy"):
 			if n.is_targetable():
 				out.append(n)
-		if Coop.friendly_fire:
-			for n in get_tree().get_nodes_in_group("hurt_player"):
-				if n != self and n.is_targetable():
-					out.append(n)
+		# players can always stagger each other (no damage, see AttackRunner._connect)
+		for n in get_tree().get_nodes_in_group("hurt_player"):
+			if n != self and n.is_targetable():
+				out.append(n)
 	else:
 		for n in get_tree().get_nodes_in_group("hurt_player"):
 			if n.is_targetable():
@@ -335,10 +337,8 @@ func _hit_feedback(info: HitInfo, dmg: float) -> void:
 	var pitch := 1.0 + minf(Coop.combo, 24) * 0.025
 	if info.relay:
 		Sfx.play("relay", 1.0 + minf(Coop.relay, 6) * 0.08)
-	if dmg >= 14.0 or info.kind == "spike":
-		Sfx.play("heavy")
-	else:
-		Sfx.play("hit" if randf() < 0.5 else "hit2", pitch)
+	# strength decides the sound: heavier blows are lower, longer and fatter (combo only lifts the pitch a little)
+	Sfx.impact(maxf(dmg, 24.0) if info.kind == "spike" else dmg, 1.0 + (pitch - 1.0) * 0.5)
 	if not info.no_combo and not info.friendly:
 		var txt := "%d" % int(round(dmg))
 		var col := Color(1.0, 0.95, 0.5) if info.relay else Color(1.0, 1.0, 1.0)
@@ -425,7 +425,37 @@ func _physics_process(delta: float) -> void:
 		_: _control(delta)
 	if global_position.y > kill_y:
 		_fell_out()
+	_separate_from_others(delta)
 	_update_visuals(delta)
+
+
+## Soft body collision: characters may overlap a little, but are eased apart so they never stand in the same spot.
+const SEP_DIST := 38.0  ## centre-to-centre distance below which bodies are pushed apart
+const SEP_SPEED := 260.0  ## px/s of push at full overlap
+
+
+func _separate_from_others(delta: float) -> void:
+	if state in ["launched", "grabbed", "down", "dead", "downed", "getup"] or not is_alive():
+		return
+	for o in get_tree().get_nodes_in_group("actors"):
+		if o == self or not (o is Actor):
+			continue
+		var a := o as Actor
+		if not a.is_alive() or a.state in ["launched", "grabbed", "down", "dead", "downed"]:
+			continue
+		if absf(a.global_position.y - global_position.y) > 45.0:
+			continue  # one is in the air / on another level
+		var dx := global_position.x - a.global_position.x
+		var min_d := SEP_DIST * 0.5 * (body_scale + a.body_scale)
+		if absf(dx) >= min_d:
+			continue
+		var dir := signf(dx)
+		if dir == 0.0:
+			dir = 1.0 if get_instance_id() > a.get_instance_id() else -1.0
+		var push := (1.0 - absf(dx) / min_d) * SEP_SPEED * delta * 0.5
+		var motion := Vector2(dir * maxf(push, 0.4), 0.0)
+		if not test_move(global_transform, motion):
+			global_position += motion
 
 
 func _tick_timers(delta: float) -> void:
@@ -433,6 +463,7 @@ func _tick_timers(delta: float) -> void:
 	armor_t = maxf(0.0, armor_t - delta)
 	flash_t = maxf(0.0, flash_t - delta)
 	_pinball_t = maxf(0.0, _pinball_t - delta)
+	_pinball_emit_t = maxf(0.0, _pinball_emit_t - delta)
 	_chain_t = maxf(0.0, _chain_t - delta)
 	_tick_burn(delta)
 	shock_t = maxf(0.0, shock_t - delta)
@@ -519,7 +550,7 @@ func _st_launched(delta: float) -> void:
 		var n := get_wall_normal()
 		velocity.x = n.x * absf(vx_before) * 0.45
 		Fx.impact(get_parent(), global_position + Vector2(-n.x * 14.0, -50.0), Color(1.6, 1.6, 1.6), 0.9, n)
-		Sfx.play("heavy", 1.2)
+		Sfx.impact(18.0 + absf(vx_before) * 0.02)
 		Juice.shake(0.3)
 		if _wallbounce:
 			_wallbounce = false
@@ -539,7 +570,7 @@ func _launch_collisions() -> void:
 	var credit: Actor = thrown_by if thrown_by != null else last_hitter
 	if credit == null:
 		return
-	if _pinball_gen >= PINBALL_MAX_GEN:
+	if _pinball_gen >= PINBALL_MAX_GEN or _pinball_emit_t > 0.0:
 		return  # enemies knocked into each other stop knocking each other after a couple of bounces
 	for t in get_tree().get_nodes_in_group("hurt_enemy"):
 		if t == self or _bumped.has(t.get_instance_id()) or not t.has_method("take_hit"):
@@ -550,6 +581,7 @@ func _launch_collisions() -> void:
 			continue
 		if get_hurt_rect().intersects(t.get_hurt_rect()):
 			_bumped[t.get_instance_id()] = true
+			_pinball_emit_t = PINBALL_COOLDOWN
 			if t is Actor:
 				(t as Actor)._pinball_t = 1.2
 				(t as Actor)._pinball_gen = _pinball_gen + 1
@@ -790,7 +822,7 @@ func _shock_arc(info: HitInfo, dmg: float) -> void:
 	var a := Vector2(global_position.x, global_position.y - 55.0)
 	var b := Vector2(best.global_position.x, best.global_position.y - 55.0)
 	Fx.beam(get_parent(), a, b, info.color, 0.18)
-	Sfx.play("hit2", 1.4)
+	Sfx.play("hit1", 1.5)
 	var arc := HitInfo.new()
 	arc.attacker = info.attacker
 	arc.team = info.team

@@ -96,6 +96,8 @@ func _process(delta: float) -> void:
 ## Damage multiplier of the running combo: +8 % per team hand-off (up to 15) and +25 % per relay (up to 4). Long team combos
 ## are what kills the tanky enemies quickly.
 func combo_mult() -> float:
+	if RunState.solo:
+		return 1.0  # team combo bonus disabled while playtesting alone
 	return 1.0 + 0.25 * minf(relay, 4) + 0.08 * minf(combo, 15)
 
 

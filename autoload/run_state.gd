@@ -25,6 +25,8 @@ var perks: Array = [{}, {}]  ## per player: perk id -> true (e.g. "double_jump")
 ## menu and kept across runs; it is not reset by start_run.
 var classes: Array = ["brawler", "brawler"]  ## Brawler is the plain-fists class; "" (no class) is only the legacy fighter used by old tests
 var magic_unlocked := true  ## Magic is unlocked from the start (meta progression is not built yet); can still be toggled on the main menu for testing
+## Solo playtest mode: only P1 (first controller) plays. No P2 fighter; the team combo bonus is off; P2 screens auto-complete.
+var solo := false
 var picker := 0  ## who picks first this round (alternates every level)
 var queue: Array = []  ## [{player, kind: "move" | "level"}]
 var bonus_picks: Array = []  ## extra picks earned in door rooms: appended to the next reward queue
