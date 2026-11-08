@@ -16,10 +16,13 @@ func frames(n: int) -> void:
 		await get_tree().physics_frame
 
 
+var _last: Enemy = null  ## the enemy launched last: its own trail is the one under test
+
+
 func _trail_of(lv: Node) -> LaunchTrail:
 	var best: LaunchTrail = null
 	for n in lv.get_children():
-		if n is LaunchTrail:
+		if n is LaunchTrail and (n as LaunchTrail).owner_actor == _last:
 			best = n
 	return best
 
@@ -32,7 +35,12 @@ func _clear_trails(lv: Node) -> void:
 
 func _launch(lv: LevelBase, attacker: Node, src: String) -> void:
 	_clear_trails(lv)
+	for old in get_tree().get_nodes_in_group("hurt_enemy"):
+		if old is Enemy and old.name != "keep":
+			old.queue_free()
+	await frames(2)
 	var e: Enemy = lv.spawn_enemy("dummy", Vector2(900.0, lv.ground_y - 1.0))
+	_last = e
 	await frames(5)
 	var info := HitInfo.new()
 	info.attacker = attacker
@@ -70,7 +78,7 @@ func _ready() -> void:
 	t = _trail_of(lv)
 	if t != null:
 		check(t.col.is_equal_approx(Actor.TRAIL_RED), "a hazard or explosion gives a red trail")
-	var other: Enemy = lv.spawn_enemy("thug", Vector2(1200.0, lv.ground_y - 1.0))
+	var other: Enemy = lv.spawn_enemy("thug", Vector2(1500.0, lv.ground_y - 1.0))
 	await _launch(lv, other, "attack")
 	t = _trail_of(lv)
 	if t != null:

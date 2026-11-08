@@ -95,5 +95,21 @@ func _ready() -> void:
 	check(min_y < lv.ground_y - 300.0, "...but still flies high first (feet reached y %.0f)" % min_y)
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out + "_arena.png")
+	# doors: nothing on the ground within DOOR_CLEAR of a door or the exit
+	var bad := 0
+	for sd2 in range(1, 13):
+		lv.queue_free()
+		await frames(2)
+		lv = _make(sd2)
+		await frames(6)
+		for pr in get_tree().get_nodes_in_group("props"):
+			var pp := (pr as Node2D).global_position
+			if absf(pp.y - lv.ground_top(pp.x)) < 70.0 and lv.near_door(pp.x):  # on the ground (platform containers are higher up)
+				bad += 1
+				print('VIOLATION seed ', sd2, ' prop ', (pr as Prop).kind, ' at ', pp)
+		for hz in lv.get_children():
+			if hz is SpikeTrap and not (hz as SpikeTrap).ceiling and lv.near_door((hz as Node2D).position.x):
+				bad += 1
+	check(bad == 0, "no ground props or spikes within the clear zone of any door, across 12 seeds (%d violations)" % bad)
 	print("tunnel test: %d fail(s)" % fails)
 	get_tree().quit(1 if fails > 0 else 0)

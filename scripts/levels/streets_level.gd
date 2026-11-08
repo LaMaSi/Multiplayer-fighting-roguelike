@@ -315,7 +315,7 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 	for i in 2:
 		for tries in 10:
 			var hx := rng.randf_range(400.0, level_w - 600.0)
-			if is_safe_ground(Vector2(hx, ground_at(hx))):
+			if is_safe_ground(Vector2(hx, ground_at(hx))) and not near_door(hx):
 				hazards_spec.append({"kind": "spikes" if rng.randf() < 0.7 else "spring", "x": hx})
 				break
 
@@ -329,7 +329,7 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		else:
 			for tries in 12:
 				var px2 := rng.randf_range(300.0, level_w - 400.0)
-				if is_safe_ground(Vector2(px2, ground_at(px2))):
+				if is_safe_ground(Vector2(px2, ground_at(px2))) and not near_door(px2):
 					props_spec.append([px2, kind])
 					break
 	# the way over the tunnel is the rewarding one: containers on the roof, and one inside for the way through

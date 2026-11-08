@@ -53,3 +53,7 @@ ground heights and higher platforms, and characters pass through each other inst
 ## Ceiling spikes (revised)
 - Ceiling spikes **never hang lower than half a screen**: their tips must be at least `SpikeTrap.AIR_MIN_H` (about 424 px, half the screen height at the closest camera zoom) above the local ground, so characters can always walk and jump freely underneath. `LevelBase._spawn_hazards` refuses any that are lower.
 - They hang from the **battle screen ceiling** (`ArenaCeiling`): 2 to 4 clusters along its underside (tips about 446 px up), switched on once the ceiling has dropped in and off while it lifts away. They hurt enemies only, and only flying ones (launched, thrown, airborne); a hit slams the enemy back down for the follow-up. They no longer appear under platforms or tunnel roofs.
+
+## Doors: set back, with a clear zone
+- **Challenge, shop and exit doors stand in the depth of the floor** (`Door.DEPTH` = 100 px behind the walking line): drawn smaller and higher in the shared depth camera, with a soft shadow, and behind containers and fighters (z -8). The interaction is unchanged (stand at the door's x on the walking line, press RB), and the prompt stays on the walking line.
+- **Clear zone:** no container, spike trap, spring or bumper is placed on the ground within `LevelBase.DOOR_CLEAR` (190 px) of a door or the exit door (`near_door()`), both in generation and as a guard when spawning, so it also holds for hand-made levels. Containers on platforms above a door are still allowed.

@@ -6,6 +6,7 @@ extends Node2D
 
 const W := 92.0
 const H := 168.0
+const DEPTH := 100.0  ## the door stands this far behind the walking line, in the floor's back part (drawn smaller and higher)
 
 var kind := "challenge"
 var level: LevelBase
@@ -15,7 +16,7 @@ var _t := 0.0
 
 func _ready() -> void:
 	add_to_group("doors")
-	z_index = -1
+	z_index = -8  # behind the containers (-1), the shadows (-5) and the fighters
 
 
 func is_near(f: Actor) -> bool:
@@ -51,6 +52,15 @@ func main_color() -> Color:
 
 
 func _draw() -> void:
+	# placed in depth: base and scale follow the shared depth camera, so the door sits further back than the walking line
+	var cam := get_viewport().get_camera_2d()
+	var ctr := cam.get_screen_center_position() if cam != null else global_position
+	var vp := Vector2(ctr.x, ctr.y - DepthLayer.RISE) - global_position
+	var sc := DepthLayer.EYE / (DepthLayer.EYE + DEPTH)
+	var base := DepthLayer.P(Vector2.ZERO, DEPTH, vp)
+	# a soft shadow where it stands
+	draw_colored_polygon(DepthLayer._ellipse(base, W * 0.62, 9.0), Color(0.0, 0.0, 0.03, 0.35))
+	draw_set_transform(base, 0.0, Vector2(sc, sc))
 	var col := main_color()
 	if used:
 		col = Color(col.r * 0.4, col.g * 0.4, col.b * 0.4)
@@ -76,6 +86,7 @@ func _draw() -> void:
 	draw_string(f, Vector2(-W * 0.5, -H * 0.42), glyph, HORIZONTAL_ALIGNMENT_CENTER, W, 54, col)
 	var label := "CHALLENGE" if kind == "challenge" else "MOVE SHOP"
 	draw_string(f, Vector2(-70, -H - 10.0), label if not used else "USED", HORIZONTAL_ALIGNMENT_CENTER, 140.0, 18, col)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)  # the prompts stay at the walking line, in front
 	if not used and nearest_fighter() != null:
 		draw_string(f, Vector2(-70, 24.0), "RB: ENTER", HORIZONTAL_ALIGNMENT_CENTER, 140.0, 18, Color(1, 1, 1, 0.9))
 		if kind == "shop" and not used and RunState.active and nearest_fighter() != null:

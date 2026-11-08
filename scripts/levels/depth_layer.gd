@@ -76,6 +76,7 @@ func _draw() -> void:
 	segs.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.y > b.position.y)
 	for g: Rect2 in segs:
 		_draw_floor(g, ng, vx0, vx1)
+	_draw_exit()
 	if Backdrop.variant == 0:
 		return  # the legacy flat look keeps its own platforms
 	# platforms: farthest (highest) first so lower ones overlap them
@@ -88,6 +89,28 @@ func _draw() -> void:
 			_draw_tunnel(r, np)
 		else:
 			draw_platform(self, r, np, _vp, true)
+
+
+## The exit door, set back in the floor's depth like every other door (smaller, higher, with a soft shadow).
+func _draw_exit() -> void:
+	if level.exit_x <= 0.0:
+		return
+	var cx: float = level.exit_x + 60.0
+	if cx < _view.position.x - 300.0 or cx > _view.end.x + 300.0:
+		return
+	var gy: float = level.ground_top(cx)
+	var depth := Door.DEPTH
+	var sc := EYE / (EYE + depth)
+	var base := P(Vector2(cx, gy), depth, _vp)
+	draw_colored_polygon(_ellipse(base, 70.0, 10.0), Color(0.0, 0.0, 0.03, 0.35))
+	draw_set_transform(base, 0.0, Vector2(sc, sc))
+	var door := Rect2(-60.0, -190.0, 120.0, 190.0)
+	var col := Pal.interact()
+	draw_rect(door, Color(0.1, 0.07, 0.02))
+	draw_rect(door, col, false, 4.0)
+	draw_rect(Rect2(door.position + Vector2(14, 14), door.size - Vector2(28, 14)), Color(1.0, 0.8, 0.2, 0.18))
+	draw_string(ThemeDB.fallback_font, door.position + Vector2(0, -12), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, door.size.x, 26, col)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## A tunnel: a dark far wall and lights under a thick roof. The way through is at ground level; the roof is a platform.

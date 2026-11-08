@@ -201,8 +201,23 @@ func _build_camera() -> void:
 	b.cam = cam
 
 
+## Nothing is placed on the ground within this distance of a door (props, spikes, springs, bumpers): the doorway stays clear.
+const DOOR_CLEAR := 190.0
+
+
+func near_door(x: float) -> bool:
+	for d in doors_spec:
+		if absf(x - float(d["x"])) < DOOR_CLEAR:
+			return true
+	if exit_x > 0.0 and absf(x - (exit_x + 60.0)) < DOOR_CLEAR:
+		return true  # the exit door too
+	return false
+
+
 func _spawn_props() -> void:
 	for s in props_spec:
+		if s.size() <= 2 and near_door(float(s[0])):
+			continue  # ground containers keep clear of doors (platform ones are somewhere else)
 		var y: float = s[2] if s.size() > 2 else ground_top(float(s[0]))
 		spawn_prop(String(s[1]), Vector2(float(s[0]), y - 1.0))
 
@@ -210,6 +225,8 @@ func _spawn_props() -> void:
 func _spawn_hazards() -> void:
 	for hz in hazards_spec:
 		var x := float(hz["x"])
+		if String(hz["kind"]) != "ceiling_spikes" and near_door(x):
+			continue  # nothing on the ground around a door
 		var pos := Vector2(x, ground_top(x))
 		match String(hz["kind"]):
 			"spikes":
@@ -491,12 +508,7 @@ func _paint_ground(c: CanvasItem) -> void:
 			c.draw_line(Vector2(g.end.x, g.position.y), Vector2(g.end.x, g.position.y + 700.0), Color(ng.r, ng.g, ng.b, 0.55), 3.0, true)
 	c.draw_line(Vector2(0, -1500), Vector2(0, ground_y), ng, 3.0)
 	c.draw_line(Vector2(level_w, -1500), Vector2(level_w, ground_y), ng, 3.0)
-	if exit_x > 0.0:
-		var door := Rect2(exit_x, ground_y - 190.0, 120.0, 190.0)
-		c.draw_rect(door, Color(0.1, 0.07, 0.02))
-		c.draw_rect(door, Pal.interact(), false, 4.0)
-		c.draw_rect(Rect2(door.position + Vector2(14, 14), door.size - Vector2(28, 14)), Color(1.0, 0.8, 0.2, 0.18))
-		c.draw_string(ThemeDB.fallback_font, door.position + Vector2(0, -12), "EXIT", HORIZONTAL_ALIGNMENT_CENTER, door.size.x, 26, Pal.interact())
+	# (the exit door is drawn in depth by DepthLayer)
 	var np: Color = theme["neon_plat"]
 	for r: Rect2 in platforms:
 		if Backdrop.variant == 0:
