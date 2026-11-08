@@ -52,27 +52,36 @@ func _ready() -> void:
 	crate._break(null)
 	await frames(40)
 	check(p.global_position.y > py0 + 20.0, "player falls when the crate is destroyed")
-	# 4. ceiling spikes: a walking enemy is unharmed, a launched one is hit
+	# 4. ceiling spikes: never lower than half a screen; a walking enemy is unharmed, a flung one is hit, players never
+	check(SpikeTrap.AIR_MIN_H >= 420.0, "ceiling spikes must keep their tips >= %.0f px above the ground (half a screen)" % SpikeTrap.AIR_MIN_H)
+	var before := lv.get_children().filter(func(n: Node) -> bool: return n is SpikeTrap and (n as SpikeTrap).ceiling).size()
+	lv.hazards_spec = [{"kind": "ceiling_spikes", "x": 1400.0, "y": gy - 150.0, "w": 100.0}]  # far too low: must be refused
+	lv._spawn_hazards()
+	var after := lv.get_children().filter(func(n: Node) -> bool: return n is SpikeTrap and (n as SpikeTrap).ceiling).size()
+	check(after == before, "ceiling spikes hanging at 150 px are refused")
+	var tip_y := gy - SpikeTrap.AIR_MIN_H - 10.0
+	lv.hazards_spec = [{"kind": "ceiling_spikes", "x": 1400.0, "y": tip_y - SpikeTrap.H, "w": 100.0}]
+	lv._spawn_hazards()
 	var spike: SpikeTrap = null
 	for n in lv.get_children():
 		if n is SpikeTrap and (n as SpikeTrap).ceiling:
 			spike = n
-	check(spike != null, "the training level has ceiling spikes")
+	check(spike != null, "ceiling spikes high enough are accepted")
 	if spike != null:
 		var e: Enemy = lv.spawn_enemy("thug", Vector2(spike.position.x, gy - 1.0))
 		await frames(20)
 		var hp0 := e.hp
 		await frames(40)
-		check(e.hp >= hp0, "a walking enemy under the platform is not hurt")
-		e.global_position = Vector2(spike.position.x, spike.position.y + 40.0)
-		e.velocity = Vector2(0.0, -400.0)
-		await frames(6)
+		check(e.hp >= hp0, "a walking enemy is not hurt")
+		e.global_position = Vector2(spike.position.x, spike.position.y + 60.0)
+		e.thrown(Vector2(0.0, -400.0), lv.fighters[0])
+		await frames(8)
 		check(e.hp < hp0, "an enemy flung up into the ceiling spikes is hurt (hp %.0f -> %.0f)" % [hp0, e.hp])
 		var ph := lv.fighters[1].hp
-		lv.fighters[1].global_position = Vector2(spike.position.x, spike.position.y + 40.0)
+		lv.fighters[1].global_position = Vector2(spike.position.x, spike.position.y + 60.0)
 		lv.fighters[1].velocity = Vector2(0.0, -300.0)
 		await frames(10)
-		check(lv.fighters[1].hp >= ph, "a player jumping into the ceiling spikes is not hurt")
+		check(lv.fighters[1].hp >= ph, "a player is not hurt by them")
 	if args.size() > 0:
 		# screenshot: crate, barrel with a player on top, ceiling spikes
 		var seg := lv.ground_top(300.0)

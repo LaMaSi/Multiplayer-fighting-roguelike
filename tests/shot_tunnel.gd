@@ -77,6 +77,12 @@ func _ready() -> void:
 		f.global_position = Vector2(ex + (-60.0 if f == lv.fighters[0] else 60.0), lv.ground_top(ex) - 1.0)
 	await frames(70)
 	check(lv._ceiling != null, "the arena has a ceiling while locked")
+	var cs := lv._ceiling._spikes
+	check(cs.size() >= 2, "the arena ceiling carries spike clusters (%d)" % cs.size())
+	var low := 1.0e9
+	for st in cs:
+		low = minf(low, lv.ground_y - (st.global_position.y + SpikeTrap.H))
+	check(low >= SpikeTrap.AIR_MIN_H, "every ceiling spike tip is at least half a screen up (lowest tip %.0f px, minimum %.0f)" % [low, SpikeTrap.AIR_MIN_H])
 	var e: Enemy = lv.spawn_enemy("dummy", Vector2(ex, lv.ground_y - 200.0))
 	await frames(3)
 	e.thrown(Vector2(0.0, -4200.0), lv.fighters[0])  # flung straight up, much higher than any arena

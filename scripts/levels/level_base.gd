@@ -15,7 +15,7 @@ var tunnel_roofs: Array = []  ## the Rect2s in `platforms` that are tunnel roofs
 var ground_segs: Array = []  ## Rect2 (x, top_y, width, depth) pieces of ground; empty = one flat ground. Gaps between pieces are pits.
 var moving_specs: Array = []  ## {rect: Rect2, vertical: bool, travel: float (half), period: float, phase: float}
 var doors_spec: Array = []  ## {x, kind: "challenge" | "shop"}
-var hazards_spec: Array = []  ## {kind: "spikes" | "bumper" | "spring", x}  or  {kind: "ceiling_spikes", x, y (platform underside), w}
+var hazards_spec: Array = []  ## {kind: "spikes" | "bumper" | "spring", x}  or  {kind: "ceiling_spikes", x, y (the underside of what they hang from), w}; ceiling spikes must have their tips at least SpikeTrap.AIR_MIN_H above the ground
 var in_room := false  ## the players are inside a door room (the level itself is paused in place)
 var _room: DoorRoom = null
 var _room_door: Door = null
@@ -217,6 +217,10 @@ func _spawn_hazards() -> void:
 				st.position = pos
 				add_child(st)
 			"ceiling_spikes":
+				var tip_h := ground_top(x) - (float(hz["y"]) + SpikeTrap.H)
+				if tip_h < SpikeTrap.AIR_MIN_H:
+					push_warning("ceiling spikes skipped: tips %.0f px above the ground, minimum is %.0f (half the screen)" % [tip_h, SpikeTrap.AIR_MIN_H])
+					continue
 				var cs := SpikeTrap.new()
 				cs.ceiling = true
 				cs.w = float(hz.get("w", 100.0))

@@ -43,9 +43,13 @@ ground heights and higher platforms, and characters pass through each other inst
 - When an arena locks, a solid **ceiling** (`ArenaCeiling`, 470 px above the base ground, 560 px for boss arenas) drops in with the walls and lifts away when the fight ends. It is a layer-1 body: jumps and launched or thrown bodies stop against it and fall back into the fight. It is drawn in the depth camera, so you see its underside with light strips.
 
 ## Branching path: tunnels
-- Fight, elite and treasure levels can contain a **tunnel** (`StreetsLevel._gen_terrain`, 1 per level, 2 in long levels): 460 to 640 px of flat ground under a thick roof. **Through:** walk the ground under the roof (dark interior, ceiling lights, a few containers, sometimes ceiling spikes for throwing enemies into). **Over:** jump up (the roof is a normal one-way platform at the low tier, 150 px) and cross the roof, which carries 3 containers. Both routes meet again at the end.
+- Fight, elite and treasure levels can contain a **tunnel** (`StreetsLevel._gen_terrain`, 1 per level, 2 in long levels): 460 to 640 px of flat ground under a thick roof. **Through:** walk the ground under the roof (dark interior, ceiling lights, a few containers). **Over:** jump up (the roof is a normal one-way platform at the low tier, 150 px) and cross the roof, which carries 3 containers. Both routes meet again at the end.
 - The roof is in `platforms` (so ledge grabs, enemy climbing and shadows work) and in `tunnel_roofs` (drawn thick, with the far wall and lamps: `DepthLayer._draw_tunnel`). Other platforms and movers are cleared from the tunnel's span, and doors are never placed in or next to it.
 - Test: `Godot --path . res://tests/shot_tunnel.tscn -- <out_prefix>` (generates levels until one has a tunnel, checks both routes and the arena ceiling, and writes screenshots).
 
 ## Launch trails
 - An enemy sent flying leaves a subtle fading ribbon (`LaunchTrail`). Colour: the player who hit it; an object (crate, explosion) thrown by a player gives that player's colour; an enemy's attack, a hazard or an unattributed explosion gives red. Test: `tests/trail_test.tscn`.
+
+## Ceiling spikes (revised)
+- Ceiling spikes **never hang lower than half a screen**: their tips must be at least `SpikeTrap.AIR_MIN_H` (about 424 px, half the screen height at the closest camera zoom) above the local ground, so characters can always walk and jump freely underneath. `LevelBase._spawn_hazards` refuses any that are lower.
+- They hang from the **battle screen ceiling** (`ArenaCeiling`): 2 to 4 clusters along its underside (tips about 446 px up), switched on once the ceiling has dropped in and off while it lifts away. They hurt enemies only, and only flying ones (launched, thrown, airborne); a hit slams the enemy back down for the follow-up. They no longer appear under platforms or tunnel roofs.

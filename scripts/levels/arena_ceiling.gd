@@ -13,6 +13,7 @@ var bottom := 0.0  ## y of the underside
 var neon := Color(2.0, 0.6, 1.3)
 var _drop := 1.0  ## 1 = lifted away, 0 = in place
 var _body: StaticBody2D
+var _spikes: Array[SpikeTrap] = []  ## enemy-only spikes hanging from the underside, high above everyone's head
 
 
 func setup(left: float, right: float, bottom_y: float, col: Color) -> void:
@@ -32,16 +33,31 @@ func setup(left: float, right: float, bottom_y: float, col: Color) -> void:
 	_body.add_child(cs)
 	_body.position = Vector2((x0 + x1) * 0.5, bottom - 120.0 - SLIDE)
 	add_child(_body)
+	# spike clusters along the underside; the tips are at least half a screen above the ground (SpikeTrap.AIR_MIN_H)
+	var n := maxi(2, int(round((x1 - x0) / 520.0)))
+	for i in n:
+		var st := SpikeTrap.new()
+		st.ceiling = true
+		st.w = 110.0
+		st.enabled = false
+		st.position = Vector2(x0 + (float(i) + 0.5) * (x1 - x0) / float(n), bottom + DepthLayer.PLAT_LIP - SLIDE)
+		add_child(st)
+		_spikes.append(st)
 
 
 func appear() -> void:
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(self, "_drop", 0.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(_body, "position:y", bottom - 120.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_callback(Juice.shake.bind(0.2))
+	tw.chain().tween_callback(func() -> void:
+		Juice.shake(0.2)
+		for st in _spikes:
+			st.enabled = true)
 
 
 func leave() -> void:
+	for st in _spikes:
+		st.enabled = false
 	_body.set_deferred("process_mode", Node.PROCESS_MODE_DISABLED)
 	_body.queue_free()
 	var tw := create_tween()
@@ -50,6 +66,8 @@ func leave() -> void:
 
 
 func _process(_d: float) -> void:
+	for st in _spikes:
+		st.position.y = bottom + DepthLayer.PLAT_LIP - _drop * SLIDE  # slides with the slab
 	queue_redraw()
 
 

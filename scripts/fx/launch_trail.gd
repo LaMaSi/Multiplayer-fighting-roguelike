@@ -17,8 +17,12 @@ func _ready() -> void:
 
 
 func push(p: Vector2) -> void:
-	if not _pts.is_empty() and (_pts[_pts.size() - 1]["p"] as Vector2).distance_to(p) < 5.0:
-		return
+	if not _pts.is_empty():
+		var d := (_pts[_pts.size() - 1]["p"] as Vector2).distance_to(p)
+		if d < 5.0:
+			return
+		if d > 220.0:
+			_pts.clear()  # the body was teleported (respawn, a test): do not draw a ribbon across the screen
 	_pts.append({"p": p, "t": 0.0})
 	if _pts.size() > MAX_POINTS:
 		_pts.pop_front()

@@ -6,13 +6,14 @@ extends Node2D
 
 const W := 100.0
 const H := 18.0
-## Ceiling spikes hang under a platform. They only exist for the enemies: they are an anvil for thrown and launched
-## bodies, never a hazard for the players' own jumps.
-const AIR_MIN_H := 110.0  ## the underside must be at least this far above the local ground
-const AIR_MAX_H := 270.0  ## ... and at most this far (launch height of a thrown enemy)
+## Ceiling spikes hang high. Their tips are never lower than half the screen height above the ground (measured at the
+## closest camera zoom), so characters can always walk and jump freely underneath. They only hurt enemies: they are an
+## anvil for thrown and launched bodies. In practice they hang from the battle screen's ceiling.
+const AIR_MIN_H := 720.0 / CameraRig.MAX_ZOOM * 0.5  ## minimum height of the spike TIPS above the local ground (~424 px)
 const COL := Color(2.2, 0.35, 0.3)
 
-var ceiling := false  ## hangs from the underside of a platform, pointing down; only hurts enemies
+var ceiling := false  ## hangs from a ceiling, pointing down; only hurts enemies
+var enabled := true  ## off while the ceiling carrying them is still sliding in or out
 var w := W
 var _cd: Dictionary = {}  # actor instance id -> seconds until it can be hurt again
 var _t := 0.0
@@ -25,6 +26,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not enabled:
+		return
 	_t += delta
 	_flash = maxf(0.0, _flash - delta * 3.0)
 	for k in _cd.keys():
