@@ -8,6 +8,11 @@ enum Btn { JUMP, X, Y, B, DASH, INTERACT, LB, RB, START, BACK, EMPOWER, COUNT }
 
 const DEADZONE := 0.35
 
+## Solo run: the input slot (controller / key set) that started it; it drives P1. Lives here (not on the Inp autoload)
+## because Inp already references this class and a back-reference makes the class fail to parse.
+static var solo_source := 0
+static var solo_active := false  ## mirrors RunState.solo (set by its setter; PlayerInput must not reference RunState: RunState -> Fighter -> PlayerInput is a cycle)
+
 const PAD_BTN := {
 	Btn.JUMP: JOY_BUTTON_A,
 	Btn.X: JOY_BUTTON_X,
@@ -74,7 +79,14 @@ func poll() -> void:
 		nh = _s_held.duplicate()
 	else:
 		var pads := Input.get_connected_joypads()
-		device = pads[index] if index < pads.size() else -1
+		var src := index
+		if solo_active:
+			if index != 0:
+				dir = Vector2.ZERO  # solo: only P1 exists
+				held = nh
+				return
+			src = solo_source  # P1 is whichever controller / key set started the solo run
+		device = pads[src] if src < pads.size() else -1
 		if device >= 0:
 			var v := Vector2(Input.get_joy_axis(device, JOY_AXIS_LEFT_X), Input.get_joy_axis(device, JOY_AXIS_LEFT_Y))
 			if v.length() >= DEADZONE:
@@ -97,7 +109,7 @@ func poll() -> void:
 				nh[Btn.INTERACT] = true
 			if Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT) > 0.5:
 				nh[Btn.EMPOWER] = true  # LT: empower the next move (spends a little meter)
-		var k: Dictionary = KB[index]
+		var k: Dictionary = KB[src]
 		var kd := Vector2(
 			float(Input.is_physical_key_pressed(k["right"])) - float(Input.is_physical_key_pressed(k["left"])),
 			float(Input.is_physical_key_pressed(k["down"])) - float(Input.is_physical_key_pressed(k["up"])))

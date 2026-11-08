@@ -5,7 +5,6 @@ extends Node
 
 var players: Array[PlayerInput] = []
 
-
 func _init() -> void:
 	players = [PlayerInput.new(0), PlayerInput.new(1)]
 

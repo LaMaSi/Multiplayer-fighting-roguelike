@@ -25,6 +25,8 @@ var _fig_class: Array[String] = ["?", "?"]
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Engine.time_scale = 1.0
+	RunState.solo = false  # the menu always listens to both controllers
+	PlayerInput.solo_source = 0
 	Dbg._hint.visible = false
 	for i in 2:
 		if not (RunState.classes[i] in CLASS_CYCLE):
@@ -85,7 +87,7 @@ func _physics_process(_delta: float) -> void:
 				_side(String(items[_sel][0]), d.x)
 		_last[p.index] = d
 		if p.pressed(PlayerInput.Btn.JUMP):
-			_activate(String(items[_sel][0]))
+			_activate(String(items[_sel][0]), p.index)
 			return
 		if p.pressed(PlayerInput.Btn.B) and _page != "main":
 			_go_page("main", _main_index(_page))
@@ -105,7 +107,7 @@ func _side(id: String, dx: int) -> void:
 		_toggle_magic()
 
 
-func _activate(id: String) -> void:
+func _activate(id: String, by := 0) -> void:
 	if _page == "options":
 		if id == "back":
 			_go_page("main", _main_index("options"))
@@ -129,6 +131,7 @@ func _activate(id: String) -> void:
 		"run", "solo":
 			Sfx.play("pickup")
 			RunState.solo = id == "solo"  # solo: P1 only, no team combo bonus
+			PlayerInput.solo_source = by  # the controller that pressed it becomes P1
 			RunSetup.mode = "run"  # weapon choice and the move reveal happen on the next screen
 			get_tree().change_scene_to_file("res://scenes/run_setup.tscn")
 		"training":
