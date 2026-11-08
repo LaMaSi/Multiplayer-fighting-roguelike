@@ -202,6 +202,14 @@ func _render(halo: bool) -> void:
 	var arm_f_b := _v(ua_f + float(p["la_f"]), LARM * rc_f * arm_scale)
 	var arm_b_a := _v(ua_b, UARM * rc_b * arm_scale)
 	var arm_b_b := _v(ua_b + float(p["la_b"]), LARM * rc_b * arm_scale)
+	if weapon == "lance":
+		# two-handed grip: the rear hand is solved onto the shaft, a hand-gap behind the front hand
+		var fd_l := arm_f_b.normalized() if arm_f_b.length() > 0.5 else Vector2.RIGHT
+		var wd_l := fd_l.rotated(float(p["wp_rot"]))
+		var grip := shoulder + arm_f_a + arm_f_b - wd_l * (LANCE_GRIP_GAP * weapon_scale)
+		var ik := _arm_ik(shoulder, grip, UARM * rc_b * arm_scale, LARM * rc_b * arm_scale)
+		arm_b_a = ik[0]
+		arm_b_b = ik[1]
 	if not halo:
 		head_pos = head_c
 		hand_f_pos = shoulder + arm_f_a + arm_f_b
@@ -249,6 +257,25 @@ func _render(halo: bool) -> void:
 		_draw_weapon(halo, shoulder + arm_f_a, shoulder + arm_f_a + arm_f_b, shoulder + arm_b_a + arm_b_b, col_f)
 
 
+const LANCE_GRIP_GAP := 36.0  ## distance between the two hands on the glaive shaft
+const LANCE_FORE := 104.0  ## shaft + blade in front of the front hand (the reach every Lance hitbox was authored for)
+const LANCE_BUTT := 74.0  ## shaft behind the front hand
+const LANCE_BLADE := 60.0  ## the curved blade is the last part of the forward length
+
+
+## Two-bone arm IK: returns [upper arm vector, forearm vector] so the hand lands on `target` (clamped to the arm's
+## reach). The elbow bends downwards.
+static func _arm_ik(origin: Vector2, target: Vector2, l1: float, l2: float) -> Array:
+	var to := target - origin
+	var dir := to.normalized() if to.length() > 0.001 else Vector2.DOWN
+	var d := clampf(to.length(), absf(l1 - l2) + 1.0, l1 + l2 - 0.5)
+	var a := acos(clampf((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0, 1.0))
+	var e1 := dir.rotated(a) * l1
+	var e2 := dir.rotated(-a) * l1
+	var e := e1 if e1.y > e2.y else e2
+	return [e, dir * d - e]
+
+
 ## Weapons are drawn from the hands, so every move's arm keyframes move the weapon with them.
 ## elbow_f / hand_f = front arm, hand_b = back hand.
 func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2, col: Color) -> void:
@@ -275,23 +302,40 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 				draw_polyline(PackedVector2Array([base + n * 4.0, tip, base - n * 4.0]), col, 2.5, true)
 				draw_line(base, tip - wd * 6.0, Color(2.0, 2.0, 2.2), 1.5, true)    # bright edge
 		"lance":
-			# like the sword, the lance runs along the front forearm rotated by wp_rot; the butt sticks out behind the hand
-			var shaft_l := 104.0 * ws * maxf(arm_scale, 1.0)
-			var butt := hand_f - wd * 24.0
-			var tip_l := hand_f + wd * shaft_l
+			# a glaive: a long pole held in both hands, mid-shaft, with a curved single-edge blade making up the last
+			# third of the weapon. The axis is the front forearm rotated by wp_rot, like the sword.
+			var k := ws * maxf(arm_scale, 1.0)
+			var butt := hand_f - wd * (LANCE_BUTT * k)
+			var tip_l := hand_f + wd * (LANCE_FORE * k)
+			var blade_len := LANCE_BLADE * k
+			var head_b := tip_l - wd * blade_len
+			var bw := 15.0 * k  # widest point of the blade
+			var edge := PackedVector2Array()
+			var spine := PackedVector2Array()
+			for i in range(0, 11):
+				var t := float(i) / 10.0
+				var along := head_b + wd * (blade_len * t)
+				var sweep := -n * (9.0 * k * t * t)  # the blade curves back towards the spine
+				edge.append(along + sweep + n * (bw * pow(maxf(sin(PI * pow(t, 0.62)), 0.0), 0.9)))
+				spine.append(along + sweep - n * (bw * 0.16 * sin(PI * t)))
+			var outline := PackedVector2Array()
+			outline.append_array(edge)
+			for i in range(spine.size() - 1, -1, -1):
+				outline.append(spine[i])
 			if not halo:
-				weapon_tip = tip_l
-			var head_b := tip_l - wd * 24.0  # where the leaf-shaped head starts
-			var head_pts := PackedVector2Array([head_b, head_b + wd * 11.0 + n * 7.0 * ws, tip_l, head_b + wd * 11.0 - n * 7.0 * ws])
+				weapon_tip = tip_l - n * (9.0 * k)
 			if halo:
-				draw_line(butt, tip_l, dark, 9.0 * ws)
-				draw_colored_polygon(head_pts, dark)
+				draw_line(butt, head_b, dark, 9.0 * ws)
+				draw_colored_polygon(outline, dark)
+				draw_polyline(outline, dark, 6.0, true)
 			else:
-				draw_line(butt, head_b + wd * 4.0, col.darkened(0.3), 4.0, true)            # shaft
-				draw_colored_polygon(head_pts, col.darkened(0.55))
-				draw_polyline(PackedVector2Array([head_pts[0], head_pts[1], head_pts[2], head_pts[3], head_pts[0]]), col, 2.5, true)
-				draw_line(head_b, tip_l - wd * 3.0, Color(2.0, 2.0, 2.2), 1.5, true)         # bright edge
-				draw_line(head_b - n * 6.0, head_b + n * 6.0, col, 3.0, true)                # collar
+				draw_line(butt, head_b + wd * 6.0, col.darkened(0.3), 4.5, true)                          # pole
+				draw_line(butt - wd * 2.0, butt + wd * 7.0, col, 6.0, true)                              # butt cap
+				draw_colored_polygon(outline, col.darkened(0.55))
+				draw_polyline(edge, col, 2.5, true)                                                       # cutting edge
+				draw_polyline(spine, col.darkened(0.2), 2.0, true)
+				draw_line(head_b + n * 1.0, tip_l - n * (9.0 * k) - wd * 4.0, Color(2.0, 2.0, 2.2), 1.3, true)  # fuller / gleam
+				draw_line(head_b - n * 6.0, head_b + n * 6.0, col, 3.5, true)                            # collar
 		"hammer":
 			# the hammer angle is absolute in figure space (0 = forward, + = down, -PI/2 = straight up, PI = back)
 			var hd := Vector2.from_angle(float(pose["wp_rot"]))

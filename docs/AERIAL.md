@@ -45,7 +45,11 @@ Long narrow reach, high jump, innate double jump. Every Lance move works on the 
 
 Super (not implemented): *Heaven's Fall*. Leap high, then rain down piercing strikes; the hit enemies end up launched for the partner's sky relay.
 
-Not done for the Lance: LT versions, the weapon super, per-move `wp_rot` polish. The spear is drawn in code (`stick_figure.gd`) and has **not been looked at on screen**.
+The weapon is a **glaive**: a long pole held mid-shaft in both hands (the rear hand is solved onto the pole with arm IK, so both hands stay on it in every pose), with a curved single-edge blade making up the last third. Reach in front of the front hand is unchanged (104 px), so the authored hitboxes still match. Drawn in code in `stick_figure.gd`; rendered and checked for the idle and the main attack poses, not yet for every move.
+
+Not done for the Lance: LT versions, the weapon super, the tip mechanic (see below), per-move `wp_rot` polish.
+
+**Tip mechanic (proposed, not built):** straight-line Lance moves hit about 1.4x harder with the outer quarter of the hitbox, with a distinct spark and a 'TIP' callout, so spacing is the skill.
 
 ## 4. Combos with existing moves (estimates from the constants, not simulated)
 
