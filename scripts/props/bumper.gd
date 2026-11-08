@@ -31,7 +31,10 @@ func _physics_process(delta: float) -> void:
 		if not (n is Actor):
 			continue
 		var a := n as Actor
-		if not a.is_alive() or a.state == "dead" or a.state == "downed" or a.state == "grabbed" or _cd.has(a.get_instance_id()):
+		if not a.is_alive() or _cd.has(a.get_instance_id()):
+			continue
+		# a pinball tool, not an obstacle: only bodies that are flying (launched / thrown) bounce; walking past is free
+		if a.state != "launched" and not (a is Fighter and float(a.get("_flung_t")) > 0.0):
 			continue
 		var to := (a.global_position + Vector2(0, -45.0)) - _centre()
 		if to.length() < R + 24.0:

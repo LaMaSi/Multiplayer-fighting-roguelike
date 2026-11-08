@@ -288,12 +288,7 @@ func _do_event(e: Dictionary) -> void:
 				grabbed = null
 		"heal_pulse":
 			Fx.ring(parent, a.global_position + Vector2(0, -50), Color(2.0, 1.7, 1.9), float(e["radius"]), 0.4)
-			Sfx.play("heal")
-			a.heal(float(e["amount"]) * 0.5)
-			var p2 := Coop.partner_of(a)
-			if p2 != null and p2.is_alive() and p2.global_position.distance_to(a.global_position) < float(e["radius"]) + 40.0:
-				p2.heal(float(e["amount"]))
-				Fx.number(parent, p2.global_position + Vector2(0, -100), "+%d" % int(e["amount"]), Color(2.0, 1.7, 1.9), 24)
+			Sfx.play("heal")  # Life Drain: the aura itself heals nothing, the healing comes from the damage it deals (see _connect)
 		"well":
 			var gz := GravityZone.new()
 			gz.owner_actor = a
@@ -429,7 +424,7 @@ func _hits() -> void:
 				_connect(h, t, rect)
 
 
-const KB_PLAYER := 1.5  ## player knockback multiplier: enemies reach the partner for team combos
+const KB_PLAYER := 1.9 ## player knockback multiplier: enemies reach the partner for team combos
 const KB_EMPOWERED := 0.8  ## empowered moves keep the target close (personal combo starter)
 
 
@@ -479,7 +474,9 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		# Normal moves hit hard enough to send an enemy across to the partner (team combos); an empowered move is a
 		# personal combo starter instead: the target barely leaves the attacker.
 		var fx := KB_EMPOWERED if empowered else KB_PLAYER
-		kb = Vector2(kb.x * fx, kb.y * (1.0 + (fx - 1.0) * 0.4) if kb.y < 0.0 else kb.y)
+		# Flights are sideways, not skyward: only launchers keep their full lift, and nothing rises past a single jump (~170 px).
+		var lift := 1.0 if move.tags.has("launcher") else 0.6
+		kb = Vector2(kb.x * fx, maxf(kb.y * lift, -780.0) if kb.y < 0.0 else kb.y)
 	if info.friendly and not bool(h.get("partner_safe", false)):
 		# Player-vs-player: no damage or effects, only a light stagger that interrupts the other player.
 		info.dmg = 0.0
@@ -505,6 +502,16 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	if t.take_hit(info):
 		hit_connected = true
 		a.freeze = maxi(a.freeze, info.stop)
+		var drain := float(h.get("drain", 0.0))
+		if drain > 0.0 and t is Actor and not info.friendly and info.dmg > 0.0:
+			# life drain: a share of the damage dealt comes back as health, a smaller share to a nearby partner
+			var got := info.dmg * drain
+			a.heal(got)
+			Fx.number(a.get_parent(), a.global_position + Vector2(randf_range(-20.0, 20.0), -105), "+%d" % maxi(1, int(round(got))), Color(2.0, 1.7, 1.9), 18)
+			var dp := Coop.partner_of(a)
+			if dp != null and dp.is_alive() and dp.state != "downed" and dp.global_position.distance_to(a.global_position) < 420.0:
+				dp.heal(got * 0.5)
+				Fx.number(a.get_parent(), dp.global_position + Vector2(0, -105), "+%d" % maxi(1, int(round(got * 0.5))), Color(2.0, 1.7, 1.9), 16)
 		if info.heal_self > 0.0:
 			a.heal(info.heal_self)
 			Fx.number(a.get_parent(), a.global_position + Vector2(0, -105), "+%d" % int(info.heal_self), Color(2.0, 1.7, 1.9), 18)

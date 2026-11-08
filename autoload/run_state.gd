@@ -26,7 +26,10 @@ var perks: Array = [{}, {}]  ## per player: perk id -> true (e.g. "double_jump")
 var classes: Array = ["brawler", "brawler"]  ## Brawler is the plain-fists class; "" (no class) is only the legacy fighter used by old tests
 var magic_unlocked := true  ## Magic is unlocked from the start (meta progression is not built yet); can still be toggled on the main menu for testing
 ## Solo playtest mode: only P1 (first controller) plays. No P2 fighter; the team combo bonus is off; P2 screens auto-complete.
-var solo := false
+var solo := false:
+	set(v):
+		solo = v
+		PlayerInput.solo_active = v
 var picker := 0  ## who picks first this round (alternates every level)
 var queue: Array = []  ## [{player, kind: "move" | "level"}]
 var bonus_picks: Array = []  ## extra picks earned in door rooms: appended to the next reward queue
@@ -78,6 +81,29 @@ func reroll_loadout(p: int) -> bool:
 		return false
 	setup_rerolls[p] -= 1
 	loadouts[p] = ClassData.roll_loadout(classes[p], _rng)
+	return true
+
+
+## Re-rolls ONE starting move of a player (run setup only), spending one of their rerolls. The new move comes from the
+## same pool, is not already in the loadout and keeps the loadout valid. Returns false when none is left / nothing fits.
+func reroll_move(p: int, slot: String) -> bool:
+	if setup_rerolls[p] <= 0 or classes[p] == "":
+		return false
+	var lo: Dictionary = loadouts[p]
+	if not lo.has(slot):
+		return false
+	var pool: Array = ClassData.pool_for_slot(slot, classes[p])
+	var options: Array = []
+	for id in pool:
+		if not (id in lo.values()):
+			var test := lo.duplicate()
+			test[slot] = id
+			if ClassData.loadout_ok(classes[p], test):
+				options.append(id)
+	if options.is_empty():
+		return false
+	setup_rerolls[p] -= 1
+	lo[slot] = options[_rng.randi() % options.size()]
 	return true
 
 
@@ -334,6 +360,29 @@ func _move_card(id: String, class_id: String) -> Dictionary:
 
 
 func apply_card(player: int, card: Dictionary, slot := "") -> void:
+	_apply_card_data(player, card, slot)
+	# A card taken inside a level (door room reward) must reach the live fighter too: the level's end copies the
+	# fighter's loadout / hp back into the run, which would otherwise erase the pick.
+	for f in Coop.fighters:
+		if not is_instance_valid(f) or f.player_index != player:
+			continue
+		match String(card["kind"]):
+			"move":
+				f.loadout[slot] = card["id"]
+			"hp":
+				f.max_hp = max_hp[player]
+				f.hp = minf(f.max_hp, f.hp + 20.0)
+			"mend":
+				f.hp = f.max_hp
+			"djump":
+				f.double_jump = true
+			"infuse":
+				f.infusion = String(card["element"])
+			"up":
+				f.upgrades = (upgrades[player] as Dictionary).duplicate(true)
+
+
+func _apply_card_data(player: int, card: Dictionary, slot := "") -> void:
 	match String(card["kind"]):
 		"move":
 			(loadouts[player] as Dictionary)[slot] = card["id"]

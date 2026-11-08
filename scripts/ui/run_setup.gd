@@ -37,6 +37,8 @@ var choice: Array[String] = ["", ""]
 var was_random: Array[bool] = [false, false]
 var ready_flags: Array[bool] = [false, false]
 var reveal_t := 0.0
+var rev_cursor: Array[int] = [0, 0]  ## which revealed move each player has selected (Y rerolls just that one)
+var _reroll_at: Array = [[-1.0, -1.0, -1.0, -1.0, -1.0], [-1.0, -1.0, -1.0, -1.0, -1.0]]  ## reveal_t when a single slot was rerolled
 
 var _t := 0.0
 var _view: View
@@ -175,6 +177,9 @@ func _physics_process(delta: float) -> void:
 		var d := inp.digital_dir()
 		var edge := d != _last[p] and d != Vector2i.ZERO
 		_last[p] = d
+		if phase == "reveal" and edge and d.y != 0 and reveal_t >= REVEAL_END and not ready_flags[p]:
+			rev_cursor[p] = posmod(rev_cursor[p] + d.y, REVEAL_SLOTS.size())
+			Sfx.play("ui")
 		if phase == "pick":
 			if edge and not locked[p]:
 				var step := d.y if d.y != 0 else d.x
@@ -203,13 +208,16 @@ func _physics_process(delta: float) -> void:
 			elif inp.pressed(PlayerInput.Btn.B) and ready_flags[p]:
 				ready_flags[p] = false
 			elif inp.pressed(PlayerInput.Btn.Y) and reveal_t >= REVEAL_END and not ready_flags[p]:
-				if RunState.reroll_loadout(p):
+				if RunState.setup_rerolls[p] <= 0:
+					_say(p, "NO REROLLS LEFT")
+					Sfx.play("ui", 0.7)
+				elif RunState.reroll_move(p, REVEAL_SLOTS[rev_cursor[p]]):
 					Sfx.play("relay")
-					reveal_t = 0.0  # replay the roll
-					_settled = [[false, false, false, false, false], [false, false, false, false, false]]
+					_reroll_at[p][rev_cursor[p]] = reveal_t  # replay the roll for this move only
+					_settled[p][rev_cursor[p]] = false
 					ready_flags = [false, false]
 				else:
-					_say(p, "NO REROLLS LEFT")
+					_say(p, "NOTHING ELSE FITS")
 					Sfx.play("ui", 0.7)
 
 
@@ -347,6 +355,8 @@ func _paint_reveal(c: Control, p: int, r: Rect2) -> void:
 		var slot: String = REVEAL_SLOTS[i]
 		var rr := Rect2(r.position.x + 18, r.position.y + 62 + i * 94.0, r.size.x - 36, 84)
 		var start := ROLL_START + i * ROLL_STEP + p * 0.08
+		if float(_reroll_at[p][i]) >= 0.0:
+			start = float(_reroll_at[p][i])
 		var age := reveal_t - start - ROLL_TIME  # < 0 while hidden / rolling
 		var poly := UiKit.chamfer(rr, 12.0)
 		var id: String = lo.get(slot, "")
@@ -382,12 +392,15 @@ func _paint_reveal(c: Control, p: int, r: Rect2) -> void:
 		var m := MoveDB.get_move_for(id, cid)
 		UiKit.txt(c, UiKit.body(), rr.position + Vector2(72, 20), String(SLOT_LABEL[slot]), 14, UiKit.DIM_TEXT)
 		UiKit.txt(c, UiKit.head(), rr.position + Vector2(72, 44), m.name.to_upper(), 21, UiKit.TEXT)
-		var desc := LoadoutView._wrap(UiKit.body(), m.desc, 14, rr.size.x - 100.0)
+		MovePreview.draw(c, id, cid, p, Rect2(rr.end.x - 150.0, rr.position.y + 4.0, 140.0, 76.0))
+		var desc := LoadoutView._wrap(UiKit.body(), m.desc, 14, rr.size.x - 260.0)
 		for di in mini(desc.size(), 2):
 			UiKit.txt(c, UiKit.body(), rr.position + Vector2(72, 62 + di * 16), desc[di], 14, Color(0.8, 0.8, 0.95))
 		var tier := String(LoadoutView.TIER_LABEL.get(ClassData.tier_of(id), "MELEE"))
 		var tw := UiKit.body().get_string_size(tier, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 18.0
-		var chip2 := Rect2(rr.end.x - tw - 14, rr.position.y + 12, tw, 22)
+		var chip2 := Rect2(rr.end.x - 150.0 - tw - 8.0, rr.position.y + 8, tw, 22)
+		if i == rev_cursor[p] and reveal_t >= REVEAL_END:
+			UiKit.poly_line(c, UiKit.chamfer(rr.grow(4.0), 14.0), Color(1, 1, 1, 0.95), 3.0)
 		c.draw_colored_polygon(UiKit.chamfer(chip2, 6.0), Color(1, 1, 1, 0.12))
 		UiKit.txt(c, UiKit.body(), chip2.position + Vector2(0, 17), tier, 14, UiKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER, tw)
 		c.draw_set_transform_matrix(Transform2D.IDENTITY)
@@ -396,7 +409,7 @@ func _paint_reveal(c: Control, p: int, r: Rect2) -> void:
 func _paint_prompt(c: Control) -> void:
 	if reveal_t < REVEAL_END:
 		return
-	var txt := "A  START THE RUN        Y  REROLL MY MOVES  (P1: %d  P2: %d LEFT)" % [RunState.setup_rerolls[0], RunState.setup_rerolls[1]]
+	var txt := "A  START THE RUN     UP/DOWN  SELECT A MOVE     Y  REROLL IT  (P1: %d  P2: %d LEFT)" % [RunState.setup_rerolls[0], RunState.setup_rerolls[1]]
 	var col := Color(1, 1, 1, 0.55 + 0.45 * sin(_t * 5.0))
 	if ready_flags[0] or ready_flags[1]:
 		var waiting := 1 if ready_flags[0] and not ready_flags[1] else 0

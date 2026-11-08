@@ -37,10 +37,10 @@ func _full() -> void:
 		[4400, "crate", 450], [4800, "barrel", 450], [5200, "crate"], [5250, "vase"], [5600, "barrel", 450], [5900, "crate"],
 	]
 	encounters = [
-		{"x": 1300.0, "waves": [[["thug", 2]], [["thug", 1], ["thrower", 1]]]},
-		{"x": 2650.0, "waves": [[["thug", 2], ["biker", 1]], [["thrower", 1], ["thug", 1]]]},
-		{"x": 3900.0, "waves": [[["biker", 2], ["thug", 1]], [["thrower", 2], ["thug", 2]]]},
-		{"x": 5100.0, "waves": [[["thug", 3], ["biker", 1]], [["thrower", 2], ["biker", 1], ["thug", 1]]]},
+		{"x": 1300.0, "waves": [[["thug", 1]], [["thug", 1], ["thrower", 1]]]},
+		{"x": 2650.0, "waves": [[["thug", 1], ["biker", 1]], [["thrower", 1]]]},
+		{"x": 3900.0, "waves": [[["biker", 1], ["thug", 1]], [["thrower", 1], ["thug", 1]]]},
+		{"x": 5100.0, "waves": [[["thug", 2]], [["biker", 1], ["thrower", 1]]]},
 		{"x": 6050.0, "boss": true, "waves": [[["boss_street", 1]]]},
 	]
 
@@ -94,16 +94,16 @@ func _enc(rng: RandomNumberGenerator, x: float, depth: int, bonus: int) -> Dicti
 ## small enemies for variety.
 func _wave(rng: RandomNumberGenerator, depth: int, bonus: int, w: int) -> Array:
 	var tally := {}
-	if rng.randf() < 0.2:
-		for i in 5 + depth / 2 + w:
+	if rng.randf() < 0.1:
+		for i in 3 + depth / 3 + w:
 			var k := _pick(rng, [["thug", 60], ["thrower", 25], ["biker", 15]])
 			tally[k] = int(tally.get(k, 0)) + 1
 	else:
-		var tanks := 1 + (1 if (depth + bonus + w) >= 3 else 0)
+		var tanks := 1 + (1 if (depth + bonus + w) >= 6 else 0)
 		for i in tanks:
 			var k2 := _pick(rng, [["brute", 65], ["heavy", 20 + depth * 5]])
 			tally[k2] = int(tally.get(k2, 0)) + 1
-		for i in rng.randi_range(0, 2):
+		for i in rng.randi_range(0, 1):
 			var k3 := _pick(rng, [["thug", 50], ["thrower", 30], ["biker", 20]])
 			tally[k3] = int(tally.get(k3, 0)) + 1
 	var wave: Array = []

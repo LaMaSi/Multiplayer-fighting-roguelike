@@ -61,9 +61,9 @@ static func _build() -> void:
 	}
 	_db["hammer"] = {
 		"id": "hammer", "name": "Hammer", "weapon": "hammer", "role": "Breaker and launcher",
-		"desc": "Very slow, huge reach and damage. Dead zone up close.",
-		"speed": 0.8, "hp": 120.0, "jump": 0.95,
-		"mods": {"reach": 1.8, "startup": 1.7, "recovery": 1.5, "dmg": 1.8, "kb": 1.8, "guard_break": true, "dead_zone": 40.0},
+		"desc": "Quick to swing, long recovery. Huge reach and damage. Dead zone up close.",
+		"speed": 0.9, "hp": 120.0, "jump": 0.95,
+		"mods": {"reach": 1.8, "startup": 1.3, "recovery": 1.9, "dmg": 1.8, "kb": 1.8, "guard_break": true, "dead_zone": 40.0},
 		"b_pool": ["overhead_smash", "side_sweep", "sky_launcher", "quake_line", "whirlwind_haul", "guard_breaker", "home_run", "bulwark_plant"],
 		"b_stars": ["overhead_smash", "side_sweep", "home_run"],
 		"base": {

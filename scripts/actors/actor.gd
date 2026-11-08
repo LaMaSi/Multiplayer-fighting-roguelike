@@ -343,7 +343,7 @@ func _hit_feedback(info: HitInfo, dmg: float) -> void:
 		var txt := "%d" % int(round(dmg))
 		var col := Color(1.0, 0.95, 0.5) if info.relay else Color(1.0, 1.0, 1.0)
 		Fx.number(parent, global_position + Vector2(randf_range(-14, 14), -body_h * body_scale - 6.0), txt, col, int(clampf(18.0 + dmg * 0.9, 18.0, 40.0)))
-	elif info.friendly:
+	elif info.friendly and dmg >= 0.5:
 		Fx.number(parent, global_position + Vector2(0, -body_h - 6.0), "%d" % int(round(dmg)), Color(0.7, 0.7, 0.7), 16)
 	Juice.shake(info.shake * (1.4 if info.relay else 1.0))
 	# camera: directional kick toward the blow, zoom punch and a flash of slow motion on heavy hits

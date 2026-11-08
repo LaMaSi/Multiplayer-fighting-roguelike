@@ -78,3 +78,5 @@ func _draw() -> void:
 	draw_string(f, Vector2(-70, -H - 10.0), label if not used else "USED", HORIZONTAL_ALIGNMENT_CENTER, 140.0, 18, col)
 	if not used and nearest_fighter() != null:
 		draw_string(f, Vector2(-70, 24.0), "RB: ENTER", HORIZONTAL_ALIGNMENT_CENTER, 140.0, 18, Color(1, 1, 1, 0.9))
+		if kind == "shop" and not used and RunState.active and nearest_fighter() != null:
+			draw_string(f, Vector2(-70, 48.0), "COINS: %d" % RunState.coins, HORIZONTAL_ALIGNMENT_CENTER, 140.0, 20, UiKit.AMBER)

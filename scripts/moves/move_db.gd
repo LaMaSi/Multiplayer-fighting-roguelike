@@ -544,13 +544,13 @@ static func _build_player() -> void:
 		"hits": [_hit(10, 14, Rect2(0, -92, 72, 70), 9, 24, Vector2(300, -60), {"stop": 5, "shake": 0.2, "color": CYAN})]})
 
 	# --- 27 Heal pulse --------------------------------------------------
-	_mk({"id": "heal_pulse", "name": "Heal Pulse", "short": "HEAL", "desc": "Damages nearby enemies, heals you and your partner.",
+	_mk({"id": "heal_pulse", "name": "Life Drain", "short": "DRAIN", "desc": "Damages nearby enemies; half of the damage returns to you, a quarter to your partner. Heals only when it hits.",
 		"total": 54, "tags": ["buff"],
 		"kf": [[0, {"lean": 0.3, "ua_f": 1.2, "la_f": 1.8, "ua_b": 1.2, "la_b": 1.8, "th_f": 0.5, "kn_f": 0.9, "th_b": -0.4, "kn_b": 0.9}],
 			[14, {"lean": -0.2, "ua_f": 1.2, "la_f": 0.0, "ua_b": 1.4, "la_b": 0.0, "th_f": 0.3, "kn_f": 0.2, "th_b": -0.3, "kn_b": 0.2}],
 			[40, _idle()]],
-		"events": [{"at": 14, "type": "heal_pulse", "radius": 170.0, "amount": 10.0}],
-		"hits": [_hit(14, 2, Rect2(-150, -105, 300, 112), 3, 18, Vector2(170, -100), {"radial": true, "heal_self": 4.0, "color": GREEN, "stop": 3})]})
+		"events": [{"at": 14, "type": "heal_pulse", "radius": 170.0}],
+		"hits": [_hit(14, 6, Rect2(-150, -105, 300, 112), 6, 18, Vector2(170, -100), {"radial": true, "drain": 0.5, "color": GREEN, "stop": 3})]})
 
 	# --- 28 Rage taunt --------------------------------------------------
 	_mk({"id": "rage_taunt", "name": "Rage Taunt", "short": "RAGE", "desc": "Damage up, defence down for 8s.",
