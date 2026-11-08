@@ -83,14 +83,14 @@ func _ready() -> void:
 			pole = n
 	check(pole != null, "the level has a bonus pole")
 	if pole != null:
-		check(BonusPole.LOW > 250.0, "the pole's lowest point (%.0f px up) is above a single jump (~180)" % BonusPole.LOW)
-		check(absf(pole.position.x - (lv.exit_x + 50.0)) < 1.0, "the pole is right above the finish strip (one try)")
+		check(BonusPole.LOW - BonusPole.RADIUS > 280.0, "the target's lowest edge (%.0f px up) is out of reach of a single jump (~180) plus an attack" % (BonusPole.LOW - BonusPole.RADIUS))
+		check(absf(pole.position.x - (lv.exit_x + 50.0)) < 1.0, "the target is right above the finish strip (one try)")
 		var lo := 1.0e9
 		var hi := -1.0e9
 		for i in 400:
 			await get_tree().physics_frame
-			lo = minf(lo, pole.bottom_h())
-			hi = maxf(hi, pole.bottom_h())
+			lo = minf(lo, pole.center_h())
+			hi = maxf(hi, pole.center_h())
 		check(lo >= BonusPole.LOW - 1.0 and hi <= BonusPole.HIGH + 1.0 and hi - lo > 60.0, "it slides up and down within %.0f..%.0f px (saw %.0f..%.0f)" % [BonusPole.LOW, BonusPole.HIGH, lo, hi])
 		var c0 := RunState.coins
 		var info := HitInfo.new()
