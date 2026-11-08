@@ -9,10 +9,10 @@ extends Node2D
 ## Characters get a soft contact shadow on whatever they stand over.
 
 const EYE := 700.0  ## distance from the eye to the walking plane
-const RISE := 600.0  ## how far above the camera centre the horizon (vanishing point) sits
-const FLOOR_BACK := 50.0  ## depth of the ground behind the walking line
+const RISE := 0.0  ## how far above the camera centre the horizon (vanishing point) sits; 0 = eye level at the screen centre (platforms above it are seen from below)
+const FLOOR_BACK := 120.0  ## depth of the ground behind the walking line
 const FLOOR_FRONT := 24.0  ## the lip of the ground in front of the line (fixed, drawn by the level)
-const PLAT_BACK := 50.0  ## platform boxes reach this far behind the walking line
+const PLAT_BACK := 40.0  ## platform boxes reach this far behind the walking line
 const PLAT_FRONT := 10.0  ## and this far in front of it
 const PLAT_LIP := 6.0  ## the box extends this far below the collision rectangle
 
