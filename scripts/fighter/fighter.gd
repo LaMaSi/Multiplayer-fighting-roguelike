@@ -836,8 +836,8 @@ func _update_visuals(delta: float) -> void:
 	# loose, springy limbs while airborne (underdamped pose spring = natural overshoot and settle)
 	var airborne := (state == "jump" or state == "fall") and not attack.active
 	if airborne:
-		figure.follow_speed = 24.0
-		figure.zeta = 0.5
+		figure.follow_speed = 30.0
+		figure.zeta = 0.7
 		_air_spring = true
 	elif _air_spring and not attack.active:
 		_air_spring = false

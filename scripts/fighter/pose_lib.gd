@@ -75,34 +75,51 @@ static func walk_enemy(phase: float) -> Dictionary:
 	}
 
 
-## In the air the arms go up and the limbs hang loose: they swing a little with the fall speed (animation only, not physics).
+## Jump keyframes (after the classic standing-jump sheet): launch = stretched, arms straight up, legs together;
+## apex = tucked, knees up, arms down in front; fall = stretched again, arms thrown up, legs trailing apart.
+const AIR_STRETCH_UP := {"lean": 0.04, "th_f": 0.12, "kn_f": 0.1, "th_b": -0.12, "kn_b": 0.2, "ua_f": 2.7, "la_f": 0.12, "ua_b": 2.4, "la_b": 0.2}
+const AIR_TUCK := {"lean": 0.22, "th_f": 1.45, "kn_f": 1.75, "th_b": 1.0, "kn_b": 1.65, "ua_f": 0.75, "la_f": 1.1, "ua_b": 0.35, "la_b": 1.0}
+const AIR_STRETCH_DOWN := {"lean": -0.03, "th_f": 0.55, "kn_f": 0.35, "th_b": -0.55, "kn_b": 0.5, "ua_f": 2.65, "la_f": 0.3, "ua_b": 2.3, "la_b": 0.4}
+
+
+## vy: vertical speed (negative = rising). Blends launch -> tuck -> fall by speed, with a little flutter.
+static func air(vy: float, t: float) -> Dictionary:
+	var a: Dictionary
+	var b: Dictionary
+	var k: float
+	if vy < 0.0:
+		a = AIR_TUCK
+		b = AIR_STRETCH_UP
+		k = smoothstep(-80.0, -520.0, vy)  # near the apex: tucked; fast upward: stretched
+	else:
+		a = AIR_TUCK
+		b = AIR_STRETCH_DOWN
+		k = smoothstep(60.0, 520.0, vy)
+	var out := {}
+	for key in a:
+		out[key] = lerpf(float(a[key]), float(b[key]), k)
+	var w := sin(t * 14.0) * 0.08 * k
+	out["ua_f"] += w
+	out["ua_b"] -= w
+	out["th_b"] -= w * 0.8
+	out["th_f"] += w * 0.5
+	return out
+
+
 static func rise(vy := -400.0, t := 0.0) -> Dictionary:
-	var s := clampf(-vy / 900.0, 0.0, 1.0)  # 1 = fast upward
-	var w := sin(t * 11.0)
-	return {
-		"lean": 0.0,
-		"th_f": 0.9 + 0.2 * s + w * 0.05, "kn_f": 1.2 + 0.2 * s, "th_b": -0.45 + w * 0.06, "kn_b": 0.9 + 0.2 * s,
-		"ua_f": 2.2 + 0.4 * s + w * 0.08, "la_f": 0.45, "ua_b": 1.8 + 0.4 * s - w * 0.08, "la_b": 0.5,
-	}
+	return air(minf(vy, -1.0), t)
 
 
 static func fall(vy := 300.0, t := 0.0) -> Dictionary:
-	var s := clampf(vy / 1000.0, 0.0, 1.0)  # 1 = plummeting
-	var w := sin(t * 15.0)
-	return {
-		"lean": -0.02 * s,
-		# legs trail and flap a little, harder the faster we fall
-		"th_f": 0.4 - 0.35 * s + w * 0.10 * s, "kn_f": 0.5 + 0.7 * s, "th_b": -0.45 - 0.2 * s - w * 0.10 * s, "kn_b": 0.6 + 0.8 * s,
-		# arms are thrown up by the rush of air, forearms flopping
-		"ua_f": 2.3 + 0.55 * s + w * 0.14 * s, "la_f": 0.35 + 0.5 * s - w * 0.2 * s, "ua_b": 1.95 + 0.55 * s - w * 0.14 * s, "la_b": 0.4 + 0.5 * s + w * 0.2 * s,
-	}
+	return air(maxf(vy, 1.0), t)
 
 
 static func land() -> Dictionary:
+	# recovery: deep crouch, arms swung down in front toward the ground
 	return {
-		"lean": 0.35,
-		"th_f": 0.8, "kn_f": 1.5, "th_b": -0.6, "kn_b": 1.4,
-		"ua_f": 0.6, "la_f": 1.2, "ua_b": 0.3, "la_b": 1.2,
+		"lean": 0.5,
+		"th_f": 1.15, "kn_f": 1.95, "th_b": -0.7, "kn_b": 1.8,
+		"ua_f": 0.9, "la_f": 0.7, "ua_b": 0.2, "la_b": 0.9,
 	}
 
 

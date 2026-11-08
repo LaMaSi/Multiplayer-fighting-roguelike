@@ -50,5 +50,5 @@ func _ready() -> void:
 	check("a token rerolls the offered picks (left %d)" % RunState.reroll_tokens, RunState.reroll_tokens == 0)
 	# airborne pose
 	var fall := PoseLib.fall(900.0, 0.3)
-	check("arms are raised while falling", float(fall["ua_f"]) > 2.0 and float(fall["ua_b"]) > 1.8)
+	check("arms are thrown up while falling fast", float(fall["ua_f"]) > 2.5 and float(PoseLib.air(0.0, 0.0)["kn_f"]) > 1.4)
 	get_tree().quit()
