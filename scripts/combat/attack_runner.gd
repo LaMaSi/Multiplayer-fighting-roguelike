@@ -54,7 +54,18 @@ func start(m: MoveData, btn := -1) -> void:
 	_reel_target = null
 	actor.figure.follow_speed = 52.0
 	actor.figure.zeta = 0.36  # under-damped spring: strong overshoot + settle
-	actor.squash = Vector2(0.76, 1.26)  # anticipation: coil up before the strike
+	# Anticipation: coil up before the strike. Heavier moves coil deeper (and read longer), light jabs barely dip.
+	var w := _weight(m)
+	actor.squash = Vector2(lerpf(0.88, 0.66, w), lerpf(1.1, 1.36, w))
+
+
+## 0..1: how heavy a move feels, from its strongest hit (jab ~0, haymaker / super ~1). Drives anticipation depth,
+## strike stretch, impact squash and follow-through so big moves look and feel big.
+func _weight(m: MoveData) -> float:
+	var top := 0.0
+	for h in m.hits:
+		top = maxf(top, float(h["dmg"]))
+	return clampf((top - 4.0) / 20.0, 0.0, 1.0)
 
 
 func can_cancel() -> bool:
@@ -111,6 +122,8 @@ func finish() -> void:
 		return
 	active = false
 	_cleanup()
+	# follow-through: the body settles with a small rebound instead of snapping straight to idle
+	actor.squash = Vector2(lerpf(1.04, 1.16, _weight(move)), lerpf(0.97, 0.88, _weight(move)))
 	actor.on_attack_end(move)
 
 
@@ -446,7 +459,8 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		info.dmg *= Coop.enemy_dmg_mult
 	info.stun = int(h["stun"]) + (3 if a.team == "player" else 0)  # a little extra hitstun: solo chains become possible
 	info.kind = String(h["kind"])
-	info.stop = int(h["stop"]) + (4 if float(h["dmg"]) >= 18.0 else (2 if float(h["dmg"]) >= 9.0 else 1))
+	# hit-stop: the harder the blow the longer the world holds still on contact
+	info.stop = int(h["stop"]) + (6 if float(h["dmg"]) >= 18.0 else (3 if float(h["dmg"]) >= 9.0 else 2))
 	info.low = bool(h["low"])
 	info.height = String(h.get("height", "low" if info.low else "mid"))
 	info.guard_break = bool(h.get("guard_break", false))
@@ -502,6 +516,9 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	if t.take_hit(info):
 		hit_connected = true
 		a.freeze = maxi(a.freeze, info.stop)
+		# impact: the attacker compresses into the blow while the pose is held, then rebounds as the freeze ends
+		var iw := clampf((float(h["dmg"]) - 4.0) / 20.0, 0.0, 1.0)
+		a.squash = Vector2(lerpf(1.12, 1.3, iw), lerpf(0.94, 0.8, iw))
 		var drain := float(h.get("drain", 0.0))
 		if drain > 0.0 and t is Actor and not info.friendly and info.dmg > 0.0:
 			# life drain: a share of the damage dealt comes back as health, a smaller share to a nearby partner

@@ -299,9 +299,12 @@ func take_hit(info: HitInfo) -> bool:
 
 	freeze = info.stop
 	_victim_freeze = true
-	flash_t = 0.12
-	var sq := clampf(dmg / 20.0, 0.4, 0.7)
-	squash = Vector2(1.0 + sq, 1.0 - sq * 0.9)  # squashed by the blow
+	flash_t = clampf(0.08 + dmg * 0.006, 0.1, 0.2)  # heavier blows hold the white flash longer
+	var sq := clampf(dmg / 20.0, 0.3, 0.6)
+	if absf(info.kb.y) > absf(info.kb.x) * 1.2:
+		squash = Vector2(1.0 + sq, 1.0 - sq * 0.9)  # vertical blow (uppercut / spike): flattened
+	else:
+		squash = Vector2(1.0 - sq * 0.55, 1.0 + sq * 0.5)  # horizontal blow: compressed along it, stretched up, then rebounds
 	_hit_feedback(info, dmg)
 	Coop.post_hit(info, self, dmg)
 	_on_damaged(info)
@@ -412,7 +415,7 @@ func _physics_process(delta: float) -> void:
 	if freeze > 0:
 		freeze -= 1
 		figure.frozen = true  # hold the pose on impact
-		figure.jitter = 3.0 if _victim_freeze else 0.0
+		figure.jitter = clampf(1.5 + float(freeze) * 0.35, 2.0, 5.0) if _victim_freeze else 0.0  # longer stop = harder rattle
 		figure.self_modulate = Color(1.9, 1.9, 1.9) if flash_t > 0.0 else Color.WHITE
 		return
 	figure.jitter = 0.0
