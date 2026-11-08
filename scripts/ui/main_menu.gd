@@ -137,6 +137,7 @@ func _activate(id: String, by := 0) -> void:
 		"training":
 			Sfx.play("pickup")
 			RunState.solo = false
+			PlayerInput.solo_source = by
 			RunSetup.mode = "training"
 			get_tree().change_scene_to_file("res://scenes/run_setup.tscn")
 		"streets":

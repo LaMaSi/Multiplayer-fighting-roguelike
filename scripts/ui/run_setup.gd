@@ -151,6 +151,19 @@ func _begin() -> void:
 		f.visible = false
 
 
+## Back from the moves reveal to weapon selection. Player p unlocks (the other player's choice stays); the run is dropped
+## and gets rolled again when everybody locks in.
+func _back_to_pick(p: int) -> void:
+	RunState.end_run()
+	phase = "pick"
+	locked[p] = false
+	ready_flags = [false, false]
+	_settled = [[false, false, false, false, false], [false, false, false, false, false]]
+	_reroll_at = [[-1.0, -1.0, -1.0, -1.0, -1.0], [-1.0, -1.0, -1.0, -1.0, -1.0]]
+	rev_cursor = [0, 0]
+	Sfx.play("ui", 0.8)
+
+
 func _go_map() -> void:
 	_goto("res://scenes/run_map.tscn")
 
@@ -205,8 +218,14 @@ func _physics_process(delta: float) -> void:
 					if ready_flags[0] and ready_flags[1]:
 						_go_map()
 						return
-			elif inp.pressed(PlayerInput.Btn.B) and ready_flags[p]:
-				ready_flags[p] = false
+			elif inp.pressed(PlayerInput.Btn.B):
+				if ready_flags[p]:
+					ready_flags[p] = false
+					if RunState.solo:
+						ready_flags = [false, false]
+				else:
+					_back_to_pick(p)  # B on the moves reveal: back to weapon selection
+					return
 			elif inp.pressed(PlayerInput.Btn.Y) and reveal_t >= REVEAL_END and not ready_flags[p]:
 				if RunState.setup_rerolls[p] <= 0:
 					_say(p, "NO REROLLS LEFT")
@@ -227,7 +246,7 @@ func _update_figures(snap := false) -> void:
 	for i in 2:
 		var opt: String = OPTIONS[cursor[i]]
 		var f := _figs[i]
-		if phase != "pick" or opt == "random":
+		if phase != "pick" or opt == "random" or (i == 1 and RunState.solo):
 			f.visible = false
 			continue
 		f.visible = true
@@ -255,7 +274,7 @@ func _title(c: Control, text: String) -> void:
 
 
 func paint_back(c: Control) -> void:
-	for p in 2:
+	for p in (1 if RunState.solo else 2):
 		var r := Rect2(30 + p * 615, 120, 605, 540)
 		var col := UiKit.player_color(p)
 		c.draw_colored_polygon(UiKit.chamfer(r, 18.0), Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.84))
@@ -265,11 +284,11 @@ func paint_back(c: Control) -> void:
 func paint(c: Control) -> void:
 	if phase == "pick":
 		_title(c, "CHOOSE YOUR WEAPON")
-		for p in 2:
+		for p in (1 if RunState.solo else 2):
 			_paint_pick(c, p, Rect2(30 + p * 615, 120, 605, 540))
 	else:
 		_title(c, "YOUR MOVES")
-		for p in 2:
+		for p in (1 if RunState.solo else 2):
 			_paint_reveal(c, p, Rect2(30 + p * 615, 120, 605, 540))
 		_paint_prompt(c)
 

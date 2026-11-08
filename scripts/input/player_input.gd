@@ -8,7 +8,8 @@ enum Btn { JUMP, X, Y, B, DASH, INTERACT, LB, RB, START, BACK, EMPOWER, COUNT }
 
 const DEADZONE := 0.35
 
-## Solo run: the input slot (controller / key set) that started it; it drives P1. Lives here (not on the Inp autoload)
+## The input slot (controller / key set) that picked the mode on the main menu; it drives P1 (solo: the only player,
+## two players: the other slot becomes P2). Lives here (not on the Inp autoload)
 ## because Inp already references this class and a back-reference makes the class fail to parse.
 static var solo_source := 0
 static var solo_active := false  ## mirrors RunState.solo (set by its setter; PlayerInput must not reference RunState: RunState -> Fighter -> PlayerInput is a cycle)
@@ -86,6 +87,8 @@ func poll() -> void:
 				held = nh
 				return
 			src = solo_source  # P1 is whichever controller / key set started the solo run
+		elif solo_source == 1:
+			src = 1 - index  # two players: the controller that picked the mode is P1, the other one P2
 		device = pads[src] if src < pads.size() else -1
 		if device >= 0:
 			var v := Vector2(Input.get_joy_axis(device, JOY_AXIS_LEFT_X), Input.get_joy_axis(device, JOY_AXIS_LEFT_Y))
