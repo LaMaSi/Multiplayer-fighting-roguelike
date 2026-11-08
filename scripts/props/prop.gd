@@ -364,7 +364,7 @@ func _draw() -> void:
 			draw_polyline(closed, col, UiKit.LINE, true)
 		"explosive":
 			var fuse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 8.0)
-			var fr := _draw_box(r, vp, col, rim, Color(0.22, 0.04, 0.03))
+			var fr := _draw_box(r, vp, Pal.interact(), rim, Color(0.22, 0.04, 0.03))  # yellow edges like every container, red body
 			var fw := fr.size.x
 			var fh := fr.size.y
 			for k in [-1, 1]:
@@ -419,32 +419,50 @@ func _draw_box(r: Rect2, vp: Vector2, c: Color, rim: Color, fill: Color) -> Rect
 	return fr
 
 
-## A barrel: the body with hoops and an elliptical top that follows the camera.
+## A barrel as a real cylinder in the depth camera: the hoops and the lower edge are arcs that follow the perspective,
+## and the elliptical top is visible when the horizon is above it.
 func _draw_barrel(r: Rect2, vp: Vector2, rim: Color) -> void:
-	var fill := Color(0.06, 0.03, 0.1)
-	var zf := -6.0
-	var zb := w * 0.8
-	var topc := Vector2(0.0, r.position.y)
-	var pf := DepthLayer.P(topc, zf, vp)
-	var pb := DepthLayer.P(topc, zb, vp)
-	var sc := DepthLayer.EYE / (DepthLayer.EYE + (zf + zb) * 0.5)
-	var body := Rect2(pf.x - w * 0.5 * (DepthLayer.EYE / (DepthLayer.EYE + zf)), pf.y, w * (DepthLayer.EYE / (DepthLayer.EYE + zf)), r.end.y - r.position.y)
-	draw_rect(body, fill)
-	draw_rect(body.grow(3.0), rim, false, 3.0)
-	draw_rect(body, col, false, 3.0)
-	draw_line(Vector2(body.position.x, body.position.y + body.size.y * 0.3), Vector2(body.end.x, body.position.y + body.size.y * 0.3), col, UiKit.LINE)
-	draw_line(Vector2(body.position.x, body.position.y + body.size.y * 0.7), Vector2(body.end.x, body.position.y + body.size.y * 0.7), col, UiKit.LINE)
-	if vp.y < r.position.y:
-		var cc := (pf + pb) * 0.5
-		var ry := maxf(absf(pb.y - pf.y) * 0.5, 2.0)
-		var pts := PackedVector2Array()
-		for i in 28:
-			var a := TAU * float(i) / 28.0
-			pts.append(cc + Vector2(cos(a) * w * 0.5 * sc, sin(a) * ry))
-		draw_colored_polygon(pts, Color(col.r * 0.22, col.g * 0.22, col.b * 0.22))
-		var closed := pts.duplicate()
-		closed.append(pts[0])
+	var rad := w * 0.5
+	var zc := 14.0  # axis depth: the front of the barrel is at zc - rad
+	var top_y := r.position.y
+	var bot_y := r.end.y
+	var upper := _circ(top_y, -PI * 0.5, PI * 0.5, 14, rad, zc, vp)
+	var lower := _circ(bot_y, -PI * 0.5, PI * 0.5, 14, rad, zc, vp)
+	var body := PackedVector2Array()
+	body.append_array(upper)
+	var lower_rev := lower.duplicate()
+	lower_rev.reverse()
+	body.append_array(lower_rev)
+	# filled as a strip of quads (draw_colored_polygon failed to triangulate the curved outline)
+	var fill_c := PackedColorArray([Color(0.06, 0.03, 0.1), Color(0.06, 0.03, 0.1), Color(0.06, 0.03, 0.1), Color(0.06, 0.03, 0.1)])
+	for i in upper.size() - 1:
+		draw_primitive(PackedVector2Array([upper[i], upper[i + 1], lower[i + 1], lower[i]]), fill_c, PackedVector2Array())
+	# hoops follow the curved surface
+	for f in [0.3, 0.7]:
+		draw_polyline(_circ(lerpf(top_y, bot_y, f), -PI * 0.5, PI * 0.5, 14, rad, zc, vp), col, UiKit.LINE, true)
+	var outline := body.duplicate()
+	outline.append(body[0])
+	draw_polyline(outline, rim, UiKit.LINE * 2.0, true)
+	draw_polyline(outline, col, UiKit.LINE, true)
+	if vp.y < top_y:
+		var ell := _circ(top_y, -PI, PI, 28, rad, zc, vp)
+		var tc := Color(col.r * 0.22, col.g * 0.22, col.b * 0.22)
+		var ctr := (ell[0] + ell[ell.size() / 2]) * 0.5
+		for i in ell.size() - 1:
+			draw_primitive(PackedVector2Array([ctr, ell[i], ell[i + 1]]), PackedColorArray([tc, tc, tc]), PackedVector2Array())
+		var closed := ell.duplicate()
+		closed.append(ell[0])
 		draw_polyline(closed, Color(col.r, col.g, col.b, 0.9), 2.0, true)
+
+
+## Points of a horizontal circle (radius `rad`, axis at depth `zc`) at height `y`, from angle a0 to a1, projected into
+## the depth camera. Angle 0 is the point nearest the camera: the visible front half is -PI/2 to PI/2.
+func _circ(y: float, a0: float, a1: float, n: int, rad: float, zc: float, vp: Vector2) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in n + 1:
+		var a := lerpf(a0, a1, float(i) / float(n))
+		pts.append(DepthLayer.P(Vector2(rad * sin(a), y), zc - rad * cos(a), vp))
+	return pts
 
 
 ## Set the crate on fire: flames in the igniter's colour, it burns down, spreads to neighbours and ignites what it hits.

@@ -5,10 +5,13 @@ extends Node2D
 ## Subclasses override _setup() to fill in the data.
 
 const PLAT_H := 16.0
+const ARENA_CEILING := 470.0  ## height of a battle screen's ceiling above the level's base ground
+const ARENA_CEILING_BOSS := 560.0
 
 var level_w := 3200.0
 var ground_y := 600.0
 var platforms: Array = []  ## Rect2 (top-left, size)
+var tunnel_roofs: Array = []  ## the Rect2s in `platforms` that are tunnel roofs: drawn thick with a dark interior; walk through under them or jump over
 var ground_segs: Array = []  ## Rect2 (x, top_y, width, depth) pieces of ground; empty = one flat ground. Gaps between pieces are pits.
 var moving_specs: Array = []  ## {rect: Rect2, vertical: bool, travel: float (half), period: float, phase: float}
 var doors_spec: Array = []  ## {x, kind: "challenge" | "shop"}
@@ -42,6 +45,7 @@ var _enc_idx := 0
 var _locked := false
 var _wave_idx := 0
 var _lock_walls: Array[Node] = []
+var _ceiling: ArenaCeiling = null
 var _enemies: Array[Enemy] = []
 var _boss_fight := false
 var _cleared := false
@@ -305,6 +309,12 @@ func _start_encounter(enc: Dictionary) -> void:
 	for x in [left - 50.0, right + 50.0]:
 		var w := _make_body(Rect2(x - 50.0, -1500, 100, 3000), 1)
 		_lock_walls.append(w)
+	# a ceiling over the fight: a solid slab (jumps and launches stop against it) that drops in with the walls
+	var ceil_h := ARENA_CEILING_BOSS if bool(enc.get("boss", false)) else ARENA_CEILING
+	_ceiling = ArenaCeiling.new()
+	_ceiling.setup(left - 100.0, right + 100.0, ground_y - ceil_h, theme["neon_plat"])
+	add_child(_ceiling)
+	_ceiling.appear()
 	_boss_fight = bool(enc.get("boss", false))
 	hud.set_go(false)
 	hud.banner("BOSS!" if _boss_fight else "FIGHT!", Color(2.2, 0.5, 0.4) if _boss_fight else Color(2.0, 1.6, 0.5))
@@ -347,6 +357,9 @@ func _end_encounter(enc: Dictionary) -> void:
 	for w in _lock_walls:
 		w.queue_free()
 	_lock_walls.clear()
+	if _ceiling != null and is_instance_valid(_ceiling):
+		_ceiling.leave()
+	_ceiling = null
 	cam.set_bounds(0.0, level_w)
 	Coop.bounds = Rect2(0, -1200, level_w, 2400)
 	_enc_idx += 1

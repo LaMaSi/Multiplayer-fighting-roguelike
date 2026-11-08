@@ -135,6 +135,9 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 	var fi := 0
 	var gap_islands: Array = []
 	var pits: Array = []  # Vector3(x, width, ground top)
+	var tunnels: Array = []  # Vector2(x of the tunnel, length): a roofed walk-through passage with a route over the roof
+	var max_tunnels := 0 if t == "boss" else (2 if level_w > 7500.0 else 1)
+	tunnel_roofs = []
 	moving_specs = []
 	while x < level_w:
 		# next flat zone at or after x
@@ -152,6 +155,13 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		var room := zone.x - x  # transit space before the next arena
 		if room < 260.0:
 			x = zone.x
+			continue
+		if tunnels.size() < max_tunnels and room > 820.0 and top == base and rng.randf() < 0.55:
+			# a tunnel on flat ground: walk through it, or jump up and cross over the roof
+			var tl := rng.randf_range(460.0, minf(640.0, room - 260.0))
+			var tx := x + 130.0
+			tunnels.append(Vector2(tx, tl))
+			x = tx + tl + 130.0
 			continue
 		var pick := rng.randf()
 		if pick < 0.16:
@@ -256,6 +266,16 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		platforms.append(Rect2(ax + side * 530.0 - 90.0, ground_y - 260.0, 180.0, PLAT_H))
 		moving_specs.append({"rect": Rect2(ax - side * 120.0 - 75.0, ground_y - 200.0, 150.0, PLAT_H), "vertical": rng.randf() < 0.4, "travel": 130.0, "period": rng.randf_range(3.6, 4.8), "phase": rng.randf()})
 
+	# tunnels: clear other platforms from the tunnel and add the roof (a normal one-way platform at the low tier, so the
+	# ledge grab, the enemy climbing and the shadows all treat it like any platform)
+	for tn: Vector2 in tunnels:
+		var span := Rect2(tn.x - 80.0, -2000.0, tn.y + 160.0, 4000.0)
+		platforms = platforms.filter(func(pl2: Rect2) -> bool: return not (pl2.position.x < span.end.x and pl2.end.x > span.position.x))
+		moving_specs = moving_specs.filter(func(m: Dictionary) -> bool: return not ((m["rect"] as Rect2).position.x - float(m["travel"]) < span.end.x and (m["rect"] as Rect2).end.x + float(m["travel"]) > span.position.x))
+		var roof := Rect2(tn.x, ground_top(tn.x + tn.y * 0.5) - 150.0, tn.y, PLAT_H)
+		platforms.append(roof)
+		tunnel_roofs.append(roof)
+
 	# doors: one or two per fight / elite level on solid ground between the arenas (challenge room or move shop)
 	doors_spec = []
 	if t == "fight" or t == "elite":
@@ -266,7 +286,11 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			for z: Vector2 in flats:
 				if cx >= z.x and cx <= z.y:
 					in_flat = true
-			if g2.size.x >= 300.0 and not in_flat:
+			var in_tunnel := false
+			for tn2: Rect2 in tunnel_roofs:
+				if cx >= tn2.position.x - 160.0 and cx <= tn2.end.x + 160.0:
+					in_tunnel = true
+			if g2.size.x >= 300.0 and not in_flat and not in_tunnel:
 				cands.append(cx)
 		if cands.is_empty():
 			cands.append(level_w - 540.0)  # always at least one door: in the flat stretch before the exit
@@ -300,7 +324,7 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 	var ceil_cands: Array = []
 	for pl: Rect2 in platforms:
 		var under_h := ground_top(pl.get_center().x) - pl.end.y
-		if pl.size.x >= 140.0 and under_h >= SpikeTrap.AIR_MIN_H and under_h <= SpikeTrap.AIR_MAX_H:
+		if pl.size.x >= 140.0 and under_h >= SpikeTrap.AIR_MIN_H and under_h <= SpikeTrap.AIR_MAX_H and not tunnel_roofs.has(pl):
 			ceil_cands.append(pl)
 	var n_ceil := 0
 	while n_ceil < 3 and not ceil_cands.is_empty():
@@ -311,6 +335,11 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			var cw := minf(cp.size.x * 0.6, 120.0)
 			hazards_spec.append({"kind": "ceiling_spikes", "x": cp.get_center().x + rng.randf_range(-cp.size.x * 0.12, cp.size.x * 0.12), "y": cp.end.y + DepthLayer.PLAT_LIP, "w": cw})
 			n_ceil += 1
+
+	# in a tunnel: sometimes ceiling spikes under the roof (throw enemies into them), always a few containers on the roof
+	for roof2: Rect2 in tunnel_roofs:
+		if rng.randf() < 0.6:
+			hazards_spec.append({"kind": "ceiling_spikes", "x": roof2.get_center().x + rng.randf_range(-roof2.size.x * 0.2, roof2.size.x * 0.2), "y": roof2.end.y + DepthLayer.TUNNEL_EXTRA + DepthLayer.PLAT_LIP, "w": 120.0})
 
 	# containers: on solid ground or on a platform, never over a pit
 	var n_props: int = {"fight": 10, "elite": 12, "treasure": 22, "boss": 5}.get(t, 10)
@@ -325,3 +354,8 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 				if is_safe_ground(Vector2(px2, ground_at(px2))):
 					props_spec.append([px2, kind])
 					break
+	# the way over the tunnel is the rewarding one: containers on the roof, and one inside for the way through
+	for roof3: Rect2 in tunnel_roofs:
+		for i in 3:
+			props_spec.append([roof3.position.x + roof3.size.x * (0.2 + 0.3 * i) + rng.randf_range(-30.0, 30.0), _pick(rng, [["crate", 45], ["barrel", 30], ["explosive", 25]]), roof3.position.y])
+		props_spec.append([roof3.get_center().x + rng.randf_range(-120.0, 120.0), "crate"])

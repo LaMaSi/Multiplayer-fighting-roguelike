@@ -15,6 +15,8 @@ const FLOOR_FRONT := 24.0  ## the lip of the ground in front of the line (fixed,
 const PLAT_BACK := 40.0  ## platform boxes reach this far behind the walking line
 const PLAT_FRONT := 10.0  ## and this far in front of it
 const PLAT_LIP := 6.0  ## the box extends this far below the collision rectangle
+const TUNNEL_DEPTH := 90.0  ## a tunnel's roof reaches back to its far wall
+const TUNNEL_EXTRA := 12.0  ## the roof is drawn this much thicker than its collision slab
 
 var level: LevelBase
 var _shadows: Node2D
@@ -82,7 +84,43 @@ func _draw() -> void:
 	for r: Rect2 in plats:
 		if r.end.x < vx0 or r.position.x > vx1:
 			continue
-		draw_platform(self, r, np, _vp, true)
+		if level.tunnel_roofs.has(r):
+			_draw_tunnel(r, np)
+		else:
+			draw_platform(self, r, np, _vp, true)
+
+
+## A tunnel: a dark far wall and lights under a thick roof. The way through is at ground level; the roof is a platform.
+func _draw_tunnel(r: Rect2, np: Color) -> void:
+	var gy: float = level.ground_top(r.get_center().x)
+	var roof := Rect2(r.position, Vector2(r.size.x, r.size.y + TUNNEL_EXTRA))
+	var z := TUNNEL_DEPTH
+	var x0 := r.position.x
+	var x1 := r.end.x
+	var bottom := roof.end.y + PLAT_LIP
+	# the far wall, from the roof down to where the floor meets it
+	var wt0 := P(Vector2(x0, bottom), z, _vp)
+	var wt1 := P(Vector2(x1, bottom), z, _vp)
+	var wb0 := P(Vector2(x0, gy), z, _vp)
+	var wb1 := P(Vector2(x1, gy), z, _vp)
+	var dark := Color(0.015, 0.008, 0.04)
+	var mid := Color(np.r * 0.07, np.g * 0.07, np.b * 0.07)
+	draw_polygon(PackedVector2Array([wt0, wt1, wb1, wb0]), PackedColorArray([dark, dark, mid, mid]))
+	var lx := x0 - fmod(x0, 120.0) + 120.0
+	while lx < x1:
+		draw_line(P(Vector2(lx, bottom), z, _vp), P(Vector2(lx, gy), z, _vp), Color(np.r, np.g, np.b, 0.10), 2.0)
+		lx += 120.0
+	draw_line(wb0, wb1, Color(np.r, np.g, np.b, 0.35), 2.0, true)
+	# the thick roof, then the ceiling lights on its underside
+	draw_platform(self, roof, np, _vp, true, z)
+	var lamp := Color(1.6, 1.5, 1.2, 0.85)
+	var lamp_x := x0 + 60.0
+	while lamp_x < x1 - 30.0:
+		var a := P(Vector2(lamp_x - 14.0, bottom), z * 0.45, _vp)
+		var b := P(Vector2(lamp_x + 14.0, bottom), z * 0.45, _vp)
+		draw_line(a, b, lamp, 4.0, true)
+		draw_line(a, b, Color(lamp.r, lamp.g, lamp.b, 0.18), 12.0, true)
+		lamp_x += 110.0
 
 
 func _draw_floor(g: Rect2, ng: Color, vx0: float, vx1: float) -> void:
@@ -133,13 +171,13 @@ func _draw_floor(g: Rect2, ng: Color, vx0: float, vx1: float) -> void:
 
 ## Draws a platform as a real box in the shared camera model. `r` is the collision rectangle in the canvas space of
 ## `c`, `vp` the vanishing point in that space. Returns the front face rectangle (for decorations such as stripes).
-static func draw_platform(c: CanvasItem, r: Rect2, np: Color, vp: Vector2, with_shadow: bool) -> Rect2:
+static func draw_platform(c: CanvasItem, r: Rect2, np: Color, vp: Vector2, with_shadow: bool, z_back := PLAT_BACK) -> Rect2:
 	var x0 := r.position.x
 	var x1 := r.end.x
 	var yt := r.position.y
 	var yb := r.end.y + PLAT_LIP
 	var zf := -PLAT_FRONT
-	var zb := PLAT_BACK
+	var zb := z_back
 	var f_tl := P(Vector2(x0, yt), zf, vp)
 	var f_tr := P(Vector2(x1, yt), zf, vp)
 	var f_bl := P(Vector2(x0, yb), zf, vp)

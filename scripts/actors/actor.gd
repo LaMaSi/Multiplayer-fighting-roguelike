@@ -51,6 +51,9 @@ var upgrades: Dictionary = {}  ## move_id -> {dmg, spd, kb} multipliers earned f
 var squash := Vector2.ONE
 var holder: Node = null
 var thrown_by: Actor = null
+const TRAIL_RED := Color(1.7, 0.3, 0.22)
+var _trail: LaunchTrail = null  ## ribbon behind a flying enemy
+var _trail_col := TRAIL_RED
 var debug_hit_rect := Rect2()
 var dying := false
 
@@ -322,6 +325,7 @@ func _start_launch(info: HitInfo, lethal: bool) -> void:
 		if lethal and absf(velocity.x) < 160.0:
 			velocity.x = 160.0 * (-1 if facing > 0 else 1)
 	juggle_hits = juggle_hits + 1 if was_launched else 0
+	_trail_col = _trail_color_for(info.attacker)
 	state = "launched"
 	_launch_t = 0.0
 	_bounced = false
@@ -392,6 +396,7 @@ func thrown(vel: Vector2, by: Actor) -> void:
 	holder = null
 	velocity = vel
 	thrown_by = by
+	_trail_col = _trail_color_for(by)
 	last_hitter = by if by.team != team else last_hitter
 	juggle_hits = 0
 	_launch_t = 0.0
@@ -538,7 +543,27 @@ func _st_hurt(delta: float) -> void:
 		state = "idle"
 
 
+## The trail colour: the player who sent the enemy flying, red for everything else (enemies, hazards, explosions).
+## An object thrown by a player carries that player as its attacker, so its trail has the thrower's colour.
+func _trail_color_for(src: Variant) -> Color:
+	if src is Fighter:
+		return (src as Fighter).figure.color
+	return TRAIL_RED
+
+
+func _trail_tick() -> void:
+	if team != "enemy" or velocity.length() < 140.0:
+		return
+	if _trail == null or not is_instance_valid(_trail):
+		_trail = LaunchTrail.new()
+		_trail.owner_actor = self
+		get_parent().add_child(_trail)
+	_trail.col = _trail_col
+	_trail.push(global_position + Vector2(0.0, -46.0))
+
+
 func _st_launched(delta: float) -> void:
+	_trail_tick()
 	_launch_t += delta
 	velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL)
 	velocity.x = move_toward(velocity.x, 0.0, 160.0 * delta)

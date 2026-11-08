@@ -38,3 +38,14 @@ ground heights and higher platforms, and characters pass through each other inst
 - **You can stand on them.** Each idle container carries a thin one-way platform on its top (layer 2, like the level's platforms): players and enemies land on it from above, can drop through with down, and walk through the sides (the sides are not solid, in line with "bodies never block each other"). The platform is off while the container is held, flying or dead, and if it is smashed under you, you fall. Containers draw behind fighters (z -1) so a player on top is not covered; held and thrown ones draw in front.
 - **Ceiling spikes** (`SpikeTrap.ceiling`, hazard kind `ceiling_spikes {x, y, w}`) hang under a few raised platforms. They only spawn where the underside is 110 to 270 px above the local ground (`SpikeTrap.AIR_MIN_H` / `AIR_MAX_H`), at most 3 per level. They hurt **enemies only**, and only flying ones (launched, thrown or airborne): a walking enemy, even the tall boss, passes underneath, and players are never hurt. A hit slams the enemy back down for the follow-up.
 - Test: `Godot --path . res://tests/props_test.tscn [-- <out_prefix>]`.
+
+## Battle screens: ceiling
+- When an arena locks, a solid **ceiling** (`ArenaCeiling`, 470 px above the base ground, 560 px for boss arenas) drops in with the walls and lifts away when the fight ends. It is a layer-1 body: jumps and launched or thrown bodies stop against it and fall back into the fight. It is drawn in the depth camera, so you see its underside with light strips.
+
+## Branching path: tunnels
+- Fight, elite and treasure levels can contain a **tunnel** (`StreetsLevel._gen_terrain`, 1 per level, 2 in long levels): 460 to 640 px of flat ground under a thick roof. **Through:** walk the ground under the roof (dark interior, ceiling lights, a few containers, sometimes ceiling spikes for throwing enemies into). **Over:** jump up (the roof is a normal one-way platform at the low tier, 150 px) and cross the roof, which carries 3 containers. Both routes meet again at the end.
+- The roof is in `platforms` (so ledge grabs, enemy climbing and shadows work) and in `tunnel_roofs` (drawn thick, with the far wall and lamps: `DepthLayer._draw_tunnel`). Other platforms and movers are cleared from the tunnel's span, and doors are never placed in or next to it.
+- Test: `Godot --path . res://tests/shot_tunnel.tscn -- <out_prefix>` (generates levels until one has a tunnel, checks both routes and the arena ceiling, and writes screenshots).
+
+## Launch trails
+- An enemy sent flying leaves a subtle fading ribbon (`LaunchTrail`). Colour: the player who hit it; an object (crate, explosion) thrown by a player gives that player's colour; an enemy's attack, a hazard or an unattributed explosion gives red. Test: `tests/trail_test.tscn`.
