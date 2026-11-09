@@ -21,7 +21,7 @@ func _draw() -> void:
 		draw_rect(r, Color(0.7, 0.9, 1.0, 0.4), false, 2.0)
 		draw_rect(Rect2(r.position + Vector2(12, 8), Vector2(166, 106)), Color(0.15, 0.1, 0.25))
 		var m := MoveDB.get_move(String(ids[i]))
-		UiKit.charge_chip(self, Rect2(r.position.x + 16.0, r.position.y + 10.0, 148.0, 32.0), m)
+		UiKit.charge_chip(self, Rect2(r.position.x + 18.0, r.position.y + 12.0, 28.0, 28.0), m)
 		UiKit.txt(self, UiKit.body(), Vector2(r.position.x, r.position.y + 166), m.name.to_upper(), 22, UiKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER, 190.0)
 		if not m.is_chargeable():
 			UiKit.txt(self, UiKit.body(), Vector2(r.position.x, r.position.y + 70), "no badge", 14, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_CENTER, 190.0)

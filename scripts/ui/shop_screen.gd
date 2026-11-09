@@ -462,7 +462,7 @@ func _paint_card(c: Control, idx: int) -> void:
 	if it.has("id") and (String(it["kind"]) == "move" or String(it["kind"]) == "up"):
 		var pl := _view_player(it)
 		MovePreview.draw(c, String(it["id"]), String(RunState.classes[pl]), pl, Rect2(r.position.x + 14, r.position.y + 8, CARD_W - 28, 106))
-		UiKit.charge_chip(c, Rect2(r.position.x + 16, r.position.y + 10, minf(CARD_W - 32.0, 148.0), 32.0), MoveDB.get_move(String(it["id"])))
+		UiKit.charge_chip(c, Rect2(r.position.x + 18, r.position.y + 12, 28.0, 28.0), MoveDB.get_move(String(it["id"])))
 	else:
 		_icon(c, String(it["kind"]), Vector2(r.position.x + CARD_W * 0.5, r.position.y + 72), ic)
 	var tag_col := Color(0.85, 0.85, 1.0)

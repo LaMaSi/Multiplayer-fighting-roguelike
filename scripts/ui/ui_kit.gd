@@ -54,19 +54,19 @@ static func poly_line(c: CanvasItem, pts: PackedVector2Array, col: Color, w: flo
 
 
 ## Rectangle with the top-right and bottom-left corners cut.
-## The badge on an attack card for a move that can be charged: a bolt, "CHARGE 3s" and the bonus of a full charge.
-## `m` is the move (card ids resolve through MoveDB). Drawn only for chargeable moves.
+## The badge on an attack card for a move that can be charged: only an icon, a simplified hourglass (two triangles meeting at
+## their tips) in a small gold-edged tile. Drawn only for chargeable moves; `r` is the tile (about 28 px square).
 static func charge_chip(c: CanvasItem, r: Rect2, m: MoveData) -> void:
 	if m == null or not m.is_chargeable():
 		return
 	var gold := Color(2.0, 1.55, 0.35)
 	c.draw_colored_polygon(chamfer(r, 5.0), Color(0.14, 0.09, 0.0, 0.94))
 	poly_line(c, chamfer(r, 5.0), gold, 2.0)
-	var bx := r.position.x + 10.0
-	var by := r.position.y + r.size.y * 0.5
-	c.draw_colored_polygon(PackedVector2Array([Vector2(bx + 3, by - 9), Vector2(bx - 4, by + 1), Vector2(bx, by + 1), Vector2(bx - 3, by + 9), Vector2(bx + 5, by - 2), Vector2(bx + 1, by - 2)]), gold)
-	txt(c, head(), Vector2(r.position.x + 20.0, r.position.y + 13.0), "HOLD TO CHARGE %ds" % m.charge_seconds(), 10, Color(1.0, 0.85, 0.35))
-	txt(c, body(), Vector2(r.position.x + 20.0, r.position.y + 26.0), m.charge_bonus_text(), 11, Color(1.0, 0.95, 0.8))
+	var ctr := r.get_center()
+	var hw := r.size.x * 0.26
+	var hh := r.size.y * 0.30
+	c.draw_colored_polygon(PackedVector2Array([Vector2(ctr.x - hw, ctr.y - hh), Vector2(ctr.x + hw, ctr.y - hh), ctr]), gold)  # upper triangle, tip down
+	c.draw_colored_polygon(PackedVector2Array([Vector2(ctr.x - hw, ctr.y + hh), Vector2(ctr.x + hw, ctr.y + hh), ctr]), gold)  # lower triangle, tip up
 
 
 static func chamfer(r: Rect2, cut: float) -> PackedVector2Array:

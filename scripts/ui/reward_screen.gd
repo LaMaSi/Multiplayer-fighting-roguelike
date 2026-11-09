@@ -254,7 +254,7 @@ func _draw_card(i: int, r: Rect2) -> void:
 		if card.has("class"):
 			pl = 0 if String(RunState.classes[0]) == String(card["class"]) else 1
 		MovePreview.draw(self, String(card["id"]), String(RunState.classes[pl]), pl, Rect2(r.position.x + 12.0, r.position.y + 96.0, r.size.x - 24.0, 100.0))
-		UiKit.charge_chip(self, Rect2(r.position.x + 16.0, r.position.y + 98.0, minf(r.size.x - 32.0, 148.0), 32.0), MoveDB.get_move(String(card["id"])))
+		UiKit.charge_chip(self, Rect2(r.position.x + 16.0, r.position.y + 100.0, 28.0, 28.0), MoveDB.get_move(String(card["id"])))
 		desc_y = 222.0
 	draw_multiline_string(f, r.position + Vector2(10, desc_y), String(card["desc"]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 20.0, 14, 4, Color(0.85, 0.85, 0.95))
 	if String(card["extra"]) != "":

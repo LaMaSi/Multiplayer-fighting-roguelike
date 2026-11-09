@@ -328,7 +328,7 @@ func _paint_lab(c: Control) -> void:
 			var tags := ", ".join(mv.tags) if mv.tags.size() > 0 else "melee"
 			UiKit.txt(c, UiKit.body(), Vector2(660, 190), mv.name.to_upper(), 26, UiKit.TEXT)
 			UiKit.txt(c, UiKit.body(), Vector2(660, 222), mv.desc, 18, Color(0.85, 0.85, 1.0))
-			UiKit.charge_chip(c, Rect2(660.0, 262.0, 200.0, 34.0), mv)
+			UiKit.charge_chip(c, Rect2(660.0, 262.0, 30.0, 30.0), mv)
 			UiKit.txt(c, UiKit.body(), Vector2(660, 250), tags.to_upper() + ("   GROUND ONLY" if mv.ground_only else ("   AIR ONLY" if mv.air_only else "")), 14, UiKit.DIM_TEXT)
 
 

@@ -287,8 +287,6 @@ static func _apply_charge() -> void:
 		m.charge_move = float(c[3])
 		m.charge_range = float(c[4]) if c.size() > 4 else 0.0
 		m.charge_stretch = id == "thrust_lunge"
-		if not m.tags.has("charge"):
-			m.tags.append("charge")
 
 
 static func _build_player() -> void:
