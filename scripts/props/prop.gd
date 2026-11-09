@@ -176,7 +176,7 @@ func take_hit(info: HitInfo) -> bool:
 		_bounces = 0
 		velocity = Vector2(info.kb.x * info.prop_power * 0.9, minf(info.kb.y * 0.5, -220.0))
 	if info.attacker is Actor:
-		(info.attacker as Actor).freeze = maxi((info.attacker as Actor).freeze, 2)
+		(info.attacker as Actor).freeze = maxi((info.attacker as Actor).freeze, Actor.MIN_HITSTOP)
 	return true
 
 

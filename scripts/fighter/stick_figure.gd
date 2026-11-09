@@ -144,23 +144,41 @@ func _draw_trails() -> void:
 				total += pts[i - 1].distance_to(pts[i])
 		if total < 30.0 or total > 900.0:
 			continue
+		# a smooth curve through the samples (not straight segments) with a rounded, elliptical profile:
+		# the ribbon swells quickly and ends in a soft round head instead of a sharp point
+		var sm := _smooth(pts, 4)
+		var m := sm.size()
+		var wmax := 20.0 if (tip == 0 and weapon in ["sword", "hammer"]) else 15.0
 		var left: Array[Vector2] = []
 		var right: Array[Vector2] = []
-		for i in n:
-			var dir := pts[mini(i + 1, n - 1)] - pts[maxi(i - 1, 0)]
+		for i in m:
+			var dir := sm[mini(i + 1, m - 1)] - sm[maxi(i - 1, 0)]
 			if dir.length() < 0.001:
 				dir = Vector2.RIGHT
 			var nrm := Vector2(-dir.y, dir.x).normalized()
-			var s := float(i) / float(n - 1)
-			var w := 15.0 * pow(maxf(sin(PI * pow(s, 2.4)), 0.0), 0.9)
-			left.append(pts[i] + nrm * w)
-			right.append(pts[i] - nrm * w)
-		for i in range(1, n):
-			var s2 := float(i) / float(n - 1)
+			var s := float(i) / float(m - 1)
+			var w := wmax * sqrt(maxf(sin(PI * pow(s, 1.6)), 0.0))
+			left.append(sm[i] + nrm * w)
+			right.append(sm[i] - nrm * w)
+		for i in range(1, m):
+			var s2 := float(i) / float(m - 1)
 			var col := Color(c.r, c.g, c.b, 0.12 + 0.6 * s2)
 			# two triangles per segment: never self-intersecting, even on sharp bends
 			_tri(left[i - 1], left[i], right[i], col)
 			_tri(left[i - 1], right[i], right[i - 1], col)
+
+
+## Catmull-Rom subdivision of a polyline: `sub` points per segment.
+static func _smooth(p: Array[Vector2], sub: int) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var cnt := p.size()
+	for i in cnt - 1:
+		var p0 := p[maxi(i - 1, 0)]
+		var p3 := p[mini(i + 2, cnt - 1)]
+		for k in sub:
+			out.append(p[i].cubic_interpolate(p[i + 1], p0, p3, float(k) / float(sub)))
+	out.append(p[cnt - 1])
+	return out
 
 
 func _tri(a: Vector2, b: Vector2, c: Vector2, col: Color) -> void:
@@ -285,14 +303,17 @@ func _draw_weapon(halo: bool, elbow_f: Vector2, hand_f: Vector2, hand_b: Vector2
 			if not halo:
 				weapon_tip = tip
 			if halo:
-				draw_line(hand_f - wd * 7.0, tip + wd * 3.0, dark, 11.0 * ws)
+				draw_line(hand_f - wd * 7.0, base, dark, 9.0)
 				draw_line(base - n * 11.0, base + n * 11.0, dark, 8.0)
+				# the dark outline follows the blade: widest at the guard, narrowing to a point just past the tip
+				draw_colored_polygon(PackedVector2Array([base + n * 8.0 - wd * 1.5, tip + wd * 5.0, base - n * 8.0 - wd * 1.5]), dark)
 			else:
 				draw_line(hand_f - wd * 7.0, base, col.darkened(0.35), 5.0)       # grip
 				draw_line(base - n * 10.0, base + n * 10.0, col, 4.0, true)         # cross-guard
-				draw_colored_polygon(PackedVector2Array([base + n * 4.0, tip, base - n * 4.0]), col.darkened(0.55))
-				draw_polyline(PackedVector2Array([base + n * 4.0, tip, base - n * 4.0]), col, 2.5, true)
-				draw_line(base, tip - wd * 6.0, Color(2.0, 2.0, 2.2), 1.5, true)    # bright edge
+				draw_colored_polygon(PackedVector2Array([base + n * 5.0, tip, base - n * 5.0]), col.darkened(0.55))
+				draw_polyline(PackedVector2Array([base + n * 5.0, tip, base - n * 5.0]), col, 2.5, true)
+				# bright edge: a sliver that tapers to a point with the blade, always inside it
+				draw_colored_polygon(PackedVector2Array([base + wd * 3.0 + n * 1.4, tip - wd * 3.0, base + wd * 3.0 - n * 1.4]), Color(2.0, 2.0, 2.2))
 		"hammer":
 			# the hammer angle is absolute in figure space (0 = forward, + = down, -PI/2 = straight up, PI = back)
 			var hd := Vector2.from_angle(float(pose["wp_rot"]))

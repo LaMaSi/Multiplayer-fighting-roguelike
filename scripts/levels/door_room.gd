@@ -124,6 +124,10 @@ func _build_items() -> void:
 	_items.append({"x": x0 + ROOM_W * float(n) / float(n + 1), "kind": "heal", "id": "", "class": "", "label": "HEAL BOTH", "price": 25, "sold_by": [false, false], "sold": false})
 
 
+func is_last_wave() -> bool:
+	return _wave >= 2
+
+
 func _spawn_wave() -> void:
 	var table: Array = [["heavy", "brute"], ["brute", "brute", "heavy"]]
 	var kinds: Array = table[mini(_wave, table.size() - 1)]
