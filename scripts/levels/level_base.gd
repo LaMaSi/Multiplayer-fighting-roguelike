@@ -278,6 +278,18 @@ func spawn_enemy(kind: String, pos: Vector2) -> Enemy:
 	return e
 
 
+## True when the enemy that just fell was the last one of the battle: the final wave of an arena encounter or of a
+## challenge room. Called after the enemy's state is "dead". Drives the slow-motion finish.
+func is_final_kill() -> bool:
+	if alive_enemies() != 0:
+		return false
+	if in_room:
+		return _room != null and _room.kind == "challenge" and _room.is_last_wave()
+	if _locked and _enc_idx < encounters.size():
+		return _wave_idx >= (encounters[_enc_idx]["waves"] as Array).size()
+	return false
+
+
 func alive_enemies() -> int:
 	_enemies = _enemies.filter(func(x): return is_instance_valid(x) and x.state != "dead")
 	return _enemies.size()

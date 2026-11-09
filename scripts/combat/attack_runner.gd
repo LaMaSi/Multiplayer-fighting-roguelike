@@ -460,7 +460,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.stun = int(h["stun"]) + (3 if a.team == "player" else 0)  # a little extra hitstun: solo chains become possible
 	info.kind = String(h["kind"])
 	# hit-stop: the harder the blow the longer the world holds still on contact
-	info.stop = int(h["stop"]) + (6 if float(h["dmg"]) >= 18.0 else (3 if float(h["dmg"]) >= 9.0 else 2))
+	info.stop = maxi(Actor.MIN_HITSTOP, int(h["stop"]) + (6 if float(h["dmg"]) >= 18.0 else (3 if float(h["dmg"]) >= 9.0 else 2)))
 	info.low = bool(h["low"])
 	info.height = String(h.get("height", "low" if info.low else "mid"))
 	info.guard_break = bool(h.get("guard_break", false))

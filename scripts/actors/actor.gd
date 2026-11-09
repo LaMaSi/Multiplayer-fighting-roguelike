@@ -45,6 +45,7 @@ var last_hitter: Actor = null
 var juggle_hits := 0
 var hit_chain := 0  ## hits taken back to back without getting to act (enemies): feeds the combo breaker
 var _chain_t := 0.0
+const MIN_HITSTOP := 3  ## frames every involved character holds still when a hit connects
 const CHAIN_BREAK := 14  # after this many hits in a row the enemy breaks out (short invulnerability + shove)
 var buffs: Dictionary = {}
 var upgrades: Dictionary = {}  ## move_id -> {dmg, spd, kb} multipliers earned from rewards
@@ -113,7 +114,10 @@ func is_alive() -> bool:
 func get_hurt_rect() -> Rect2:
 	var w := body_w * body_scale
 	var h := body_h * body_scale
-	return Rect2(global_position.x - w * 0.5, global_position.y - h, w, h)
+	var r := Rect2(global_position.x - w * 0.5, global_position.y - h, w, h)
+	if team == "enemy":
+		r = r.grow_individual(14.0, 12.0, 14.0, 0.0)  # generous enemy hurtboxes: swings that visibly touch should connect
+	return r
 
 
 func center() -> Vector2:
@@ -299,7 +303,7 @@ func take_hit(info: HitInfo) -> bool:
 		velocity = Vector2(info.kb.x, 0)
 	_wallbounce = info.wallbounce if launch else _wallbounce
 
-	freeze = info.stop
+	freeze = maxi(info.stop, MIN_HITSTOP) if info.stop > 0 else 0  # every connecting hit holds the victim's pose
 	_victim_freeze = true
 	flash_t = clampf(0.08 + dmg * 0.006, 0.1, 0.2)  # heavier blows hold the white flash longer
 	var sq := clampf(dmg / 20.0, 0.3, 0.6)
@@ -697,7 +701,7 @@ func _st_down(delta: float) -> void:
 	if _down_t <= 0.0:
 		state = "getup"
 		_getup_t = 0.3
-		invuln = maxf(invuln, 0.6)
+		invuln = maxf(invuln, 0.3)  # only while rising; it used to outlast the getup animation by 0.3 s
 
 
 func _st_getup(delta: float) -> void:
