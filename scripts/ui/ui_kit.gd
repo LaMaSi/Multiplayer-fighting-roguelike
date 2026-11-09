@@ -54,6 +54,21 @@ static func poly_line(c: CanvasItem, pts: PackedVector2Array, col: Color, w: flo
 
 
 ## Rectangle with the top-right and bottom-left corners cut.
+## The badge on an attack card for a move that can be charged: a bolt, "CHARGE 3s" and the bonus of a full charge.
+## `m` is the move (card ids resolve through MoveDB). Drawn only for chargeable moves.
+static func charge_chip(c: CanvasItem, r: Rect2, m: MoveData) -> void:
+	if m == null or not m.is_chargeable():
+		return
+	var gold := Color(2.0, 1.55, 0.35)
+	c.draw_colored_polygon(chamfer(r, 5.0), Color(0.14, 0.09, 0.0, 0.94))
+	poly_line(c, chamfer(r, 5.0), gold, 2.0)
+	var bx := r.position.x + 10.0
+	var by := r.position.y + r.size.y * 0.5
+	c.draw_colored_polygon(PackedVector2Array([Vector2(bx + 3, by - 9), Vector2(bx - 4, by + 1), Vector2(bx, by + 1), Vector2(bx - 3, by + 9), Vector2(bx + 5, by - 2), Vector2(bx + 1, by - 2)]), gold)
+	txt(c, head(), Vector2(r.position.x + 20.0, r.position.y + 13.0), "HOLD TO CHARGE %ds" % m.charge_seconds(), 10, Color(1.0, 0.85, 0.35))
+	txt(c, body(), Vector2(r.position.x + 20.0, r.position.y + 26.0), m.charge_bonus_text(), 11, Color(1.0, 0.95, 0.8))
+
+
 static func chamfer(r: Rect2, cut: float) -> PackedVector2Array:
 	return PackedVector2Array([r.position, Vector2(r.end.x - cut, r.position.y), Vector2(r.end.x, r.position.y + cut), r.end, Vector2(r.position.x + cut, r.end.y), Vector2(r.position.x, r.end.y - cut)])
 

@@ -415,6 +415,7 @@ func _paint_reveal(c: Control, p: int, r: Rect2) -> void:
 		var desc := LoadoutView._wrap(UiKit.body(), m.desc, 14, rr.size.x - 260.0)
 		for di in mini(desc.size(), 2):
 			UiKit.txt(c, UiKit.body(), rr.position + Vector2(72, 62 + di * 16), desc[di], 14, Color(0.8, 0.8, 0.95))
+		UiKit.charge_chip(c, Rect2(rr.end.x - 150.0, rr.position.y + 6.0, 140.0, 30.0), m)
 		var tier := String(LoadoutView.TIER_LABEL.get(ClassData.tier_of(id), "MELEE"))
 		var tw := UiKit.body().get_string_size(tier, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 18.0
 		var chip2 := Rect2(rr.end.x - 150.0 - tw - 8.0, rr.position.y + 8, tw, 22)

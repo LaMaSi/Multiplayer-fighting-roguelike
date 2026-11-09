@@ -18,6 +18,9 @@ var _hit_done: Dictionary = {}
 var _ev_done: Dictionary = {}
 var _kf_idx := -1
 var _hold_frames := 0
+var _charge_fx: ChargeFx = null
+var last_hit_dmg := 0.0  ## damage and knockback of the last hit this runner sent, before the target's own modifiers (for tests and tuning)
+var last_hit_kb := 0.0
 var _wait_frames := 0
 var _tilt := 0.0
 var _spun := false
@@ -46,6 +49,7 @@ func start(m: MoveData, btn := -1) -> void:
 	_ev_done.clear()
 	_kf_idx = -1
 	_hold_frames = 0
+	_charge_fx = null
 	_wait_frames = 0
 	_tilt = 0.0
 	_spun = false
@@ -98,12 +102,44 @@ func _tick_once() -> void:
 	# advance (or hold)
 	if move.hold and frame == move.hold_frame and held_btn >= 0 and actor.is_btn_held(held_btn) and _hold_frames < move.hold_max:
 		_hold_frames += 1
+		if move.is_chargeable():
+			_charge_tick()
 	elif move.land_wait >= 0 and frame == move.land_wait and not actor.is_on_floor() and _wait_frames < 150:
 		_wait_frames += 1
 	else:
 		frame += 1
 	if frame >= move.total:
 		finish()
+
+
+## True while the button is being held at the charge point.
+func charging() -> bool:
+	return active and move != null and move.is_chargeable() and _hold_frames > 0 and frame == move.hold_frame and held_btn >= 0 and actor.is_btn_held(held_btn) and _hold_frames < move.hold_max + 1
+
+
+## Charge progress, 0 (tap) to 1 (full, after charge_max frames).
+func charge_t() -> float:
+	if move == null or not move.is_chargeable():
+		return 0.0
+	return clampf(float(_hold_frames) / float(move.charge_max), 0.0, 1.0)
+
+
+func charge_dmg_mult() -> float:
+	return 1.0 + (move.charge_dmg * charge_t() if move != null and move.is_chargeable() else 0.0)
+
+
+func charge_kb_mult() -> float:
+	return 1.0 + (move.charge_kb * charge_t() if move != null and move.is_chargeable() else 0.0)
+
+
+func _charge_tick() -> void:
+	if _charge_fx == null or not is_instance_valid(_charge_fx):
+		_charge_fx = ChargeFx.new()
+		_charge_fx.runner = self
+		_charge_fx.actor = actor
+		actor.add_child(_charge_fx)
+	if _hold_frames % 30 == 1:
+		Sfx.play("buff", 0.7 + 0.8 * charge_t())  # a rising tick every half second
 
 
 func finish() -> void:
@@ -124,6 +160,9 @@ func interrupt() -> void:
 
 func _cleanup() -> void:
 	aiming = false
+	if _charge_fx != null and is_instance_valid(_charge_fx):
+		_charge_fx.queue_free()
+	_charge_fx = null
 	actor.figure.rot = 0.0
 	actor.figure.modulate = Color.WHITE
 	actor.figure.follow_speed = 36.0
@@ -450,8 +489,8 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.low = bool(h["low"])
 	info.height = String(h.get("height", "low" if info.low else "mid"))
 	info.guard_break = bool(h.get("guard_break", false))
-	if move.hold and _hold_frames > 0:
-		info.dmg *= 1.0 + 0.8 * minf(float(_hold_frames), 60.0) / 60.0  # charged moves hit harder
+	if move.is_chargeable() and _hold_frames > 0:
+		info.dmg *= charge_dmg_mult()  # a charged move hits harder (and knocks back harder, below)
 	info.shake = float(h["shake"])
 	info.punch = float(h.get("punch", 0.0))
 	info.prop_power = float(h.get("prop_power", 1.0))
@@ -476,7 +515,9 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		var fx := KB_EMPOWERED if empowered else KB_PLAYER
 		# Flights are sideways, not skyward: only launchers keep their full lift, and nothing rises past a single jump (~170 px).
 		var lift := 1.0 if move.tags.has("launcher") else 0.6
-		kb = Vector2(kb.x * fx, maxf(kb.y * lift, -780.0) if kb.y < 0.0 else kb.y)
+		kb = Vector2(kb.x * fx, maxf(kb.y * lift, -780.0 * (1.0 + 0.5 * charge_t())) if kb.y < 0.0 else kb.y)
+		if move.is_chargeable():
+			kb *= charge_kb_mult()
 	if info.friendly and not bool(h.get("partner_safe", false)):
 		# Player-vs-player: no damage or effects, only a light stagger that interrupts the other player.
 		info.dmg = 0.0
@@ -499,6 +540,8 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		info.kb = Vector2(s * absf(kb.x), kb.y)
 	else:
 		info.kb = Vector2(kb.x * a.facing, kb.y)
+	last_hit_dmg = info.dmg
+	last_hit_kb = info.kb.length()
 	if t.take_hit(info):
 		hit_connected = true
 		a.freeze = maxi(a.freeze, info.stop)

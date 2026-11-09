@@ -40,9 +40,12 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.dmg = float(e["dmg"]) * a.dmg_mult() * (a.upgrade_mult(a.attack.move.id, "dmg") if a.attack.move != null else 1.0)
 	p.stun = int(e["stun"])
 	p.kb = e["kb"]
+	if a.attack.move != null and a.attack.move.is_chargeable() and a.attack.charge_t() > 0.0:
+		p.dmg *= a.attack.charge_dmg_mult()
+		p.kb = (e["kb"] as Vector2) * a.attack.charge_kb_mult()
 	p.kind = String(e.get("pkind", "normal"))
 	p.life = float(e["life"])
-	p.radius = float(e["radius"])
+	p.radius = float(e["radius"]) * (1.0 + 0.6 * (a.attack.charge_t() if a.attack.move != null and a.attack.move.is_chargeable() else 0.0))
 	p.col = a.figure.color if a.team == "player" else e["color"]  # player shots wear their owner's colour
 	p.pierce = bool(e.get("pierce", false))
 	p.ground = bool(e.get("ground", false))

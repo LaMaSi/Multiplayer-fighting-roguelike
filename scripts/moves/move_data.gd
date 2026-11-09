@@ -28,6 +28,11 @@ var cancel_from := -1  ## frame from which a connected move may be cancelled int
 var hold := false
 var hold_frame := 0
 var hold_max := 600
+## Charging: with the button held at `hold_frame` the move waits, building charge for up to `charge_max` frames (180 = 3 s).
+## A full charge multiplies damage by (1 + charge_dmg) and knockback by (1 + charge_kb); a tap plays the move normally.
+var charge_max := 0
+var charge_dmg := 1.0
+var charge_kb := 0.8
 var steer := 0.0  ## fraction of run speed the player can still steer with during the move
 var enemy := false
 var tele := false
@@ -37,6 +42,20 @@ var tier := ""  ## "weapon" (B slots, class-locked), "adaptive" (Y, reshaped by 
 var class_id := ""  ## owning class for weapon moves; the applied class for an adaptive variant
 var height := "mid"  ## "high" / "mid" / "low": the height of the first hit
 var meter_cost := 0.0  ## reserved: Style meter cost of the LT version (super meter design pending)
+
+
+func is_chargeable() -> bool:
+	return charge_max > 0
+
+
+## Seconds a full charge takes.
+func charge_seconds() -> int:
+	return int(round(float(charge_max) / 60.0))
+
+
+## The two bonuses of a full charge, as shown on the attack cards.
+func charge_bonus_text() -> String:
+	return "+%d%% DMG  +%d%% KB" % [int(round(charge_dmg * 100.0)), int(round(charge_kb * 100.0))]
 
 
 func last_hit_end() -> int:

@@ -250,6 +250,7 @@ func paint_player(c: Control, p: int, r: Rect2) -> void:
 		if tx > dr.end.x - 150.0:
 			break
 	MovePreview.draw(c, shown, String(RunState.classes[p]), p, Rect2(dr.end.x - 156.0, dr.position.y + 4.0, 156.0, 108.0))
+	UiKit.charge_chip(c, Rect2(dr.end.x - 154.0, dr.position.y + 6.0, 150.0, 32.0), m)
 	var lines := _wrap(UiKit.body(), m.desc, 17, dr.size.x - 170.0)
 	for li in mini(lines.size(), 3):
 		UiKit.txt(c, UiKit.body(), dr.position + Vector2(0, 84 + li * 20), lines[li], 17, Color(0.85, 0.85, 1.0))

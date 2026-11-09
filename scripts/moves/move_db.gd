@@ -242,6 +242,7 @@ static func _build() -> void:
 	_apply_status()
 	_lengthen_short_hits()
 	_soften_x_moves()
+	_apply_charge()
 	# tiers (weapon / adaptive / universal), owning class and the height of the first hit
 	for id in _db:
 		var m: MoveData = _db[id]
@@ -256,6 +257,32 @@ static func _build() -> void:
 		if not m.hits.is_empty():
 			var h0: Dictionary = m.hits[0]
 			m.height = String(h0.get("height", "low" if bool(h0.get("low", false)) else "mid"))
+
+
+## Moves that can be charged by holding the button (up to 3 s). Each category has some: weapon (B), universal (X) and
+## adaptive (Y). id -> [frame to wait at (just before the first hit or shot), extra damage, extra knockback].
+const CHARGE := {
+	"off_hand_jab": [1, 1.5, 1.0], "spark_shot": [5, 1.5, 1.0],
+	"uppercut": [4, 1.0, 0.6], "spin_kick": [5, 1.0, 0.8],
+	"haymaker": [22, 1.2, 0.9], "thrust_lunge": [4, 1.0, 0.9], "overhead_smash": [23, 1.0, 0.8],
+	"guard_breaker": [30, 1.2, 0.8], "fireball": [9, 1.0, 0.8],
+}
+
+
+static func _apply_charge() -> void:
+	for id in CHARGE:
+		if not _db.has(id):
+			continue
+		var m: MoveData = _db[id]
+		var c: Array = CHARGE[id]
+		m.hold = true
+		m.hold_frame = int(c[0])
+		m.hold_max = 180
+		m.charge_max = 180
+		m.charge_dmg = float(c[1])
+		m.charge_kb = float(c[2])
+		if not m.tags.has("charge"):
+			m.tags.append("charge")
 
 
 static func _build_player() -> void:
