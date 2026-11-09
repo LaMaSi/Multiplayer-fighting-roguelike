@@ -236,3 +236,8 @@ The bars show hand-authored 1 to 10 `ratings` per class (`ClassData`), so every 
 | Sword | 4 | 5 | 7 | 5 |
 | Hammer | 2 | 9 | 7 | 10 |
 | Magic | 6 | 2 | 10 | 3 |
+
+## 14. Charge sounds and shots, Pull Hook whip
+- **Sound follows the charge:** letting go of a charge plays a `release` sound (a rising crackle into a thump) that is lower and louder the longer it was charged, with a shake and a spark burst (`AttackRunner.release_params`). The swing whoosh is lower for a charged move, a charged hit lands with an extra low boom, and a charged shot's launch sound drops in pitch and gets louder.
+- **Charged shots look different:** a charged projectile (Spark Shot, Fireball) is up to **2.8x the radius**, **1.6x as fast** (so it also flies further), brighter (tinted white-gold) and has a bigger blast, plus the damage and knockback bonus.
+- **Pull Hook whip** (`WhipFx`): the hook is a visible tether that cracks out from the hand to the move's full reach (325 px) even when nothing is hit, holds a moment and snaps back. When it hooks something the tip (a ring, gold when it holds something) sticks to the target and follows it in. Containers are dragged to the player; enemies are pulled as before.

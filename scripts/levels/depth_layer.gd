@@ -209,7 +209,8 @@ func _draw_floor(g: Rect2, ng: Color, vx0: float, vx1: float) -> void:
 
 ## Draws a platform as a real box in the shared camera model. `r` is the collision rectangle in the canvas space of
 ## `c`, `vp` the vanishing point in that space. Returns the front face rectangle (for decorations such as stripes).
-static func draw_platform(c: CanvasItem, r: Rect2, np: Color, vp: Vector2, with_shadow: bool, z_back := PLAT_BACK) -> Rect2:
+## `fill` (alpha > 0) replaces the body colour of every face, for structures that should look dark like the background.
+static func draw_platform(c: CanvasItem, r: Rect2, np: Color, vp: Vector2, with_shadow: bool, z_back := PLAT_BACK, fill := Color(0, 0, 0, 0)) -> Rect2:
 	var x0 := r.position.x
 	var x1 := r.end.x
 	var yt := r.position.y
@@ -227,26 +228,31 @@ static func draw_platform(c: CanvasItem, r: Rect2, np: Color, vp: Vector2, with_
 	if with_shadow:
 		for i in 3:
 			c.draw_rect(Rect2(f_bl.x + 6 + i * 3, f_bl.y + 2 + i * 6, f_br.x - f_bl.x - 12 - i * 6, 6), Color(0, 0, 0, 0.22 - i * 0.06))
-	var side := Color(np.r * 0.09, np.g * 0.09, np.b * 0.09)
+	var custom := fill.a > 0.0
+	var side := fill.lightened(0.04) if custom else Color(np.r * 0.09, np.g * 0.09, np.b * 0.09)
 	# sides that face the camera
 	if vp.x < x0:
-		c.draw_colored_polygon(PackedVector2Array([f_tl, b_tl, b_bl, f_bl]), side)
+		_quad(c, PackedVector2Array([f_tl, b_tl, b_bl, f_bl]), side)  # (a side seen edge-on is a sliver: no polygon triangulation)
 		c.draw_line(f_tl, b_tl, Color(np.r, np.g, np.b, 0.35), 1.5, true)
 	elif vp.x > x1:
-		c.draw_colored_polygon(PackedVector2Array([f_tr, b_tr, b_br, f_br]), side)
+		_quad(c, PackedVector2Array([f_tr, b_tr, b_br, f_br]), side)
 		c.draw_line(f_tr, b_tr, Color(np.r, np.g, np.b, 0.35), 1.5, true)
 	# the top is visible because the horizon is above it; the underside if the platform is above the horizon
 	if vp.y < yt:
 		var near := Color(np.r * 0.34, np.g * 0.34, np.b * 0.34)
 		var far := Color(np.r * 0.17, np.g * 0.17, np.b * 0.17)
+		if custom:
+			near = fill.lightened(0.08)
+			far = fill
 		c.draw_polygon(PackedVector2Array([b_tl, b_tr, f_tr, f_tl]), PackedColorArray([far, far, near, near]))
 		c.draw_line(b_tl, b_tr, Color(np.r, np.g, np.b, 0.30), 1.5, true)
 	elif vp.y > yb:
-		c.draw_colored_polygon(PackedVector2Array([f_bl, f_br, b_br, b_bl]), Color(np.r * 0.05, np.g * 0.05, np.b * 0.05))
+		_quad(c, PackedVector2Array([f_bl, f_br, b_br, b_bl]), fill.darkened(0.3) if custom else Color(np.r * 0.05, np.g * 0.05, np.b * 0.05))
 	# the front face, with the bright edge
-	c.draw_colored_polygon(PackedVector2Array([f_tl, f_tr, f_br, f_bl]), Color(np.r * 0.16, np.g * 0.16, np.b * 0.16))
+	c.draw_colored_polygon(PackedVector2Array([f_tl, f_tr, f_br, f_bl]), fill if custom else Color(np.r * 0.16, np.g * 0.16, np.b * 0.16))
 	var fh := f_bl.y - f_tl.y
-	c.draw_rect(Rect2(f_tl.x, f_tl.y, f_tr.x - f_tl.x, fh * 0.5), Color(np.r * 0.30, np.g * 0.30, np.b * 0.30))
+	if not custom:
+		c.draw_rect(Rect2(f_tl.x, f_tl.y, f_tr.x - f_tl.x, fh * 0.5), Color(np.r * 0.30, np.g * 0.30, np.b * 0.30))
 	c.draw_rect(Rect2(f_bl.x, f_bl.y - 3.0, f_br.x - f_bl.x, 3.0), Color(0.02, 0.01, 0.04, 0.9))
 	c.draw_line(f_tl, f_tr, np, 3.0, true)
 	c.draw_line(f_tl, f_bl, Color(np.r, np.g, np.b, 0.55), 3.0, true)
@@ -263,6 +269,11 @@ static func box(r: Rect2, zf: float, zb: float, vp: Vector2) -> Dictionary:
 		"b_tl": P(r.position, zb, vp), "b_tr": P(Vector2(r.end.x, r.position.y), zb, vp),
 		"b_bl": P(Vector2(r.position.x, r.end.y), zb, vp), "b_br": P(r.end, zb, vp),
 	}
+
+
+## A filled quad that never fails to triangulate, even when it is a sliver or flat.
+static func _quad(c: CanvasItem, pts: PackedVector2Array, col: Color) -> void:
+	c.draw_primitive(pts, PackedColorArray([col, col, col, col]), PackedVector2Array())
 
 
 ## Height of the surface under a point: the closest ground, platform or moving platform top at or below `feet`.

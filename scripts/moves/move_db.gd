@@ -555,7 +555,7 @@ static func _build_player() -> void:
 		"kf": [[0, {"lean": 0.0, "ua_f": 0.4, "la_f": 1.8, "th_f": 0.4, "kn_f": 0.5}],
 			[6, {"lean": 0.3, "ua_f": 1.55, "la_f": 0.0, "th_f": 0.6, "kn_f": 0.4, "th_b": -0.5}],
 			[16, {"lean": -0.3, "ua_f": 0.9, "la_f": 1.3}], [28, _idle()]],
-		"events": [{"at": 6, "type": "beam", "len": 310.0, "dur": 10, "sfx": "throw"}],
+		"events": [{"at": 6, "type": "whip", "reach": 325.0, "sfx": "throw"}],
 		"hits": [_hit(6, 6, Rect2(15, -88, 310, 30), 4, 26, Vector2.ZERO, {"kind": "pull", "stop": 4, "color": CYAN})]})
 
 	# --- 25 Teleport strike ---------------------------------------------

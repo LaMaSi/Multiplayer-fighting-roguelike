@@ -40,12 +40,14 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.dmg = float(e["dmg"]) * a.dmg_mult() * (a.upgrade_mult(a.attack.move.id, "dmg") if a.attack.move != null else 1.0)
 	p.stun = int(e["stun"])
 	p.kb = e["kb"]
+	var ct := 0.0  # how charged this shot is (0 for an ordinary shot)
 	if a.attack.move != null and a.attack.move.is_chargeable() and a.attack.charge_t() > 0.0:
+		ct = a.attack.charge_t()
 		p.dmg *= a.attack.charge_dmg_mult()
 		p.kb = (e["kb"] as Vector2) * a.attack.charge_kb_mult()
 	p.kind = String(e.get("pkind", "normal"))
 	p.life = float(e["life"])
-	p.radius = float(e["radius"]) * (1.0 + 0.6 * (a.attack.charge_t() if a.attack.move != null and a.attack.move.is_chargeable() else 0.0))
+	p.radius = float(e["radius"])
 	p.col = a.figure.color if a.team == "player" else e["color"]  # player shots wear their owner's colour
 	p.pierce = bool(e.get("pierce", false))
 	p.ground = bool(e.get("ground", false))
@@ -68,11 +70,21 @@ static func launch(a: Actor, e: Dictionary) -> void:
 		p.vel = Vector2(v.x * a.facing, v.y)
 		if p.shape == "bottle":
 			p.gravity = 900.0
+	if ct > 0.0:
+		# a charged shot is clearly a different shot: much bigger, faster (so it also flies further), brighter, with a bigger blast
+		p.radius *= 1.0 + 1.8 * ct
+		p.splash *= 1.0 + ct
+		p.vel *= 1.0 + 0.6 * ct
+		p.col = p.col.lerp(Color(2.2, 2.0, 1.6), ct * 0.55)
 	p.add_to_group("projectiles")
 	p.z_index = 20
 	a.get_parent().add_child(p)
 	if String(e.get("sfx", "shoot")) != "":
-		Sfx.play(String(e.get("sfx", "shoot")))
+		# the launch sound drops in pitch and gets louder with the charge
+		Sfx.play(String(e.get("sfx", "shoot")), lerpf(1.0, 0.55, ct), lerpf(0.0, 4.0, ct))
+	if ct >= 0.2:
+		Fx.sparks(a.get_parent(), p.global_position, p.col, 6 + int(16.0 * ct))
+		Juice.shake(0.12 * ct)
 
 
 func _physics_process(delta: float) -> void:

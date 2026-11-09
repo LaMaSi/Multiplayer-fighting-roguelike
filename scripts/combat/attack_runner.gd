@@ -19,6 +19,8 @@ var _ev_done: Dictionary = {}
 var _kf_idx := -1
 var _hold_frames := 0
 var _charge_fx: ChargeFx = null
+var _released := false
+var _whip: WhipFx = null  ## the tether of a Pull Hook
 var last_hit_dmg := 0.0  ## damage and knockback of the last hit this runner sent, before the target's own modifiers (for tests and tuning)
 var last_hit_kb := 0.0
 var _wait_frames := 0
@@ -50,6 +52,7 @@ func start(m: MoveData, btn := -1) -> void:
 	_kf_idx = -1
 	_hold_frames = 0
 	_charge_fx = null
+	_released = false
 	_wait_frames = 0
 	_tilt = 0.0
 	_spun = false
@@ -107,6 +110,9 @@ func _tick_once() -> void:
 	elif move.land_wait >= 0 and frame == move.land_wait and not actor.is_on_floor() and _wait_frames < 150:
 		_wait_frames += 1
 	else:
+		if move.is_chargeable() and _hold_frames > 0 and not _released and frame == move.hold_frame:
+			_released = true
+			_release_fx()
 		frame += 1
 	if frame >= move.total:
 		finish()
@@ -139,6 +145,22 @@ func charge_move_mult() -> float:
 
 ## A short press is just the move: the ring and the ticks only start after the button has been held this long.
 const CHARGE_SHOW_FRAMES := 14
+
+
+## Pitch and volume (db) of the release sound for a charge 0..1: the longer the charge, the lower and louder.
+static func release_params(ct: float) -> Vector2:
+	return Vector2(lerpf(1.45, 0.7, ct), lerpf(-9.0, 1.0, ct))
+
+
+## Letting go of a held charge: a sound that grows with the charge, a shake and a burst of sparks in the player's colour.
+func _release_fx() -> void:
+	if _hold_frames < CHARGE_SHOW_FRAMES:
+		return
+	var ct := charge_t()
+	var rp := release_params(ct)
+	Sfx.play("release", rp.x, rp.y)
+	Juice.shake(0.1 + 0.3 * ct)
+	Fx.sparks(actor.get_parent(), actor.global_position + Vector2(0.0, -50.0), actor.figure.color, 6 + int(18.0 * ct))
 
 
 func _charge_tick() -> void:
@@ -259,7 +281,7 @@ func _do_event(e: Dictionary) -> void:
 				var top := 0.0
 				for hh: Dictionary in move.hits:
 					top = maxf(top, float(hh["dmg"]))
-				Sfx.swing(top * a.dmg_mult())  # bigger swings sound lower
+				Sfx.swing(top * a.dmg_mult() * charge_dmg_mult())  # bigger swings sound lower, a charged one lowest
 			else:
 				Sfx.play(String(e["name"]))
 		"ghost":
@@ -297,6 +319,14 @@ func _do_event(e: Dictionary) -> void:
 		"beam":
 			var from := a.global_position + Vector2(a.facing * 25.0, -70.0)
 			Fx.beam(parent, from, from + Vector2(a.facing * float(e["len"]), 0), a.figure.color, float(e["dur"]) / 60.0)
+			if e.has("sfx"):
+				Sfx.play(String(e["sfx"]))
+		"whip":
+			# a tether from the hand out to the move's full reach, whether or not it hooks anything
+			_whip = WhipFx.new()
+			_whip.actor = a
+			_whip.reach = float(e.get("reach", 325.0))
+			parent.add_child(_whip)
 			if e.has("sfx"):
 				Sfx.play(String(e["sfx"]))
 		"tele":
@@ -579,6 +609,10 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	if t.take_hit(info):
 		hit_connected = true
 		a.freeze = maxi(a.freeze, info.stop)
+		if info.kind == "pull" and _whip != null and is_instance_valid(_whip) and t is Node2D:
+			_whip.hook(t as Node2D)  # the tether sticks to what it caught
+		if move.is_chargeable() and charge_t() >= 0.25:
+			Sfx.play("boom", lerpf(1.5, 0.8, charge_t()), lerpf(-10.0, -2.0, charge_t()))  # a charged hit lands with extra weight
 		var drain := float(h.get("drain", 0.0))
 		if drain > 0.0 and t is Actor and not info.friendly and info.dmg > 0.0:
 			# life drain: a share of the damage dealt comes back as health, a smaller share to a nearby partner

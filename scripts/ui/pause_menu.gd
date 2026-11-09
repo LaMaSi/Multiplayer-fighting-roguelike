@@ -7,8 +7,10 @@ extends CanvasLayer
 
 class Canvas extends Control:
 	var menu: PauseMenu
+	var last_drawn_open := false  ## whether the last redraw painted the menu (for tests)
 
 	func _draw() -> void:
+		last_drawn_open = menu != null and menu.open
 		if menu != null and menu.open:
 			menu.paint(self)
 
@@ -68,6 +70,8 @@ func _toggle() -> void:
 	_page = "main"
 	_sel = 0
 	_lv.reset()
+	if _canvas != null:
+		_canvas.queue_redraw()  # a closed menu must be redrawn (as nothing), or its last frame stays on screen
 	Sfx.play("ui")
 
 

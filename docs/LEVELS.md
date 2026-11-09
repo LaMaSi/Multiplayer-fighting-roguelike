@@ -80,3 +80,8 @@ ground heights and higher platforms, and characters pass through each other inst
 - **Barrels** are cylinders whose top ellipse is closed without a zero-length segment (it had drawn small spikes).
 - **Vases** have a symmetric silhouette around the projected axis, with shallow ellipses for the mouth and bands (no skewed, egg-shaped perspective).
 - **Battle screen ceilings reach past the top of the screen** (`ArenaCeiling.THICK`), so you never see the upper side of the slab or the sky above it. Only tunnel roofs, which can be climbed, are thin.
+
+- **Ceiling colour:** the inside of a battle screen ceiling is a near-black, background-dark body (`Color(0.035, 0.02, 0.07)`, passed as `fill` to `DepthLayer.draw_platform`), not the magenta of platforms; only its lit lower edge and its lamps glow.
+
+## Pause menu
+- Closing the pause menu (a second Start, or Back) now redraws the menu's canvas as empty, so the menu really disappears; before, the game continued but the last drawn frame of the menu stayed on screen. Test: `tests/pause_test.tscn`.

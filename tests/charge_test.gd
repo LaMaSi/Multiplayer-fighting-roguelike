@@ -196,6 +196,40 @@ func _ready() -> void:
 	check(f0.attack._charge_fx != null and is_instance_valid(f0.attack._charge_fx), "the ring appears once the button is really held")
 	pin.script_set(Vector2.ZERO, [])
 	await frames(120)
+	# 2d. a charged Spark Shot is clearly a different shot, and charging changes the sounds
+	var shots := {}
+	for hold in [0, 200]:
+		for n in get_tree().get_nodes_in_group("projectiles"):
+			n.queue_free()
+		await frames(2)
+		f0.global_position = Vector2(500.0, lv.ground_y - 1.0)
+		f0.state = "idle"
+		await frames(10)
+		pin.script_set(Vector2.ZERO, [PlayerInput.Btn.X] if hold > 0 else [])
+		f0.start_attack(MoveDB.get_move_for("spark_shot", f0.class_id), PlayerInput.Btn.X)
+		var seen = null
+		for i in 260:
+			await get_tree().physics_frame
+			if hold > 0 and i == hold:
+				pin.script_set(Vector2.ZERO, [])
+			var ps := get_tree().get_nodes_in_group("projectiles")
+			if ps.size() > 0:
+				seen = ps[0]
+				break
+		if seen != null:
+			shots[hold] = {"radius": seen.radius, "speed": seen.vel.length(), "dmg": seen.dmg, "col": seen.col}
+		pin.script_set(Vector2.ZERO, [])
+		await frames(30)
+	check(shots.has(0) and shots.has(200), "both a tapped and a charged Spark Shot were fired")
+	if shots.has(0) and shots.has(200):
+		check(float(shots[200]["radius"]) > float(shots[0]["radius"]) * 2.4, "the charged spark is much bigger (radius %.0f vs %.0f)" % [shots[200]["radius"], shots[0]["radius"]])
+		check(float(shots[200]["speed"]) > float(shots[0]["speed"]) * 1.4, "...and faster (%.0f vs %.0f px/s)" % [shots[200]["speed"], shots[0]["speed"]])
+		check(float(shots[200]["dmg"]) > float(shots[0]["dmg"]) * 2.0, "...and hits harder (%.1f vs %.1f)" % [shots[200]["dmg"], shots[0]["dmg"]])
+		check((shots[200]["col"] as Color) != (shots[0]["col"] as Color), "...and is brighter, tinted towards white-gold")
+	var r0 := AttackRunner.release_params(0.2)
+	var r1 := AttackRunner.release_params(1.0)
+	check(r1.x < r0.x and r1.y > r0.y, "the release sound is lower and louder the longer it was charged (pitch %.2f -> %.2f, %.1f -> %.1f dB)" % [r0.x, r1.x, r0.y, r1.y])
+	check(Sfx._sounds.has("release"), "there is a release sound")
 	# 3. a charged projectile (Fireball is a Magic move: borrow its data on the Brawler's attack runner)
 	var fb := MoveDB.get_move("fireball")
 	check(fb.is_chargeable(), "Fireball can be charged")
@@ -212,6 +246,45 @@ func _ready() -> void:
 	await frames(60)
 	check(is_instance_valid(crate) and crate.global_position.x < cx0 - 120.0, "the Pull Hook drags a crate towards the player (%.0f -> %.0f)" % [cx0, crate.global_position.x if is_instance_valid(crate) else -1.0])
 	check(is_instance_valid(crate) and crate.hp == chp and crate.state == "idle", "...without damaging or launching it")
+	# the Pull Hook shows a tether out to its full reach even when nothing is hit, and sticks to what it hooks
+	for n in get_tree().get_nodes_in_group("props"):
+		n.queue_free()
+	await frames(5)
+	f0.global_position = Vector2(500.0, lv.ground_y - 1.0)
+	f0.facing = 1
+	f0.state = "idle"
+	await frames(10)
+	f0.start_attack(MoveDB.get_move_for("pull_hook", f0.class_id), PlayerInput.Btn.X)
+	var whip: WhipFx = null
+	for i in 20:
+		await get_tree().physics_frame
+		for n in lv.get_children():
+			if n is WhipFx:
+				whip = n
+		if whip != null:
+			break
+	check(whip != null, "the Pull Hook throws a whip even though nothing is in range")
+	if whip != null:
+		var reach := absf(whip._tip(1.0).x - f0.global_position.x)
+		check(reach >= 300.0, "...which reaches the move's full range (%.0f px)" % reach)
+		check(whip._hooked == null, "...and is not hooked to anything")
+	await frames(60)
+	var crate2 := lv.spawn_prop("crate", Vector2(780.0, lv.ground_y - 1.0))
+	await frames(20)
+	f0.global_position = Vector2(500.0, lv.ground_y - 1.0)
+	f0.state = "idle"
+	await frames(10)
+	f0.start_attack(MoveDB.get_move_for("pull_hook", f0.class_id), PlayerInput.Btn.X)
+	var whip2: WhipFx = null
+	for i in 25:
+		await get_tree().physics_frame
+		for n in lv.get_children():
+			if n is WhipFx and n != whip:
+				whip2 = n
+		if whip2 != null and whip2._hooked != null:
+			break
+	check(whip2 != null and whip2._hooked == crate2, "the whip sticks to the crate it hooks")
+	await frames(60)
 	# class stat bars: every class has a clear low and a clear high
 	for cid in ClassData.IDS:
 		var r: Dictionary = ClassData.get_class_data(cid)["ratings"]

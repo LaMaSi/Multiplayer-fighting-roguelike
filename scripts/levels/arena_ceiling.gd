@@ -77,7 +77,8 @@ func _draw() -> void:
 	var cam := get_viewport().get_camera_2d()
 	var ctr := cam.get_screen_center_position() if cam != null else Vector2(x0, bottom)
 	var vp := Vector2(ctr.x, ctr.y - DepthLayer.RISE) - global_position
-	var f := DepthLayer.draw_platform(self, slab, neon, vp, false, 150.0)
+	# the inside of the ceiling is a dark, near-black body like the night behind it (only the lit lower edge and the lamps glow)
+	var f := DepthLayer.draw_platform(self, slab, neon, vp, false, 150.0, Color(0.035, 0.02, 0.07))
 	# the lit lower edge and light strips along the underside
 	draw_line(Vector2(f.position.x, f.end.y), Vector2(f.end.x, f.end.y), neon, 3.0, true)
 	var yb := slab.end.y + DepthLayer.PLAT_LIP
