@@ -68,6 +68,35 @@ func _ready() -> void:
 			if lv.near_finish((m["rect"] as Rect2).get_center().x):
 				movers += 1
 	check(worst <= 1 and movers == 0, "at most one platform and no movers in the finish zone (max %d, movers %d)" % [worst, movers])
+	# 1b. objects never overlap or crowd each other (props, spikes, springs), across seeds
+	var overlaps := 0
+	var pairs := 0
+	for sd3 in range(1, 13):
+		lv.queue_free()
+		await frames(2)
+		lv = _make(sd3)
+		await frames(6)
+		var n_props := 0
+		for n in lv.get_children():
+			if n is Prop and (n as Prop).kind != "spring":
+				n_props += 1
+		print("  seed ", sd3, ": ", lv.props_spec.size(), " containers planned, ", n_props, " placed")
+		var objs: Array = []
+		for n in lv.get_children():
+			if n is Prop:
+				var pr2 := n as Prop
+				objs.append({"x": pr2.global_position.x, "y": pr2.global_position.y + 1.0, "r": float(LevelBase.OBJECT_R.get(pr2.kind, 23.0))})
+			elif n is SpikeTrap and not (n as SpikeTrap).ceiling:
+				objs.append({"x": (n as Node2D).position.x, "y": (n as Node2D).position.y, "r": 52.0})
+		for i in objs.size():
+			for j in range(i + 1, objs.size()):
+				pairs += 1
+				var a2: Dictionary = objs[i]
+				var b2: Dictionary = objs[j]
+				if absf(float(a2["y"]) - float(b2["y"])) < 70.0 and absf(float(a2["x"]) - float(b2["x"])) < float(a2["r"]) + float(b2["r"]) + 10.0:
+					overlaps += 1
+					print("  overlap seed ", sd3, " ", a2, " ", b2)
+	check(overlaps == 0, "no two objects overlap or touch, across 12 seeds (%d pairs checked, %d too close)" % [pairs, overlaps])
 	# 2. door reward
 	var d := Door.new()
 	d.kind = "challenge"

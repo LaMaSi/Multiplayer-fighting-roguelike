@@ -221,23 +221,75 @@ func near_finish(x: float) -> bool:
 	return exit_x > 0.0 and absf(x - exit_x) < FINISH_CLEAR
 
 
+## Half-widths of the things that are placed on a surface, to keep them from overlapping each other.
+const OBJECT_R := {"crate": 23.0, "explosive": 23.0, "barrel": 20.0, "vase": 17.0, "spring": 24.0, "spikes": 52.0, "bumper": 38.0}
+const PLACE_GAP := 28.0  ## free space kept between two placed objects
+var _placed: Array = []  ## {x, y, r}: what already stands on each surface
+
+
+func _spot_free(x: float, y: float, r: float) -> bool:
+	for pl in _placed:
+		if absf(float(pl["y"]) - y) < 70.0 and absf(float(pl["x"]) - x) < r + float(pl["r"]) + PLACE_GAP:
+			return false
+	return true
+
+
+## A free place for an object of half-width `r` standing on the surface at height `y`, as close to `x` as possible
+## (nudged in steps, up to about 300 px). INF when there is none. A platform keeps the object within its edges; on the
+## ground it must be on solid ground away from the edges.
+func _free_x(x: float, y: float, r: float, plat: Rect2) -> float:
+	for k in 9:
+		for sgn in ([1.0] if k == 0 else [1.0, -1.0]):
+			var cx: float = x + sgn * float(k) * 36.0
+			if plat.size.x > 0.0:
+				if cx - r < plat.position.x + 6.0 or cx + r > plat.end.x - 6.0:
+					continue
+			elif not is_safe_ground(Vector2(cx, y)):
+				continue
+			if near_finish(cx):
+				continue
+			if plat.size.x <= 0.0 and near_door(cx):
+				continue
+			if _spot_free(cx, y, r):
+				return cx
+	return INF
+
+
+func _platform_at(x: float, y: float) -> Rect2:
+	for r: Rect2 in platforms:
+		if absf(r.position.y - y) < 2.0 and x >= r.position.x - 2.0 and x <= r.end.x + 2.0:
+			return r
+	return Rect2()
+
+
 func _spawn_props() -> void:
 	for s in props_spec:
-		if near_finish(float(s[0])):
-			continue  # the finish line has a safe zone of half a screen
-		if s.size() <= 2 and near_door(float(s[0])):
-			continue  # ground containers keep clear of doors (platform ones are somewhere else)
-		var y: float = s[2] if s.size() > 2 else ground_top(float(s[0]))
-		spawn_prop(String(s[1]), Vector2(float(s[0]), y - 1.0))
+		var kind := String(s[1])
+		var x0 := float(s[0])
+		var y: float = s[2] if s.size() > 2 else ground_top(x0)
+		var plat := _platform_at(x0, y) if s.size() > 2 else Rect2()
+		var r: float = OBJECT_R.get(kind, 23.0)
+		var x := _free_x(x0, y, r, plat)
+		if x == INF:
+			continue  # no free place nearby: leave this one out rather than stack it on another
+		_placed.append({"x": x, "y": y, "r": r})
+		spawn_prop(kind, Vector2(x, y - 1.0))
 
 
 func _spawn_hazards() -> void:
 	for hz in hazards_spec:
 		var x := float(hz["x"])
-		if String(hz["kind"]) != "ceiling_spikes" and (near_door(x) or near_finish(x)):
-			continue  # nothing on the ground around a door or in the finish zone
+		var kind := String(hz["kind"])
+		if kind != "ceiling_spikes":
+			var r: float = OBJECT_R.get(kind, 40.0)
+			var gy := ground_top(x)
+			var fx := _free_x(x, gy, r, Rect2())  # free on the ground (a bumper floats, but its post is on the ground too)
+			if fx == INF:
+				continue  # nothing on the ground around a door, in the finish zone, or on top of another object
+			x = fx
+			_placed.append({"x": x, "y": gy, "r": r})
 		var pos := Vector2(x, ground_top(x))
-		match String(hz["kind"]):
+		match kind:
 			"spikes":
 				var st := SpikeTrap.new()
 				st.position = pos
