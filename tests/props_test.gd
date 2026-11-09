@@ -39,6 +39,15 @@ func _ready() -> void:
 	q.velocity = Vector2.ZERO
 	await frames(70)
 	check(absf(q.global_position.y - (gy - barrel.h)) < 6.0, "second player stands on the barrel (y=%.1f, top=%.1f)" % [q.global_position.y, gy - barrel.h])
+	# 1b. a vase is set back and cannot be stood on
+	var vase := lv.spawn_prop("vase", Vector2(1160.0, gy - 1.0))
+	await frames(40)
+	var v := lv.fighters[0]
+	v.global_position = Vector2(1160.0, gy - vase.h - 160.0)
+	v.velocity = Vector2.ZERO
+	await frames(80)
+	check(absf(v.global_position.y - gy) < 6.0, "a player dropped onto a vase lands on the ground, not on the vase (y=%.1f, ground=%.1f)" % [v.global_position.y, gy])
+	check(vase._depth > 60.0, "the vase is drawn set back (%.0f px)" % vase._depth)
 	# 2. a player on the ground inside a crate's footprint is not pushed up or blocked (the sides are not solid)
 	p.global_position = Vector2(300.0, gy - 1.0)
 	p.velocity = Vector2.ZERO
@@ -87,6 +96,8 @@ func _ready() -> void:
 		var seg := lv.ground_top(300.0)
 		lv.spawn_prop("crate", Vector2(380.0, seg - 1.0))
 		lv.spawn_prop("explosive", Vector2(460.0, seg - 1.0))
+		lv.spawn_prop("vase", Vector2(540.0, seg - 1.0))
+		lv.spawn_prop("barrel", Vector2(620.0, seg - 1.0))
 		lv.fighters[0].global_position = Vector2(380.0, seg - 48.0)
 		lv.fighters[1].global_position = Vector2(520.0, seg - 1.0)
 		if spike != null:

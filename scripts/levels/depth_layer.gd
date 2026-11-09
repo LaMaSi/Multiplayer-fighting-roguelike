@@ -312,6 +312,8 @@ func _draw_prop_shadows() -> void:
 		var pr := n as Prop
 		if pr == null or pr.state == "dead" or pr.state == "held":
 			continue
+		if pr.kind == "vase" and pr._depth > 1.0:
+			continue  # a vase set back draws its own shadow at its drawn base
 		var feet := pr.global_position
 		var sy := surface_below(feet)
 		if sy == INF or sy - feet.y > 900.0:

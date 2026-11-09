@@ -23,6 +23,8 @@ var col := Pal.interact()
 var w := 46.0
 var h := 46.0
 
+const VASE_DEPTH := 70.0  ## a vase stands this far behind the walking line: decoration you cannot stand on
+var _depth := 0.0  ## how far back the container is drawn right now (vases only; 0 when held or flying)
 var _top: StaticBody2D = null  ## one-way platform on top of the container: players and enemies can stand on it
 var _top_cs: CollisionShape2D = null
 var _wobble := 0.0
@@ -101,13 +103,13 @@ func _make_top() -> void:
 
 
 func _sync_top() -> void:
+	z_index = 5 if (state == "held" or state == "flying") else (-4 if kind == "vase" else -1)
 	if _top == null:
 		return
 	var solid := state == "idle"
 	if _top_cs.disabled == solid:
 		_top_cs.set_deferred("disabled", not solid)
 	_top.set_meta("bottom_y", global_position.y)  # a player dropping through (down) is clear once below this
-	z_index = 5 if (state == "held" or state == "flying") else -1
 
 
 func is_targetable() -> bool:
@@ -170,6 +172,7 @@ func take_hit(info: HitInfo) -> bool:
 
 func _physics_process(delta: float) -> void:
 	_wobble = maxf(0.0, _wobble - delta)
+	_depth = move_toward(_depth, VASE_DEPTH if (kind == "vase" and state == "idle") else 0.0, 420.0 * delta)
 	_sync_top()
 	if kind == "spring" and state == "idle":
 		_spring_tick(delta)
@@ -353,15 +356,7 @@ func _draw() -> void:
 	var vp := to_local(DepthLayer.vanish_point(self, global_position)) + Vector2(0, h * 0.5)
 	match kind:
 		"vase":
-			# a vase-shaped silhouette with a transparent surround (no filled rectangle behind it)
-			var pts := PackedVector2Array([
-				Vector2(-w * 0.3, -h * 0.5), Vector2(-w * 0.45, 0.0), Vector2(-w * 0.42, h * 0.3), Vector2(-w * 0.28, h * 0.5),
-				Vector2(w * 0.28, h * 0.5), Vector2(w * 0.42, h * 0.3), Vector2(w * 0.45, 0.0), Vector2(w * 0.3, -h * 0.5)])
-			draw_colored_polygon(pts, Color(0.06, 0.03, 0.1))
-			var closed := pts.duplicate()
-			closed.append(pts[0])
-			draw_polyline(closed, rim, UiKit.LINE * 2.0, true)
-			draw_polyline(closed, col, UiKit.LINE, true)
+			_draw_vase(vp, rim)
 		"explosive":
 			var fuse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 8.0)
 			var fr := _draw_box(r, vp, Pal.interact(), rim, Color(0.22, 0.04, 0.03))  # yellow edges like every container, red body
@@ -417,6 +412,51 @@ func _draw_box(r: Rect2, vp: Vector2, c: Color, rim: Color, fill: Color) -> Rect
 	draw_rect(fr.grow(3.0), rim, false, 3.0)
 	draw_rect(fr, c, false, 3.0)
 	return fr
+
+
+## A vase as a body of revolution in the depth camera, set back from the walking line (see VASE_DEPTH) and drawn smaller and
+## higher, with its own soft shadow, so it reads as background decoration: there is no top to stand on.
+func _draw_vase(vp: Vector2, rim: Color) -> void:
+	var zc := _depth + 14.0
+	var top_y := -h * 0.5
+	var bot_y := h * 0.5
+	var ts := [0.0, 0.07, 0.16, 0.30, 0.48, 0.64, 0.80, 0.93, 1.0]
+	var rs := [0.62, 0.62, 0.40, 0.62, 0.98, 0.86, 0.62, 0.52, 0.50]
+	var left := PackedVector2Array()
+	var right := PackedVector2Array()
+	var ys: Array[float] = []
+	var rads: Array[float] = []
+	for i in ts.size():
+		var y := lerpf(top_y, bot_y, float(ts[i]))
+		var rad := w * 0.5 * float(rs[i])
+		ys.append(y)
+		rads.append(rad)
+		left.append(DepthLayer.P(Vector2(-rad, y), zc, vp))
+		right.append(DepthLayer.P(Vector2(rad, y), zc, vp))
+	if _depth > 1.0:
+		var base := DepthLayer.P(Vector2(0.0, bot_y), zc, vp)
+		draw_colored_polygon(DepthLayer._ellipse(base, w * 0.55, 6.0), Color(0.0, 0.0, 0.03, 0.30))
+	var fill := Color(0.06, 0.03, 0.1)
+	var fc := PackedColorArray([fill, fill, fill, fill])
+	for i in ts.size() - 1:  # filled as a strip of quads (no polygon triangulation on a curved outline)
+		draw_primitive(PackedVector2Array([left[i], right[i], right[i + 1], left[i + 1]]), fc, PackedVector2Array())
+	var edge_l := left.duplicate()
+	var edge_r := right.duplicate()
+	draw_polyline(edge_l, rim, UiKit.LINE * 2.0, true)
+	draw_polyline(edge_r, rim, UiKit.LINE * 2.0, true)
+	draw_polyline(edge_l, col, UiKit.LINE, true)
+	draw_polyline(edge_r, col, UiKit.LINE, true)
+	# curved bands round the belly and the base follow the perspective
+	for i in [4, 6]:
+		draw_polyline(_circ(float(ys[i]), -PI * 0.5, PI * 0.5, 12, float(rads[i]), zc, vp), Color(col.r, col.g, col.b, 0.8), UiKit.LINE, true)
+	# the mouth: an ellipse when the horizon is above it
+	if vp.y < top_y:
+		var ell := _circ(top_y, -PI, PI, 24, float(rads[0]), zc, vp)
+		var tc := Color(col.r * 0.22, col.g * 0.22, col.b * 0.22)
+		var ctr := (ell[0] + ell[ell.size() / 2]) * 0.5
+		for i in ell.size() - 1:
+			draw_primitive(PackedVector2Array([ctr, ell[i], ell[i + 1]]), PackedColorArray([tc, tc, tc]), PackedVector2Array())
+		draw_polyline(ell, Color(col.r, col.g, col.b, 0.9), 2.0, true)
 
 
 ## A barrel as a real cylinder in the depth camera: the hoops and the lower edge are arcs that follow the perspective,

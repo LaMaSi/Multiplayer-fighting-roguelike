@@ -68,3 +68,6 @@ ground heights and higher platforms, and characters pass through each other inst
 
 ## HUD: low health
 - At 30% health or less the HP blocks turn red (the frame and the ring keep the player's colour), and that player's whole panel pulses gently, faster the lower it gets (`Hud.LOW_HP`).
+
+## Vases
+- Vases are now 3D too (a body of revolution in the depth camera: curved bands, an elliptical mouth) and are **set back 70 px** behind the walking line (`Prop.VASE_DEPTH`): drawn smaller and higher with their own shadow, so they read as background decoration. They have no standable top. When a vase is hit and flies, it comes forward to the walking line (`_depth` slides back to 0) and draws in front. Hits still register where it stands on the walking line.
