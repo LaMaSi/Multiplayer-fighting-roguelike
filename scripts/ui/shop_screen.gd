@@ -44,7 +44,7 @@ var _cam: Camera2D
 
 
 func _ready() -> void:
-	Engine.time_scale = 1.0
+	Juice.reset_time()
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
 	e.background_mode = Environment.BG_CANVAS

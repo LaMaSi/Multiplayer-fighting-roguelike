@@ -153,7 +153,9 @@ func paint(c: Control) -> void:
 	_paint_combo(c)
 	_paint_lives(c)
 	_paint_boss(c)
-	if _go:
+	if absf(Juice.user_time_scale - 1.0) > 0.01:
+		UiKit.txt(c, UiKit.body(), Vector2(0, 706), "TIME SCALE x%.2f" % Juice.user_time_scale, 16, Color(1.0, 0.75, 0.4, 0.8), HORIZONTAL_ALIGNMENT_CENTER, 1280.0)
+	if go_visible():  # (never inside a challenge room: you fight there, you do not leave)
 		var a := 0.5 + 0.5 * sin(_go_t * 8.0)
 		c.draw_set_transform_matrix(UiKit.italic(Vector2(1180, 380), -0.04))
 		UiKit.txt(c, UiKit.head(), Vector2(-100, 0), "GO >>", 46, Color(UiKit.AMBER.r, UiKit.AMBER.g, UiKit.AMBER.b, a), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 5, Color(0, 0, 0, a))
@@ -172,6 +174,12 @@ func paint(c: Control) -> void:
 
 
 # ------------------------------------------------------------------ players
+
+## Whether the GO >> arrow shows: not inside a challenge room.
+func go_visible() -> bool:
+	var in_challenge := level != null and level.in_room and level._room != null and level._room.kind == "challenge"
+	return _go and not in_challenge
+
 
 func _flame(c: Control, x: float, y: float, w: float, strength: float) -> void:
 	var n := int(w / 9.0)

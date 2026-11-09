@@ -87,7 +87,7 @@ func _enc(rng: RandomNumberGenerator, x: float, depth: int, bonus: int) -> Dicti
 	var waves: Array = []
 	for w in 2:
 		waves.append(_wave(rng, depth, bonus, w))
-	return {"x": x, "waves": waves}
+	return {"x": x, "waves": waves, "ceiling": rng.randf() < 0.4}  # a ceiling over the fight is a variation: about 2 in 5 arenas
 
 
 ## Few and tanky is the norm (1-2 brutes/heavies plus a couple of small ones); about one wave in five is a swarm of

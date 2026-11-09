@@ -68,15 +68,38 @@ func _ready() -> void:
 	# the battle screen: the ceiling drops in and stops jumps
 	lv.queue_free()
 	await frames(3)
-	lv = _make(with_tunnel)
+	# ceilings are a variation: across seeds some arenas have one and some do not
+	var with_c := 0
+	var without_c := 0
+	var ceil_seed := -1
+	var ceil_idx := -1
+	for sd4 in range(1, 11):
+		if is_instance_valid(lv):
+			lv.queue_free()
+		await frames(2)
+		lv = _make(sd4)
+		await frames(2)
+		for ei in lv.encounters.size():
+			if bool(lv.encounters[ei].get("ceiling", false)):
+				with_c += 1
+				if ceil_seed < 0:
+					ceil_seed = sd4
+					ceil_idx = ei
+			else:
+				without_c += 1
+	check(with_c > 0 and without_c > 0 and with_c < without_c + with_c, "ceilings are a variation, not on every arena (%d with, %d without, over 10 seeds)" % [with_c, without_c])
+	if is_instance_valid(lv):
+		lv.queue_free()
+	await frames(3)
+	lv = _make(ceil_seed)
 	await frames(10)
 	check(lv.encounters.size() > 0, "the level has battle screens")
-	var enc: Dictionary = lv.encounters[0]
+	var enc: Dictionary = lv.encounters[ceil_idx]
 	var ex := float(enc["x"])
 	for f in lv.fighters:
 		f.global_position = Vector2(ex + (-60.0 if f == lv.fighters[0] else 60.0), lv.ground_top(ex) - 1.0)
 	await frames(70)
-	check(lv._ceiling != null, "the arena has a ceiling while locked")
+	check(lv._ceiling != null, "an arena flagged with a ceiling has one while locked")
 	var cs := lv._ceiling._spikes
 	check(cs.size() >= 2, "the arena ceiling carries spike clusters (%d)" % cs.size())
 	var low := 1.0e9

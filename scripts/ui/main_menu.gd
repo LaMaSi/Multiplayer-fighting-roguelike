@@ -24,7 +24,7 @@ var _fig_class: Array[String] = ["?", "?"]
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	Engine.time_scale = 1.0
+	Juice.reset_time()
 	RunState.solo = false  # the menu always listens to both controllers
 	PlayerInput.solo_source = 0
 	Dbg._hint.visible = false

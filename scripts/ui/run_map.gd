@@ -35,7 +35,7 @@ func _ready() -> void:
 	e.glow_hdr_threshold = 1.7
 	env.environment = e
 	add_child(env)
-	Engine.time_scale = 1.0
+	Juice.reset_time()
 	_lv = LoadoutView.new(
 		func(p: int) -> Dictionary: return RunState.loadouts[p],
 		func(p: int, slot: String, id: String) -> void:

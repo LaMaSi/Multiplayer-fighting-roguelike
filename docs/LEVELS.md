@@ -85,3 +85,15 @@ ground heights and higher platforms, and characters pass through each other inst
 
 ## Pause menu
 - Closing the pause menu (a second Start, or Back) now redraws the menu's canvas as empty, so the menu really disappears; before, the game continued but the last drawn frame of the menu stayed on screen. Test: `tests/pause_test.tscn`.
+
+## Ceilings are a variation
+- A battle screen has a ceiling only when its encounter says so (`"ceiling": true`, set per arena when the level is generated, about 2 in 5 arenas); the others stay open to the sky. Hand-authored encounters have none unless they set the flag.
+
+## Door shop: the button picker
+- Buying a move in a door shop opens the button picker for that player. The room's screen overlay (coins, messages, the picker) was only drawn once, so the picker never showed and moves had to be placed blindly; `DoorRoom` now redraws the overlay every frame (`_ui`). Test: `tests/doorshop_test.tscn`.
+
+## No GO sign in a challenge room
+- The `GO >>` arrow is hidden inside a challenge room (`Hud.go_visible()`); the shop room and the level keep it.
+
+## Time scale (testing)
+- OPTIONS (in the start screen and in the pause menu) has a **TIME SCALE** row: 0.1x, 0.25x, 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x (stick left/right, or A for the next step). It sets `Juice.user_time_scale`, which scales everything. Hit-stop slow motion multiplies it and returns to it, and every place that used to reset `Engine.time_scale` to 1 now calls `Juice.reset_time()`, so the chosen scale survives levels and menus (for this session). A small "TIME SCALE x0.50" label shows at the bottom of the HUD whenever it is not 1. Test: `tests/timescale_test.tscn`.

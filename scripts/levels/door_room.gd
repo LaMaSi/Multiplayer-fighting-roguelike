@@ -20,6 +20,7 @@ var _items: Array = []  # {x, kind, id, class, label, price, sold_by[2], sold}
 var _msg := ""
 var _pickers: Array[SlotPicker] = [SlotPicker.new(), SlotPicker.new()]
 var _ui_layer: CanvasLayer = null
+var _ui: Ui = null  ## the screen overlay (coins, messages and the button picker): it must be redrawn every frame
 var _reward_layer: CanvasLayer = null
 var _flash := ""
 var _flash_t := 0.0
@@ -69,6 +70,7 @@ func enter() -> void:
 	ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui_layer.add_child(ui)
+	_ui = ui
 	add_child(_ui_layer)
 	_hp_before = Coop.enemy_hp_mult
 	if kind == "challenge":
@@ -136,6 +138,8 @@ func _process(delta: float) -> void:
 	_t += delta
 	_flash_t = maxf(0.0, _flash_t - delta)
 	queue_redraw()
+	if _ui != null:
+		_ui.queue_redraw()  # the overlay shows the coins and the button picker; nothing else asks it to redraw
 
 
 func _physics_process(_delta: float) -> void:

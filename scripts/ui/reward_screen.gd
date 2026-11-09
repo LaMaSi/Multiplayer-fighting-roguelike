@@ -39,7 +39,7 @@ func _ready() -> void:
 	e.glow_hdr_threshold = 1.7
 	env.environment = e
 	add_child(env)
-	Engine.time_scale = 1.0
+	Juice.reset_time()
 	RunState.bonus_picks.clear()
 	if RunState.queue.is_empty():
 		_leave()

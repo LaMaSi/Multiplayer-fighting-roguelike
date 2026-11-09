@@ -55,7 +55,7 @@ var scene_changer: Callable  ## tests set this to observe scene changes instead 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	Engine.time_scale = 1.0
+	Juice.reset_time()
 	Dbg._hint.visible = false
 	add_child(ScreenBackdrop.new())
 	var dim := ColorRect.new()

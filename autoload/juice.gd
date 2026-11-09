@@ -5,6 +5,20 @@ var trauma := 0.0
 var punch := 0.0
 var kick_vec := Vector2.ZERO  ## camera offset pushed toward the blow, decays quickly
 var _slow_token := 0
+## The time scale chosen in the options (for experimenting with timings). Hit-stop slow motion multiplies it and returns to it.
+var user_time_scale := 1.0
+const TIME_STEPS := [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+
+
+## Back to normal speed: the user's chosen time scale (1.0 unless changed in the options).
+func reset_time() -> void:
+	Engine.time_scale = user_time_scale
+
+
+func set_user_time_scale(v: float) -> void:
+	user_time_scale = clampf(v, 0.05, 4.0)
+	_slow_token += 1  # cancel a running slow motion
+	Engine.time_scale = user_time_scale
 
 
 func shake(amount: float) -> void:
@@ -24,10 +38,10 @@ func kick(v: Vector2) -> void:
 func slowmo(scale: float, real_seconds: float) -> void:
 	_slow_token += 1
 	var tok := _slow_token
-	Engine.time_scale = scale
+	Engine.time_scale = scale * user_time_scale
 	await get_tree().create_timer(real_seconds, true, false, true).timeout
 	if tok == _slow_token:
-		Engine.time_scale = 1.0
+		Engine.time_scale = user_time_scale
 
 
 func _process(delta: float) -> void:

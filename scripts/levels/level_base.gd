@@ -392,11 +392,12 @@ func _start_encounter(enc: Dictionary) -> void:
 		var w := _make_body(Rect2(x - 50.0, -1500, 100, 3000), 1)
 		_lock_walls.append(w)
 	# a ceiling over the fight: a solid slab (jumps and launches stop against it) that drops in with the walls
-	var ceil_h := ARENA_CEILING_BOSS if bool(enc.get("boss", false)) else ARENA_CEILING
-	_ceiling = ArenaCeiling.new()
-	_ceiling.setup(left - 100.0, right + 100.0, ground_y - ceil_h, theme["neon_plat"])
-	add_child(_ceiling)
-	_ceiling.appear()
+	if bool(enc.get("ceiling", false)):  # only some battle screens have one
+		var ceil_h := ARENA_CEILING_BOSS if bool(enc.get("boss", false)) else ARENA_CEILING
+		_ceiling = ArenaCeiling.new()
+		_ceiling.setup(left - 100.0, right + 100.0, ground_y - ceil_h, theme["neon_plat"])
+		add_child(_ceiling)
+		_ceiling.appear()
 	_boss_fight = bool(enc.get("boss", false))
 	hud.set_go(false)
 	hud.banner("BOSS!" if _boss_fight else "FIGHT!", Color(2.2, 0.5, 0.4) if _boss_fight else Color(2.0, 1.6, 0.5))
@@ -470,7 +471,7 @@ func finish_level() -> void:
 		RunState.save_from(fighters)
 		RunState.level_cleared(float(result_stats.get("heal_bonus", 0.0)))
 		get_tree().paused = false
-		Engine.time_scale = 1.0
+		Juice.reset_time()
 		get_tree().change_scene_to_file("res://scenes/reward.tscn")
 	else:
 		to_menu()
@@ -490,13 +491,13 @@ func _on_game_over() -> void:
 
 func restart() -> void:
 	get_tree().paused = false
-	Engine.time_scale = 1.0
+	Juice.reset_time()
 	get_tree().reload_current_scene()
 
 
 func to_menu() -> void:
 	get_tree().paused = false
-	Engine.time_scale = 1.0
+	Juice.reset_time()
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 

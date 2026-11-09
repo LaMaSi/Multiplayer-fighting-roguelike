@@ -356,7 +356,7 @@ func _hit_feedback(info: HitInfo, dmg: float) -> void:
 		var zp := clampf((dmg - 5.0) / 80.0, 0.0, 0.14)
 		if info.punch > 0.0 or info.relay or zp > 0.0:
 			Juice.zoom_punch(maxf(maxf(info.punch, zp), 0.05 if info.relay else 0.0))
-		if (dmg >= 12.0 or hp <= 0.0 or info.relay) and Engine.time_scale > 0.9:
+		if (dmg >= 12.0 or hp <= 0.0 or info.relay) and Engine.time_scale > 0.9 * Juice.user_time_scale:
 			Juice.slowmo(0.22, 0.12 if hp > 0.0 else 0.22)
 
 
