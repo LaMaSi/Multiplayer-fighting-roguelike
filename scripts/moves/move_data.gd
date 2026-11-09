@@ -33,6 +33,8 @@ var hold_max := 600
 var charge_max := 0
 var charge_dmg := 1.0
 var charge_kb := 0.8
+var charge_move := 0.0  ## extra distance at full charge: lunges, drives and jumps of the move scale by (1 + this)
+var charge_stretch := false  ## the hit window stretches with the charged movement (a lunge keeps hitting along its longer path)
 var steer := 0.0  ## fraction of run speed the player can still steer with during the move
 var enemy := false
 var tele := false
@@ -55,7 +57,10 @@ func charge_seconds() -> int:
 
 ## The two bonuses of a full charge, as shown on the attack cards.
 func charge_bonus_text() -> String:
-	return "+%d%% DMG  +%d%% KB" % [int(round(charge_dmg * 100.0)), int(round(charge_kb * 100.0))]
+	var t := "+%d%% DMG  +%d%% KB" % [int(round(charge_dmg * 100.0)), int(round(charge_kb * 100.0))]
+	if charge_move > 0.0:
+		t += "  +DIST"
+	return t
 
 
 func last_hit_end() -> int:

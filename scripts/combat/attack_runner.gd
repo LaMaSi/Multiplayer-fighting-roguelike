@@ -132,6 +132,11 @@ func charge_kb_mult() -> float:
 	return 1.0 + (move.charge_kb * charge_t() if move != null and move.is_chargeable() else 0.0)
 
 
+## Scale for the move's own movement (lunge, drive, jump): 1 for a tap, up to 1 + charge_move at full charge.
+func charge_move_mult() -> float:
+	return 1.0 + (move.charge_move * charge_t() if move != null and move.is_chargeable() else 0.0)
+
+
 func _charge_tick() -> void:
 	if _charge_fx == null or not is_instance_valid(_charge_fx):
 		_charge_fx = ChargeFx.new()
@@ -218,7 +223,7 @@ func _spin_drive() -> void:
 			ra.velocity.x *= 0.3
 	for d in move.drive:
 		if frame >= int(d["from"]) and frame <= int(d["to"]):
-			actor.velocity.x = float(d["vx"]) * actor.facing + actor.move_input_x * actor.run_speed * move.steer
+			actor.velocity.x = float(d["vx"]) * actor.facing * charge_move_mult() + actor.move_input_x * actor.run_speed * move.steer
 
 
 # ------------------------------------------------------------------ events
@@ -237,9 +242,12 @@ func _do_event(e: Dictionary) -> void:
 	var parent := a.get_parent()
 	match String(e["type"]):
 		"vel":
-			a.velocity.x = float(e["vx"]) * a.facing
+			# a charged lunge or jump covers more ground. Friction and gravity make distance grow with the SQUARE of the
+			# launch speed, so the speed grows with its square root and the distance grows about as much as charge_move says
+			var cm := charge_move_mult()
+			a.velocity.x = float(e["vx"]) * a.facing * sqrt(cm)
 			if e.has("vy"):
-				a.velocity.y = float(e["vy"])
+				a.velocity.y = float(e["vy"]) * sqrt(1.0 + (cm - 1.0) * 0.8)
 		"sfx":
 			if String(e["name"]) == "whoosh":
 				var top := 0.0
@@ -406,10 +414,18 @@ func world_rect(box: Rect2) -> Rect2:
 	return Rect2(p.x - box.position.x - box.size.x, p.y + box.position.y, box.size.x, box.size.y)
 
 
+## How long a hit stays active: a charged lunge keeps hitting along its longer path.
+func _hit_dur(h: Dictionary) -> int:
+	var d := int(h["dur"])
+	if move.charge_stretch:
+		d = int(round(float(d) * charge_move_mult()))
+	return d
+
+
 func _hits() -> void:
 	var swoosh := false
 	for h2 in move.hits:
-		if frame >= int(h2["at"]) and frame < int(h2["at"]) + int(h2["dur"]):  # a swoosh exists only while a hit is active
+		if frame >= int(h2["at"]) and frame < int(h2["at"]) + _hit_dur(h2):  # a swoosh exists only while a hit is active
 			swoosh = true
 	actor.figure.trail_on = swoosh
 	for i in move.hits.size():
@@ -422,7 +438,7 @@ func _hits() -> void:
 			actor.squash = Vector2(1.6, 0.66) if heavy else Vector2(1.35, 0.78)
 			if float(h["dmg"]) >= 7.0:
 				Fx.afterimage(actor.get_parent(), actor.figure, actor.figure.color)
-		if frame < at or frame >= at + int(h["dur"]):
+		if frame < at or frame >= at + _hit_dur(h):
 			continue
 		var rect := world_rect(h["box"])
 		var crects: Array = _contact_rects() if not bool(h.get("radial", false)) else []

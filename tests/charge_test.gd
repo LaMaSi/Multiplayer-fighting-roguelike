@@ -16,6 +16,14 @@ func frames(n: int) -> void:
 		await get_tree().physics_frame
 
 
+## Hazards and containers would hurt, launch or block the test fighter: clear them.
+func _clear_level(_lv: LevelBase) -> void:
+	for g in ["hazards", "props"]:
+		for n in get_tree().get_nodes_in_group(g):
+			n.queue_free()
+	await frames(2)
+
+
 ## Plays `id` on P1 against a fresh dummy 80 px in front: returns {dmg, push, frames_to_hit, charge}.
 func _trial(lv: LevelBase, id: String, hold_frames: int) -> Dictionary:
 	var f: Fighter = lv.fighters[0]
@@ -64,6 +72,41 @@ func _trial(lv: LevelBase, id: String, hold_frames: int) -> Dictionary:
 	return {"dmg": f.attack.last_hit_dmg, "push": f.attack.last_hit_kb, "hit_at": hit_at, "charge": charge_seen}
 
 
+## Plays `id` with nobody in front: returns how far the fighter travelled and how high it rose.
+func _move_trial(lv: LevelBase, id: String, hold_frames: int) -> Dictionary:
+	var f: Fighter = lv.fighters[0]
+	var p: PlayerInput = Inp.players[0]
+	p.script_set(Vector2.ZERO, [])
+	for n in get_tree().get_nodes_in_group("hurt_enemy"):
+		if n is Enemy:
+			n.queue_free()
+	await frames(2)
+	f.global_position = Vector2(500.0, lv.ground_y - 1.0)
+	f.facing = 1
+	f.velocity = Vector2.ZERO
+	f.state = "idle"
+	await frames(10)
+	var x0 := f.global_position.x
+	var y0 := f.global_position.y
+	var m := MoveDB.get_move_for(id, f.class_id)
+	var btn := PlayerInput.Btn.B
+	p.script_set(Vector2.ZERO, [btn] if hold_frames > 0 else [])
+	f.start_attack(m, btn)
+	var rise := 0.0
+	var released := false
+	for i in 420:
+		await get_tree().physics_frame
+		if hold_frames > 0 and i >= hold_frames and not released:
+			p.script_set(Vector2.ZERO, [])
+			released = true
+		rise = maxf(rise, y0 - f.global_position.y)
+		if not f.attack.active and i > hold_frames + 20:
+			break
+	await frames(40)  # let the slide stop
+	p.script_set(Vector2.ZERO, [])
+	return {"dist": f.global_position.x - x0, "rise": rise}
+
+
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	# 1. every category has chargeable moves, all of them 3 s
@@ -87,6 +130,7 @@ func _ready() -> void:
 	add_child(lv)
 	await frames(30)
 	lv.encounters = []
+	await _clear_level(lv)
 	var tap: Dictionary = await _trial(lv, "haymaker", 0)
 	var full: Dictionary = await _trial(lv, "haymaker", 200)
 	check(float(tap["dmg"]) > 0.0 and float(full["dmg"]) > 0.0, "both versions of Heavy Haymaker connect (hit damage tap %.1f, charged %.1f)" % [tap["dmg"], full["dmg"]])
@@ -98,6 +142,22 @@ func _ready() -> void:
 	# half a second of charge gives a smaller bonus than 3 s
 	var part: Dictionary = await _trial(lv, "haymaker", 60)
 	check(float(part["dmg"]) > float(tap["dmg"]) * 1.1 and float(part["dmg"]) < float(full["dmg"]), "a partial charge lands in between (%.1f)" % part["dmg"])
+	# 2b. the charge also stretches the move's own movement: Thrust Lunge goes much further, Sky Launcher jumps higher
+	var lt: Dictionary = await _move_trial(lv, "thrust_lunge", 0)
+	var lf: Dictionary = await _move_trial(lv, "thrust_lunge", 200)
+	check(float(lf["dist"]) > float(lt["dist"]) * 1.6, "a fully charged Thrust Lunge travels much further (%.0f vs %.0f px)" % [lf["dist"], lt["dist"]])
+	var st: Dictionary = await _move_trial(lv, "side_sweep", 0)
+	var sf: Dictionary = await _move_trial(lv, "side_sweep", 200)
+	check(float(sf["dist"]) > float(st["dist"]) * 1.4, "a fully charged Side Sweep steps further (%.0f vs %.0f px)" % [sf["dist"], st["dist"]])
+	var kt: Dictionary = await _move_trial(lv, "sky_launcher", 0)
+	var kf: Dictionary = await _move_trial(lv, "sky_launcher", 200)
+	check(float(kf["rise"]) > float(kt["rise"]) * 1.25, "a fully charged Sky Launcher jumps higher (%.0f vs %.0f px)" % [kf["rise"], kt["rise"]])
+	var hammer_n := 0
+	for id in ["overhead_smash", "guard_breaker", "side_sweep", "sky_launcher"]:
+		if MoveDB.get_move(id).is_chargeable():
+			hammer_n += 1
+	check(hammer_n == 4, "four Hammer moves can be charged (%d)" % hammer_n)
+	check(MoveDB.get_move("thrust_lunge").charge_stretch, "the lunge's hit window stretches with its longer path")
 	# 3. a charged projectile (Fireball is a Magic move: borrow its data on the Brawler's attack runner)
 	var fb := MoveDB.get_move("fireball")
 	check(fb.is_chargeable(), "Fireball can be charged")
