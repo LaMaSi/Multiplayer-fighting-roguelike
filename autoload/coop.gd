@@ -158,6 +158,15 @@ func bonus_hit(attacker: Actor, victim: Actor, _dmg: float) -> void:
 		combo_changed.emit()
 
 
+## Keywords and exclamations (PINBALL!, CLASH!, WALL BOUNCE! ...) never appear in the fighting scene: the HUD stacks them
+## next to the combo counter, each with its own tilt.
+signal callout_made(text: String, color: Color)
+
+
+func callout(text: String, color: Color) -> void:
+	callout_made.emit(text, color)
+
+
 func say(text: String, color: Color, pos := Vector2.INF) -> void:
 	message.emit(text, color)
 	if pos != Vector2.INF and get_tree().current_scene != null:

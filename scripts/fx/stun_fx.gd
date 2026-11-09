@@ -1,7 +1,7 @@
 class_name StunFx
 extends Node2D
-## Dizzy stars circling the head of a stunned actor, plus a ring that drains with the time left to wake up
-## (the actor wakes on the next hit, or when the ring is empty).
+## Five dizzy stars circling the head of a stunned actor; they vanish one by one as the stun runs out
+## (the actor wakes on the next hit, or when the last star is gone).
 
 var actor: Actor
 var _t := 0.0
@@ -24,8 +24,10 @@ func _draw() -> void:
 		return
 	var top := -actor.body_h * actor.body_scale - 8.0
 	var col := Color(2.2, 2.0, 0.5)
-	for i in 3:
-		var a := _t * 4.5 + float(i) * TAU / 3.0
+	# five stars at the start; one vanishes every fifth of the stun time
+	var left := int(ceil(clampf(actor.stunned_t / Actor.STUN_TIME, 0.0, 1.0) * 5.0))
+	for i in left:
+		var a := _t * 4.5 + float(i) * TAU / 5.0
 		var p := Vector2(cos(a) * 26.0, top + sin(a) * 7.0)
 		var s := 5.5 + sin(a) * 1.5
 		var pts := PackedVector2Array()
@@ -34,5 +36,3 @@ func _draw() -> void:
 			var ang := float(k) * PI / 5.0 - PI * 0.5 + _t * 3.0
 			pts.append(p + Vector2(cos(ang), sin(ang)) * r)
 		draw_colored_polygon(pts, col)
-	var frac := clampf(actor.stunned_t / Actor.STUN_TIME, 0.0, 1.0)
-	draw_arc(Vector2(0, top), 34.0, -PI * 0.5, -PI * 0.5 + TAU * frac, 28, Color(col.r, col.g, col.b, 0.55), 2.5, true)

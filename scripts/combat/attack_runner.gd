@@ -424,11 +424,11 @@ func _do_event(e: Dictionary) -> void:
 				rp.add_buff("dmg", 8.0)
 				rp.heal(15.0)
 				Fx.ring(parent, rp.global_position + Vector2(0, -45), Color(2.0, 1.7, 1.9), 90.0, 0.4)
-				Fx.number(parent, rp.global_position + Vector2(0, -110), "TEAM BOOST", Color(2.0, 1.7, 1.9), 22)
+				Coop.callout("TEAM BOOST", Color(2.0, 1.7, 1.9))
 		"rage":
 			a.add_buff("rage", float(e["dur"]))
 			Fx.ring(parent, a.global_position + Vector2(0, -45), Color(2.2, 0.3, 0.2), 120.0, 0.4)
-			Fx.number(parent, a.global_position + Vector2(0, -110), "RAGE!", Color(2.2, 0.4, 0.3), 28)
+			Coop.callout("RAGE!", Color(2.2, 0.4, 0.3))
 			Sfx.play("buff", 0.7)
 			Juice.shake(0.3)
 		"pillar":
@@ -442,14 +442,14 @@ func _do_event(e: Dictionary) -> void:
 			wt.shield_hits += 1
 			Fx.ring(parent, wt.global_position + Vector2(0, -45), a.figure.color, 80.0, 0.35)
 			Fx.beam(parent, a.global_position + Vector2(0, -60), wt.global_position + Vector2(0, -60), a.figure.color, 0.3)
-			Fx.number(parent, wt.global_position + Vector2(0, -110), "WARDED", Color(1.9, 1.9, 2.2), 22)
+			Coop.callout("WARDED", Color(1.9, 1.9, 2.2))
 			Sfx.play("buff", 1.2)
 		"boost":
 			var p3 := Coop.partner_of(a)
 			var tgt: Actor = p3 if (p3 != null and p3.is_alive()) else a
 			tgt.add_buff("boost", 10.0)
 			Fx.beam(parent, a.global_position + Vector2(0, -60), tgt.global_position + Vector2(0, -60), Color(2.0, 1.8, 0.4), 0.35)
-			Fx.number(parent, tgt.global_position + Vector2(0, -110), "CHARGED!", Color(2.0, 1.8, 0.4), 24)
+			Coop.callout("CHARGED!", Color(2.0, 1.8, 0.4))
 			Sfx.play("buff")
 
 
@@ -656,10 +656,9 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	# send direction: launches fly along one of the 8 basic directions; moves that do not send only nudge the target
 	info.dir = MoveDB.hit_dir(h)
 	info.ground_fx = String(h.get("ground", MoveDB.default_ground(info.dir)))
-	if info.dir >= 0 and info.kind in ["launch", "spike", "trip"]:
+	info.stun_mult = float(h.get("stun_mult", 1.0))
+	if info.dir >= 0 and info.kind in ["launch", "spike"]:
 		kb = MoveDB.DIR_VECS[info.dir] * kb.length()
-		if info.kind == "trip":
-			kb.y = minf(kb.y, -240.0)
 	elif info.dir < 0:
 		kb = Vector2(clampf(kb.x, -40.0, 40.0), 0.0)
 	if clash:

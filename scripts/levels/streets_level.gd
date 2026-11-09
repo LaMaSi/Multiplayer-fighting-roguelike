@@ -24,17 +24,16 @@ func _full() -> void:
 	objective = "Clear the street and take down the boss"
 	level_w = 6800.0
 	platforms = [
-		Rect2(500, 450, 280, PLAT_H), Rect2(1000, 450, 240, PLAT_H),
-		Rect2(1900, 450, 300, PLAT_H), Rect2(2300, 450, 260, PLAT_H),
-		Rect2(3100, 450, 320, PLAT_H), Rect2(3550, 450, 260, PLAT_H),
-		Rect2(4300, 450, 300, PLAT_H), Rect2(4700, 450, 300, PLAT_H),
-		Rect2(5500, 450, 300, PLAT_H),
+		Rect2(420, 470, 460, PLAT_H), Rect2(940, 410, 400, PLAT_H), Rect2(1780, 470, 480, PLAT_H), Rect2(2300, 350, 360, PLAT_H),
+		Rect2(2980, 470, 480, PLAT_H), Rect2(3500, 410, 420, PLAT_H), Rect2(4200, 470, 460, PLAT_H), Rect2(4700, 350, 400, PLAT_H),
+		Rect2(5400, 470, 480, PLAT_H), Rect2(5900, 410, 340, PLAT_H),
 	]
+	hazards_spec = [{"kind": "spring", "x": 1500.0}, {"kind": "spring", "x": 3000.0}, {"kind": "spring", "x": 4500.0}, {"kind": "bumper", "x": 3800.0}]
 	props_spec = [
-		[420, "crate"], [510, "crate"], [620, "barrel", 450], [1100, "vase", 450], [1500, "barrel"], [1560, "crate"],
-		[2000, "crate", 450], [2400, "barrel", 450], [2750, "vase"], [2800, "crate"],
-		[3200, "barrel", 450], [3650, "crate", 450], [3950, "barrel"], [4000, "vase"],
-		[4400, "crate", 450], [4800, "barrel", 450], [5200, "crate"], [5250, "vase"], [5600, "barrel", 450], [5900, "crate"],
+		[420, "crate"], [510, "crate"], [620, "barrel", 470], [1100, "vase", 410], [1500, "barrel"], [1560, "crate"],
+		[2000, "crate", 470], [2400, "barrel", 350], [2750, "vase"], [2800, "crate"],
+		[3200, "barrel", 470], [3650, "crate", 410], [3950, "barrel"], [4000, "vase"],
+		[4400, "crate", 470], [4800, "barrel", 350], [5200, "crate"], [5250, "vase"], [5600, "barrel", 470], [5900, "crate"],
 	]
 	encounters = [
 		{"x": 1300.0, "waves": [[["thug", 1]], [["thug", 1], ["thrower", 1]]]},
@@ -221,17 +220,21 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 	ground_segs[ground_segs.size() - 1] = Rect2(last.position.x, last.position.y, level_w - last.position.x, 700.0)
 	platforms.append_array(gap_islands)
 
-	# platforms above solid ground: low tier 150 px up, sometimes a second, high tier 270 px up beside it
+	# platforms above solid ground, long and plentiful: tiers 130 / 190 / 250 px up (250 = SPRING_REACH, only a spring gets you
+	# that high from the ground; each tier is one jump above the last)
 	for g: Rect2 in ground_segs:
-		if g.size.x < 420.0 or rng.randf() > 0.7:
+		if g.size.x < 380.0 or rng.randf() > 0.92:
 			continue
-		var w := rng.randf_range(250.0, 320.0)
-		var px := g.position.x + rng.randf_range(30.0, maxf(31.0, g.size.x - w - 30.0))
-		var low := Rect2(px, g.position.y - 150.0, w, PLAT_H)
+		var w := minf(rng.randf_range(380.0, 620.0), g.size.x - 40.0)
+		var px := g.position.x + rng.randf_range(20.0, maxf(21.0, g.size.x - w - 20.0))
+		var low := Rect2(px, g.position.y - 130.0, w, PLAT_H)
 		platforms.append(low)
-		if rng.randf() < 0.4 and low.end.x + 260.0 < g.end.x:
-			var hw := rng.randf_range(200.0, 260.0)
-			platforms.append(Rect2(low.end.x + 70.0, g.position.y - 270.0, hw, PLAT_H))
+		if rng.randf() < 0.75 and low.end.x + 300.0 < g.end.x:
+			var mw := rng.randf_range(320.0, 480.0)
+			var mid := Rect2(low.end.x + 60.0, g.position.y - 190.0, mw, PLAT_H)
+			platforms.append(mid)
+			if rng.randf() < 0.6 and mid.end.x + 260.0 < g.end.x:
+				platforms.append(Rect2(mid.end.x + 50.0, g.position.y - SPRING_REACH, rng.randf_range(300.0, 440.0), PLAT_H))
 
 	# moving platforms: bridges that glide across pits, bobbing lifts, and floating stairs in the air
 	for pt: Vector3 in pits:
@@ -245,14 +248,14 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			continue
 		var roll := rng.randf()
 		if roll < 0.3:
-			# lift: a platform bobbing between 90 and 330 px above the ground, high stuff to reach
+			# lift: a platform bobbing between 100 and 240 px above the ground, high stuff to reach
 			var lx := g3.position.x + rng.randf_range(60.0, g3.size.x - 200.0)
-			moving_specs.append({"rect": Rect2(lx, g3.position.y - 210.0, 120.0, PLAT_H), "vertical": true, "travel": 110.0, "period": rng.randf_range(3.4, 4.6), "phase": rng.randf()})
+			moving_specs.append({"rect": Rect2(lx, g3.position.y - 170.0, 120.0, PLAT_H), "vertical": true, "travel": 70.0, "period": rng.randf_range(3.4, 4.6), "phase": rng.randf()})
 		elif roll < 0.6 and g3.size.x > 700.0:
 			# floating stairs high in the air
 			var sx := g3.position.x + rng.randf_range(40.0, g3.size.x - 640.0)
 			for si in 3:
-				platforms.append(Rect2(sx + si * 190.0, g3.position.y - 150.0 - si * 100.0, 150.0, PLAT_H))
+				platforms.append(Rect2(sx + si * 250.0, g3.position.y - 130.0 - si * 55.0, 220.0, PLAT_H))
 		elif roll < 0.8:
 			# a mover patrolling above the ground
 			var mx0 := g3.position.x + rng.randf_range(160.0, maxf(161.0, g3.size.x - 240.0))
@@ -263,8 +266,9 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 		if t == "boss":
 			continue
 		var side := -1.0 if rng.randf() < 0.5 else 1.0
-		platforms.append(Rect2(ax + side * 330.0 - 110.0, ground_y - 150.0, 220.0, PLAT_H))
-		platforms.append(Rect2(ax + side * 530.0 - 90.0, ground_y - 260.0, 180.0, PLAT_H))
+		platforms.append(Rect2(ax + side * 330.0 - 190.0, ground_y - 130.0, 380.0, PLAT_H))
+		platforms.append(Rect2(ax + side * 560.0 - 160.0, ground_y - SPRING_REACH, 320.0, PLAT_H))
+		platforms.append(Rect2(ax - side * 380.0 - 150.0, ground_y - 190.0, 300.0, PLAT_H))
 		moving_specs.append({"rect": Rect2(ax - side * 120.0 - 75.0, ground_y - 200.0, 150.0, PLAT_H), "vertical": rng.randf() < 0.4, "travel": 130.0, "period": rng.randf_range(3.6, 4.8), "phase": rng.randf()})
 
 	# tunnels: clear other platforms from the tunnel and add the roof (a normal one-way platform at the low tier, so the
@@ -333,7 +337,7 @@ func _gen_terrain(rng: RandomNumberGenerator, t: String) -> void:
 			hazards_spec.append({"kind": "bumper", "x": ex - sgn * rng.randf_range(220.0, 480.0)})
 		if rng.randf() < 0.5:
 			hazards_spec.append({"kind": "spring", "x": ex + rng.randf_range(-150.0, 150.0)})
-	for i in 2:
+	for i in 4:
 		for tries in 10:
 			var hx := rng.randf_range(400.0, level_w - 600.0)
 			if is_safe_ground(Vector2(hx, ground_at(hx))) and not near_door(hx) and not near_finish(hx):

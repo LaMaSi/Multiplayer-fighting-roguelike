@@ -195,7 +195,7 @@ static func hit_dir(h: Dictionary) -> int:
 				return -1
 			return posmod(int(round(atan2(-kb.y, kb.x) / (PI / 4.0))), 8)
 		"trip":
-			return 1 if kb.x >= 0.0 else 3
+			return 7 if kb.x >= 0.0 else 5  # only down-arrow moves trip
 		"pull":
 			return 4
 		_:
@@ -227,7 +227,7 @@ static func card_dir(m: MoveData) -> Dictionary:
 	if best.is_empty():
 		return {}
 	var d := hit_dir(best)
-	var g := String(best.get("ground", default_ground(d))) if d >= 5 else ""
+	var g := String(best.get("ground", default_ground(d))) if d >= 5 and String(best.get("kind", "normal")) == "spike" else ""
 	return {"dir": d, "ground": g, "name": DIR_NAMES[d] if d >= 0 else "NO SEND"}
 
 
@@ -388,14 +388,14 @@ static func _build_player() -> void:
 		"hits": [_hit(5, 9, Rect2(5, -80, 68, 32), 10, 22, Vector2(340, 0), {"kind": "push", "stop": 4})]})
 
 	# --- 4 Leg sweep (X+Down) -------------------------------------------
-	_mk({"id": "sweep", "name": "Leg Sweep", "short": "SWEEP", "desc": "Low. Trips enemies.",
+	_mk({"id": "sweep", "name": "Leg Sweep", "short": "SWEEP", "desc": "Low poke. Staggers and fills the stun meter fast.",
 		"total": 34, "tags": ["low"], "cancel_from": 12,
 		"kf": [[0, {"lean": 0.35, "th_f": 1.2, "kn_f": 2.2, "th_b": -0.8, "kn_b": 2.0, "ua_f": 1.0, "la_f": 1.0}],
 			[6, {"lean": -0.3, "th_f": 1.5, "kn_f": 0.0, "th_b": -0.5, "kn_b": 2.2, "ua_f": -0.5, "la_f": 0.3, "ua_b": 1.3, "la_b": 0.5}],
 			[22, _idle()]],
 		"drive": [{"from": 4, "to": 14, "vx": 380.0}],
 		"events": [{"at": 5, "type": "sfx", "name": "whoosh"}, {"at": 5, "type": "ghost"}, {"at": 9, "type": "ghost"}],
-		"hits": [_hit(6, 5, Rect2(0, -24, 88, 26), 7, 26, Vector2(90, -330), {"kind": "trip", "low": true, "stop": 4})]})
+		"hits": [_hit(6, 5, Rect2(0, -24, 88, 26), 7, 26, Vector2(260, 0), {"low": true, "stop": 4, "stun_mult": 2.0})]})
 
 	# --- 5 Back kick (X+Back) -------------------------------------------
 	_mk({"id": "back_kick", "name": "Back Kick", "short": "BKICK", "desc": "Hits behind you.",
@@ -437,13 +437,13 @@ static func _build_player() -> void:
 			_proj(8, {"kind": "dart", "pos": Vector2(42, -62), "vel": Vector2(520, 120), "dmg": 5.0, "stun": 14, "kb": Vector2(120, 0), "life": 0.9, "radius": 10.0, "color": GREEN, "sfx": ""})]})
 
 	# --- 9 Ground wave --------------------------------------------------
-	_mk({"id": "ground_wave", "name": "Ground Wave", "short": "WAVE", "desc": "Low projectile that trips.",
+	_mk({"id": "ground_wave", "name": "Ground Wave", "short": "WAVE", "desc": "Low projectile that staggers and fills the stun meter.",
 		"total": 44, "tags": ["projectile", "low"], "ground_only": true,
 		"kf": [[0, {"lean": 0.4, "ua_f": 2.4, "la_f": 0.3, "th_f": 0.6, "kn_f": 1.0, "th_b": -0.5, "kn_b": 1.0}],
 			[10, {"lean": 0.85, "ua_f": 0.6, "la_f": 0.1, "th_f": 1.0, "kn_f": 1.6, "th_b": -0.7, "kn_b": 1.8}],
 			[30, _idle()]],
 		"events": [_proj(10, {"kind": "wave", "pos": Vector2(40, -14), "vel": Vector2(470, 0), "dmg": 8.0, "stun": 26,
-			"kb": Vector2(80, -330), "pkind": "trip", "life": 1.1, "radius": 18.0, "color": ORANGE, "pierce": true, "ground": true})]})
+			"kb": Vector2(180, 0), "stun_mult": 2.0, "life": 1.1, "radius": 18.0, "color": ORANGE, "pierce": true, "ground": true})]})
 
 	# --- 10 Guard block (hold) -------------------------------------------
 	_mk({"id": "guard", "name": "Guard Block", "short": "GUARD", "desc": "Hold to block frontal hits.",

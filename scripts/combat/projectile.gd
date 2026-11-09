@@ -7,6 +7,7 @@ var owner_actor: Actor = null
 var vel := Vector2.ZERO
 var dmg := 8.0
 var stun := 16
+var stun_mult := 1.0
 var kb := Vector2(150, 0)
 var kind := "normal"
 var shape := "orb"  ## orb, disc, wave, bottle
@@ -39,6 +40,7 @@ static func launch(a: Actor, e: Dictionary) -> void:
 	p.shape = String(e["kind"])
 	p.dmg = float(e["dmg"]) * a.dmg_mult() * (a.upgrade_mult(a.attack.move.id, "dmg") if a.attack.move != null else 1.0)
 	p.stun = int(e["stun"])
+	p.stun_mult = float(e.get("stun_mult", 1.0))
 	p.kb = e["kb"]
 	var ct := 0.0  # how charged this shot is (0 for an ordinary shot)
 	if a.attack.move != null and a.attack.move.is_chargeable() and a.attack.charge_t() > 0.0:
@@ -165,6 +167,7 @@ func _explode(group: String) -> void:
 		info.team = team
 		info.dmg = dmg
 		info.stun = stun
+		info.stun_mult = stun_mult
 		info.kind = "launch"
 		var away := signf(t.global_position.x - global_position.x)
 		info.kb = Vector2((away if away != 0.0 else 1.0) * absf(kb.x), kb.y)
@@ -220,7 +223,7 @@ func reflect_by(f: Actor, power := 1.0) -> void:
 	life = _age + 1.6
 	Sfx.play("parry", 1.2)
 	Fx.impact(get_parent(), global_position, col, 1.0)
-	Coop.say("REFLECT!", col, global_position + Vector2(0, -40))
+	Coop.callout("REFLECT!", col)
 
 
 func _check_hits() -> void:
@@ -236,6 +239,7 @@ func _check_hits() -> void:
 			info.team = team
 			info.dmg = dmg
 			info.stun = stun
+			info.stun_mult = stun_mult
 			info.kind = kind
 			info.height = height
 			info.kb = Vector2(kb.x * signf(vel.x if vel.x != 0.0 else 1.0), kb.y)
@@ -317,6 +321,7 @@ func _splash_hit(first: Node, group: String) -> void:
 		info.team = team
 		info.dmg = dmg * 0.5
 		info.stun = stun
+		info.stun_mult = stun_mult
 		info.kind = kind
 		var away := signf(n.global_position.x - global_position.x)
 		info.kb = Vector2(kb.x * (away if away != 0.0 else 1.0), kb.y)

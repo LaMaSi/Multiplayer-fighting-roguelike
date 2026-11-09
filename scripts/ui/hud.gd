@@ -35,6 +35,8 @@ var _stats: Dictionary = {}
 var _combo_end := ""
 var _combo_end_t := 0.0
 var _combo_age := 9.0
+var _callouts: Array = []  # {text, col, age, tilt, dx}: keyword shout-outs next to the combo counter
+const CALLOUT_LIFE := 1.5
 var _go_t := 0.0
 var _clock := 0.0
 var _result_t := 0.0
@@ -50,6 +52,7 @@ func _ready() -> void:
 	add_child(_canvas)
 	Coop.combo_ended.connect(_on_combo_ended)
 	Coop.combo_changed.connect(func(): _combo_age = 0.0)
+	Coop.callout_made.connect(_on_callout)
 
 
 func banner(text: String, col: Color) -> void:
@@ -104,6 +107,15 @@ func _spawn_result_backdrop() -> void:
 		_result_layer.add_child(f)
 
 
+func _on_callout(text: String, col: Color) -> void:
+	for co in _callouts:
+		if co["text"] == text and float(co["age"]) < 0.3:
+			return
+	_callouts.push_front({"text": text, "col": col, "age": 0.0, "tilt": randf_range(-0.3, 0.3), "dx": randf_range(-70.0, 70.0)})
+	if _callouts.size() > 4:
+		_callouts.resize(4)
+
+
 func _on_combo_ended(count: int, relays: int) -> void:
 	if count >= 4:
 		_combo_end = "TEAM COMBO  %d" % count + ("   (%d relays)" % relays if relays > 0 else "")
@@ -120,6 +132,9 @@ func _process(delta: float) -> void:
 	_banner_t = maxf(0.0, _banner_t - delta)
 	_combo_end_t = maxf(0.0, _combo_end_t - delta)
 	_combo_age += delta
+	for co in _callouts:
+		co["age"] = float(co["age"]) + delta
+	_callouts = _callouts.filter(func(co): return float(co["age"]) < CALLOUT_LIFE)
 	_go_t += delta
 	if _result != "":
 		_result_t += delta
@@ -371,6 +386,16 @@ func _paint_combo(c: Control) -> void:
 		c.draw_rect(Rect2(-80, 44, w1, 5), UiKit.P1)
 		c.draw_rect(Rect2(-80 + w1, 44, 160.0 - w1, 5), UiKit.P2)
 		c.draw_rect(Rect2(-80, 51, 160.0 * clampf(Coop.combo_t / 1.7, 0.0, 1.0), 2), Color(1, 1, 1, 0.7))
+		c.draw_set_transform_matrix(Transform2D.IDENTITY)
+	for i in _callouts.size():
+		var co: Dictionary = _callouts[i]
+		var age := float(co["age"])
+		var col: Color = co["col"]
+		var pop := 1.0 + 0.4 * exp(-12.0 * age) * cos(28.0 * age)
+		var fade := clampf((CALLOUT_LIFE - age) / 0.4, 0.0, 1.0)
+		var p := Vector2(640.0 + float(co["dx"]), 232.0 + float(i) * 38.0)
+		c.draw_set_transform_matrix(UiKit.italic(p, float(co["tilt"]), pop, -0.22))
+		UiKit.txt(c, UiKit.head(), Vector2(-200, 0), String(co["text"]), 32 - i * 3, Color(minf(col.r, 1.0), minf(col.g, 1.0), minf(col.b, 1.0), fade), HORIZONTAL_ALIGNMENT_CENTER, 400.0, 5, Color(0.05, 0.0, 0.1, 0.9 * fade))
 		c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	if _combo_end_t > 0.0:
 		UiKit.txt(c, UiKit.head(), Vector2(340, 250), _combo_end, 24, Color(UiKit.AMBER.r, UiKit.AMBER.g, UiKit.AMBER.b, minf(1.0, _combo_end_t)), HORIZONTAL_ALIGNMENT_CENTER, 600.0, 5, Color(0, 0, 0, 0.8))

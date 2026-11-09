@@ -5,6 +5,7 @@ extends Node2D
 ## Subclasses override _setup() to fill in the data.
 
 const PLAT_H := 16.0
+const SPRING_REACH := 250.0  ## a spring flings you about 263 px up: the highest platforms sit this far above the ground
 const ARENA_CEILING := 470.0  ## height of a battle screen's ceiling above the level's base ground
 const ARENA_CEILING_BOSS := 560.0
 

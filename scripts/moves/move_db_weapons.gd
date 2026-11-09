@@ -75,7 +75,7 @@ static func _adaptive() -> void:
 		"events": [{"at": 2, "type": "invuln", "dur": 10}, {"at": 2, "type": "sfx", "name": "whoosh"},
 			{"at": 4, "type": "ghost"}, {"at": 8, "type": "ghost"}],
 		"drive": [{"from": 2, "to": 20, "vx": 620.0}],
-		"hits": [_hit(4, 14, Rect2(0, -30, 90, 32), 6, 24, Vector2(150, -300), {"kind": "trip", "low": true, "height": "low", "stop": 3})]}, "adaptive")
+		"hits": [_hit(4, 14, Rect2(0, -30, 90, 32), 6, 24, Vector2(420, 0), {"low": true, "height": "low", "stop": 3, "stun_mult": 1.6})]}, "adaptive")
 
 
 # ------------------------------------------------------------------ Brawler B (3 new)
@@ -136,13 +136,14 @@ static func _sword() -> void:
 			[30, _idle()]],
 		"events": [{"at": 6, "type": "vel", "vx": 70.0, "vy": -300.0}, {"at": 6, "type": "sfx", "name": "whoosh"}],
 		"hits": [_hit(7, 5, Rect2(5, -215, 120, 195), 10, 28, Vector2(60, -820), {"kind": "launch", "stop": 5, "shake": 0.25})]}, "weapon", "sword")
-	_mk({"id": "low_cut", "name": "Low Cut", "short": "LOWCUT", "desc": "Low sweep that trips.",
-		"total": 42, "tags": ["low"], "cancel_from": 14,
+	_mk({"id": "low_cut", "name": "Low Cut", "short": "LOWCUT", "desc": "Two low slashes. Staggers (no trip) and fills the stun meter fast.",
+		"total": 46, "tags": ["low"], "cancel_from": 22,
 		"kf": [[0, _p(SWORD_READY, {"lean": 0.4, "ua_f": -0.5, "la_f": 0.4, "wp_rot": 0.4, "th_f": 1.2, "kn_f": 1.7})],
 			[7, _p(SWORD_READY, {"lean": 0.7, "ua_f": 1.9, "la_f": 0.0, "wp_rot": 0.1, "th_f": 1.5, "kn_f": 1.6, "th_b": -0.5, "kn_b": 1.9})],
 			[28, _idle()]],
-		"events": [{"at": 6, "type": "vel", "vx": 110.0}, {"at": 6, "type": "sfx", "name": "whoosh"}],
-		"hits": [_hit(7, 5, Rect2(10, -30, 138, 34), 8, 26, Vector2(90, -330), {"kind": "trip", "low": true, "height": "low", "stop": 4})]}, "weapon", "sword")
+		"events": [{"at": 6, "type": "vel", "vx": 110.0}, {"at": 6, "type": "sfx", "name": "whoosh"}, {"at": 15, "type": "vel", "vx": 90.0}, {"at": 15, "type": "sfx", "name": "whoosh"}],
+		"hits": [_hit(7, 4, Rect2(10, -30, 138, 34), 6, 24, Vector2(120, 0), {"low": true, "height": "low", "stop": 3, "stun_mult": 2.2}),
+			_hit(15, 4, Rect2(10, -30, 150, 34), 7, 30, Vector2(260, 0), {"low": true, "height": "low", "stop": 4, "stun_mult": 2.2})]}, "weapon", "sword")
 	_mk({"id": "wind_slash", "name": "Wind Slash", "short": "WIND", "desc": "Crescent of wind. Short range projectile.",
 		"total": 46, "tags": ["projectile"],
 		# vertical chop: blade raised high over the head, then brought straight down; the crescent flies off the tip
@@ -210,7 +211,7 @@ static func _hammer() -> void:
 			[54, _idle()]],
 		"events": [{"at": 29, "type": "vel", "vx": 60.0, "vy": -260.0}, {"at": 29, "type": "sfx", "name": "whoosh"}],
 		"hits": [_hit(30, 5, Rect2(25, -245, 135, 245), 14, 34, Vector2(60, -1000), {"kind": "launch", "stop": 8, "shake": 0.4})]}, "weapon", "hammer")
-	_mk({"id": "quake_line", "name": "Quake Line", "short": "QUAKE", "desc": "Slam that sends a shockwave along the ground. Trips.",
+	_mk({"id": "quake_line", "name": "Quake Line", "short": "QUAKE", "desc": "Slam that sends a staggering shockwave along the ground.",
 		"total": 82, "tags": ["projectile", "low"], "ground_only": true,
 		# low and fast: crouch with the hammer dragged behind, then a short ground chop out of the crouch
 		"kf": [[0, _p(HAMMER_UP, {"lean": 0.4, "ua_f": 0.6, "la_f": 0.5, "ua_b": 0.5, "la_b": 0.6, "wp_rot": 2.4, "th_f": 0.9, "kn_f": 1.4, "th_b": -0.9, "kn_b": 1.3})],
@@ -219,8 +220,8 @@ static func _hammer() -> void:
 			[58, _idle()]],
 		"events": [{"at": 30, "type": "ring", "radius": 90.0, "sfx": "boom", "shake": 0.45},
 			MoveDB._proj(30, {"kind": "quake", "pos": Vector2(70, -16), "vel": Vector2(540, 0), "dmg": 9.0, "stun": 26,
-				"kb": Vector2(80, -330), "pkind": "trip", "life": 1.0, "radius": 20.0, "color": Color(1.9, 1.9, 2.2), "pierce": true, "ground": true, "sfx": ""})],
-		"hits": [_hit(30, 3, Rect2(50, -64, 110, 68), 12, 30, Vector2(100, -360), {"kind": "trip", "low": true, "height": "low", "stop": 6, "shake": 0.35})]}, "weapon", "hammer")
+				"kb": Vector2(200, 0), "stun_mult": 2.0, "life": 1.0, "radius": 20.0, "color": Color(1.9, 1.9, 2.2), "pierce": true, "ground": true, "sfx": ""})],
+		"hits": [_hit(30, 3, Rect2(50, -64, 110, 68), 12, 30, Vector2(100, -360), {"kind": "trip", "dir": 6, "low": true, "height": "low", "stop": 6, "shake": 0.35})]}, "weapon", "hammer")
 	_mk({"id": "whirlwind_haul", "name": "Whirlwind Haul", "short": "WHIRL", "desc": "Spinning swing: hits in front and behind.",
 		"total": 84, "steer": 0.3, "spin": {"at": 20, "dur": 38, "turns": 1.0},
 		"kf": [[0, _p(HAMMER_UP, {"lean": 0.3, "ua_f": 0.3, "la_f": 0.4, "ua_b": 0.2, "la_b": 0.4, "th_f": 0.8, "kn_f": 1.0, "th_b": -0.8, "kn_b": 1.0, "wp_rot": 2.4})],

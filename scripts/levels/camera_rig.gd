@@ -9,6 +9,7 @@ const MARGIN := Vector2(1100.0, 650.0)  # extra world shown around the two playe
 
 var targets: Array[Node2D] = []
 var min_zoom := 0.45
+const CAM_LIFT := 170.0  # the camera sits this far above the fighters: less ground on screen, room for the platforms in the air
 
 
 func _ready() -> void:
@@ -53,4 +54,4 @@ func _update(delta: float, instant: bool) -> void:
 	var z := clampf(fit, min_zoom, maxf(MAX_ZOOM, min_zoom)) * (1.0 + Juice.punch)
 	var target_zoom := Vector2(z, z)
 	zoom = target_zoom if instant else zoom.lerp(target_zoom, 1.0 - exp(-5.0 * delta))
-	global_position = (mn + mx) * 0.5 + Vector2(0, -60)
+	global_position = (mn + mx) * 0.5 + Vector2(0, -CAM_LIFT)

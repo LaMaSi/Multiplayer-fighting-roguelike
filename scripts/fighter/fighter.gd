@@ -157,7 +157,7 @@ func _tick_timers(delta: float) -> void:
 	_record_motion()
 	if meter >= MoveDBSupers.COST and not _super_hint_shown and class_id != "x":
 		_super_hint_shown = true
-		Coop.say("SUPER READY!  Down, down-forward, forward (twice) + X (team) or B (class)", Color(2.0, 1.8, 0.5), global_position + Vector2(0, -150))
+		Coop.callout("SUPER READY!", Color(2.0, 1.8, 0.5))
 	if _ghost and state != "dash":
 		# actors never block each other any more; the dash only phases through barriers, solid again once clear
 		var me := get_hurt_rect()
@@ -441,7 +441,7 @@ func _try_slot(slot: String, btn: int) -> bool:
 	if emp:
 		attack.empowered = true
 		Fx.ring(get_parent(), global_position + Vector2(0, -50), figure.color, 60.0, 0.25)
-		Fx.number(get_parent(), global_position + Vector2(0, -130), "EMPOWERED", Color(2.0, 1.7, 0.5), 18)
+		Coop.callout("EMPOWERED", Color(2.0, 1.7, 0.5))
 	return true
 
 
@@ -653,7 +653,7 @@ func _on_defeated() -> void:
 		held.release()
 	held = null
 	Sfx.play("death")
-	Coop.say("P%d DOWN!" % (player_index + 1), Color(2.0, 0.4, 0.4), global_position + Vector2(0, -90))
+	Coop.callout("P%d DOWN!" % (player_index + 1), Color(2.0, 0.4, 0.4))
 	Coop.check_game_over()
 
 
@@ -687,7 +687,7 @@ func revive() -> void:
 	invuln = 2.0
 	Sfx.play("revive")
 	Fx.ring(get_parent(), global_position + Vector2(0, -40), Color(2.0, 1.7, 1.9), 140.0, 0.5)
-	Fx.number(get_parent(), global_position + Vector2(0, -100), "REVIVED!", Color(2.0, 1.7, 1.9), 28)
+	Coop.callout("REVIVED!", Color(2.0, 1.7, 1.9))
 	Coop.is_over = false
 
 
@@ -730,7 +730,7 @@ func _do_parry(info: HitInfo) -> void:
 	Juice.zoom_punch(0.07)
 	Juice.slowmo(0.3, 0.18)
 	meter = minf(100.0, meter + 20.0)
-	Coop.say("PARRY!", Color(2.2, 2.0, 1.0), global_position + Vector2(0, -110))
+	Coop.callout("PARRY!", Color(2.2, 2.0, 1.0))
 	attack.hit_connected = true
 	var atk := info.attacker as Actor
 	if atk != null and atk.team != team and atk.is_targetable():
@@ -785,7 +785,7 @@ func is_crouched() -> bool:
 
 func _dodges(info: HitInfo) -> bool:
 	if info.height == "high" and info.attacker != self and is_crouched() and not info.friendly:
-		Fx.number(get_parent(), global_position + Vector2(0, -body_h - 8.0), "DUCK", Color(1, 1, 1, 0.8), 16)
+		Coop.callout("DUCK", Color(1, 1, 1, 0.8))
 		return true
 	return false
 
@@ -1005,7 +1005,7 @@ func _st_ledge(delta: float) -> void:
 		_ledge_climb = 0.22
 		if helped:
 			Fx.ring(get_parent(), global_position + Vector2(0, -60), Color(2.0, 1.7, 1.9), 60.0, 0.3)
-			Fx.number(get_parent(), global_position + Vector2(0, -130), "HELP!", Color(2.0, 1.7, 1.9), 22)
+			Coop.callout("HELP!", Color(2.0, 1.7, 1.9))
 			Sfx.play("revive", 1.2)
 
 
@@ -1147,7 +1147,6 @@ func _try_super(class_super: bool) -> bool:
 	_dir_hist.clear()
 	start_attack(m, PlayerInput.Btn.B if class_super else PlayerInput.Btn.X)
 	Fx.ring(get_parent(), global_position + Vector2(0, -50), Color(2.0, 1.7, 0.5), 140.0, 0.4)
-	Fx.number(get_parent(), global_position + Vector2(0, -135), m.name.to_upper() + "!", Color(2.0, 1.7, 0.5), 26)
 	Juice.zoom_punch(0.08)
 	Sfx.play("relay")
 	return true

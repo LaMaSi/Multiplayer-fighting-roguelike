@@ -295,7 +295,7 @@ func take_hit(info: HitInfo) -> bool:
 		last_hitter = atk
 	var lethal := hp <= 0.0
 	if not info.friendly and not lethal:
-		_gain_stun(dmg)
+		_gain_stun(dmg * info.stun_mult)
 	var armored := armor_t > 0.0 and not lethal
 	if attack.active and not armored:
 		attack.interrupt()
@@ -318,7 +318,7 @@ func take_hit(info: HitInfo) -> bool:
 	elif launch:
 		_start_launch(info, lethal)
 		if info.meteor and not info.friendly:
-			Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 34.0), "METEOR!", Color(2.2, 1.6, 0.5), 24)
+			Coop.callout("METEOR!", Color(2.2, 1.6, 0.5))
 	else:
 		state = "hurt"
 		stun_frames = _prorated_stun(info.stun)
@@ -425,7 +425,9 @@ func _hit_feedback(info: HitInfo, dmg: float) -> void:
 
 func apply_direct_damage(amount: float, label := "") -> void:
 	hp = maxf(0.0, hp - amount)
-	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 6.0), label if label != "" else "%d" % int(amount), Color(1.0, 0.8, 0.4), 22)
+	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 6.0), "%d" % int(amount), Color(1.0, 0.8, 0.4), 22)
+	if label != "":
+		Coop.callout(label, Color(1.0, 0.8, 0.4))
 	if hp <= 0.0:
 		dying = true
 
@@ -440,6 +442,8 @@ func _apply_dir(info: HitInfo) -> void:
 		return
 	var atk := info.attacker as Actor
 	var aerial := not is_on_floor() or state == "launched" or (atk != null and not atk.is_on_floor())
+	if info.kind == "trip" and not aerial:
+		return  # a down-arrow trip is allowed to trip a grounded target
 	if aerial:
 		info.kind = "spike"
 		info.meteor = true
@@ -481,7 +485,7 @@ func _begin_stun() -> void:
 		_stun_fx = StunFx.new()
 		(_stun_fx as StunFx).actor = self
 		add_child(_stun_fx)
-	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 22.0), "STUNNED!", Color(2.2, 2.0, 0.5), 22)
+	Coop.callout("STUNNED!", Color(2.2, 2.0, 0.5))
 	Sfx.play("block", 0.6)
 
 
@@ -520,7 +524,7 @@ func clash_stagger(winner: Actor) -> void:
 static func clash_fx(parent: Node, pos: Vector2) -> void:
 	Fx.ring(parent, pos, Color(2.2, 2.0, 1.0), 90.0, 0.25)
 	Fx.sparks(parent, pos, Color(2.2, 2.0, 1.0), 10)
-	Fx.number(parent, pos + Vector2(0, -34), "CLASH!", Color(2.2, 2.0, 1.0), 24)
+	Coop.callout("CLASH!", Color(2.2, 2.0, 1.0))
 	Sfx.play("parry", 1.3)
 	Juice.shake(0.3)
 
@@ -657,16 +661,11 @@ func _fell_out() -> void:
 	state = "dead"
 
 
-var _last_label_ms := 0
 
 
 func start_attack(m: MoveData, btn := -1) -> void:
 	state = "attack"
 	attack.start(m, btn)
-	if team == "player" and m.id != "guard" and Time.get_ticks_msec() - _last_label_ms > 350:
-		_last_label_ms = Time.get_ticks_msec()
-		var c := figure.color
-		Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 34.0), m.name.to_upper(), Color(minf(c.r + 0.3, 1.6), minf(c.g + 0.3, 1.6), minf(c.b + 0.3, 1.6)), 15)
 
 
 ## Hook: poses may be adapted to the state of the actor (e.g. legs in mid-air).
@@ -798,7 +797,7 @@ func _launch_collisions() -> void:
 			info.shake = 0.3
 			if t.take_hit(info):
 				velocity.x *= 0.6
-				Coop.say("PINBALL!" if thrown_by == null else "STRIKE!", Color(1.8, 1.4, 0.4), info.pos)
+				Coop.callout("PINBALL!" if thrown_by == null else "STRIKE!", Color(1.8, 1.4, 0.4))
 
 
 func _land_from_launch(vy: float) -> void:
@@ -975,7 +974,7 @@ func _combo_break(info: HitInfo) -> void:
 	state = "idle"
 	stun_frames = 0
 	Fx.ring(get_parent(), global_position + Vector2(0, -50), Color(2.0, 1.7, 1.9), 70.0, 0.3)
-	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 20.0), "BREAK!", Color(2.0, 1.7, 1.9), 22)
+	Coop.callout("BREAK!", Color(2.0, 1.7, 1.9))
 	Sfx.play("parry", 0.9)
 
 
@@ -1019,13 +1018,13 @@ func _apply_frost(info: HitInfo) -> void:
 		if attack.active:
 			attack.interrupt()
 		Fx.ring(get_parent(), global_position + Vector2(0, -50), info.color, 80.0, 0.35)
-		Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 20.0), "FROZEN", info.color, 20)
+		Coop.callout("FROZEN", info.color)
 		Sfx.play("block", 0.7)
 
 
 func _shatter_ice(c: Color) -> void:
 	Fx.shatter(get_parent(), global_position + Vector2(0, -50), c, 24)
-	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 20.0), "SHATTER!", c, 22)
+	Coop.callout("SHATTER!", c)
 	Sfx.play("break", 1.3)
 	Juice.shake(0.2)
 
