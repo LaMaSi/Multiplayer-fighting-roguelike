@@ -347,8 +347,11 @@ func _paint_pick(c: Control, p: int, r: Rect2) -> void:
 	var lines := LoadoutView._wrap(UiKit.body(), String(cd["desc"]), 16, 290.0)
 	for li in mini(lines.size(), 2):
 		UiKit.txt(c, UiKit.body(), Vector2(lx, dy + 50 + li * 18), lines[li], 16, Color(0.85, 0.85, 1.0))
-	var mods: Dictionary = cd["mods"]
-	var stats := [["SPEED", float(cd["speed"]) / 1.2], ["HEALTH", float(cd["hp"]) / 120.0], ["REACH", float(mods["reach"]) / 1.8], ["DAMAGE", float(mods["dmg"]) / 1.8]]
+	# hand-authored 1 to 10 ratings (ClassData): every class has a clear weakness and a clear strength
+	var ratings: Dictionary = cd["ratings"]
+	var stats := []
+	for k in ["SPEED", "HEALTH", "REACH", "DAMAGE"]:
+		stats.append([k, float(ratings[k]) / 10.0])
 	for si in stats.size():
 		var sy := dy + 92.0 + si * 22.0
 		UiKit.txt(c, UiKit.body(), Vector2(lx, sy + 10), String(stats[si][0]), 14, UiKit.DIM_TEXT)

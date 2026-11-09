@@ -74,3 +74,9 @@ ground heights and higher platforms, and characters pass through each other inst
 
 ## Spacing of placed objects
 - Containers, spike traps, springs and bumpers are placed through one registry (`LevelBase._placed`, `_free_x`): two objects on the same surface (ground piece or platform) keep at least `PLACE_GAP` (28 px) of free space between their edges (half-widths in `OBJECT_R`). An object that would overlap another is nudged sideways (up to about 300 px, staying on solid ground or inside its platform, and out of the door and finish zones) and left out if there is no free spot. Test: `tests/finish_test.tscn` checks every pair across 12 seeds.
+
+## Object shapes (revised)
+- **Crates and TNT crates are cubes:** a square front face and a shallow depth (`w * 0.4`), so they no longer read as long boxes stretching to the back.
+- **Barrels** are cylinders whose top ellipse is closed without a zero-length segment (it had drawn small spikes).
+- **Vases** have a symmetric silhouette around the projected axis, with shallow ellipses for the mouth and bands (no skewed, egg-shaped perspective).
+- **Battle screen ceilings reach past the top of the screen** (`ArenaCeiling.THICK`), so you never see the upper side of the slab or the sky above it. Only tunnel roofs, which can be climbed, are thin.

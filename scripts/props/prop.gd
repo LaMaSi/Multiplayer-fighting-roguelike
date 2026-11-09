@@ -24,6 +24,8 @@ var w := 46.0
 var h := 46.0
 
 const VASE_DEPTH := 70.0  ## a vase stands this far behind the walking line: decoration you cannot stand on
+var _drag_t := 0.0  ## being dragged towards a player by a Pull Hook
+var _drag_target: Actor = null
 var _depth := 0.0  ## how far back the container is drawn right now (vases only; 0 when held or flying)
 var _top: StaticBody2D = null  ## one-way platform on top of the container: players and enemies can stand on it
 var _top_cs: CollisionShape2D = null
@@ -148,6 +150,14 @@ func thrown(vel: Vector2, by: Actor) -> void:
 func take_hit(info: HitInfo) -> bool:
 	if not is_targetable():
 		return false
+	if info.kind == "pull":
+		# a Pull Hook does not damage or launch containers: it drags them along the ground to the player
+		if info.attacker is Actor and state == "idle":
+			_drag_target = info.attacker as Actor
+			_drag_t = 0.55
+			Fx.dust(get_parent(), global_position, 4)
+			return true
+		return false
 	hp -= info.dmg
 	_wobble = 0.25
 	_wob_dir = signf(info.kb.x) if info.kb.x != 0.0 else 1.0
@@ -195,6 +205,17 @@ func _physics_process(delta: float) -> void:
 		velocity.y = minf(velocity.y + GRAVITY * delta, 1700.0)
 	else:
 		velocity.y = 50.0
+	if _drag_t > 0.0:
+		_drag_t -= delta
+		if state == "idle" and _drag_target != null and is_instance_valid(_drag_target):
+			var ddx := _drag_target.global_position.x - global_position.x
+			if absf(ddx) > 70.0:
+				velocity.x = signf(ddx) * minf(1100.0, absf(ddx) * 7.0)
+			else:
+				velocity.x = 0.0
+				_drag_t = 0.0
+		else:
+			_drag_t = 0.0
 	if state == "idle":
 		velocity.x = move_toward(velocity.x, 0.0, 1500.0 * delta)
 	var vx := velocity.x
@@ -391,7 +412,7 @@ func _draw() -> void:
 ## A container as a real box in the shared depth camera (see DepthLayer): the visible top, the side that faces the camera
 ## and the front face. Returns the front face rectangle for decorations.
 func _draw_box(r: Rect2, vp: Vector2, c: Color, rim: Color, fill: Color) -> Rect2:
-	var d := w * 0.85  # depth of the box
+	var d := w * 0.4  # shallow: a crate is a cube, not a long box
 	var b := DepthLayer.box(r, -6.0, d, vp)
 	var side := Color(fill.r * 0.5, fill.g * 0.5, fill.b * 0.5)
 	var lit := Color(c.r * 0.22, c.g * 0.22, c.b * 0.22)
@@ -414,49 +435,59 @@ func _draw_box(r: Rect2, vp: Vector2, c: Color, rim: Color, fill: Color) -> Rect
 	return fr
 
 
-## A vase as a body of revolution in the depth camera, set back from the walking line (see VASE_DEPTH) and drawn smaller and
-## higher, with its own soft shadow, so it reads as background decoration: there is no top to stand on.
+## A vase set back from the walking line (see VASE_DEPTH), drawn smaller and higher with its own soft shadow, so it reads
+## as background decoration: there is no top to stand on. The silhouette is symmetric around the projected axis (a lathe
+## shape: neck, belly, foot) and the mouth and bands are shallow ellipses, so it never looks skewed or egg-shaped.
 func _draw_vase(vp: Vector2, rim: Color) -> void:
 	var zc := _depth + 14.0
+	var sc := DepthLayer.EYE / (DepthLayer.EYE + zc)
 	var top_y := -h * 0.5
 	var bot_y := h * 0.5
 	var ts := [0.0, 0.07, 0.16, 0.30, 0.48, 0.64, 0.80, 0.93, 1.0]
 	var rs := [0.62, 0.62, 0.40, 0.62, 0.98, 0.86, 0.62, 0.52, 0.50]
 	var left := PackedVector2Array()
 	var right := PackedVector2Array()
-	var ys: Array[float] = []
-	var rads: Array[float] = []
+	var centers := PackedVector2Array()
+	var rxs: Array[float] = []
 	for i in ts.size():
 		var y := lerpf(top_y, bot_y, float(ts[i]))
-		var rad := w * 0.5 * float(rs[i])
-		ys.append(y)
-		rads.append(rad)
-		left.append(DepthLayer.P(Vector2(-rad, y), zc, vp))
-		right.append(DepthLayer.P(Vector2(rad, y), zc, vp))
+		var ctr := DepthLayer.P(Vector2(0.0, y), zc, vp)
+		var rx := w * 0.5 * float(rs[i]) * sc
+		centers.append(ctr)
+		rxs.append(rx)
+		left.append(ctr + Vector2(-rx, 0.0))
+		right.append(ctr + Vector2(rx, 0.0))
 	if _depth > 1.0:
-		var base := DepthLayer.P(Vector2(0.0, bot_y), zc, vp)
-		draw_colored_polygon(DepthLayer._ellipse(base, w * 0.55, 6.0), Color(0.0, 0.0, 0.03, 0.30))
+		draw_colored_polygon(DepthLayer._ellipse(centers[ts.size() - 1], w * 0.55 * sc, 5.0), Color(0.0, 0.0, 0.03, 0.30))
 	var fill := Color(0.06, 0.03, 0.1)
 	var fc := PackedColorArray([fill, fill, fill, fill])
-	for i in ts.size() - 1:  # filled as a strip of quads (no polygon triangulation on a curved outline)
+	for i in ts.size() - 1:  # a strip of quads (no triangulation of a curved outline)
 		draw_primitive(PackedVector2Array([left[i], right[i], right[i + 1], left[i + 1]]), fc, PackedVector2Array())
-	var edge_l := left.duplicate()
-	var edge_r := right.duplicate()
-	draw_polyline(edge_l, rim, UiKit.LINE * 2.0, true)
-	draw_polyline(edge_r, rim, UiKit.LINE * 2.0, true)
-	draw_polyline(edge_l, col, UiKit.LINE, true)
-	draw_polyline(edge_r, col, UiKit.LINE, true)
-	# curved bands round the belly and the base follow the perspective
+	draw_polyline(left, rim, UiKit.LINE * 2.0, true)
+	draw_polyline(right, rim, UiKit.LINE * 2.0, true)
+	draw_polyline(left, col, UiKit.LINE, true)
+	draw_polyline(right, col, UiKit.LINE, true)
+	# a bit of elevation: how far the ellipses open depends on how far the object is below the horizon
+	var elev := clampf((centers[0].y - vp.y) / 1600.0, 0.05, 0.3)
+	# bands round the belly and the base: the front arcs of the ellipses
 	for i in [4, 6]:
-		draw_polyline(_circ(float(ys[i]), -PI * 0.5, PI * 0.5, 12, float(rads[i]), zc, vp), Color(col.r, col.g, col.b, 0.8), UiKit.LINE, true)
-	# the mouth: an ellipse when the horizon is above it
+		var arc := PackedVector2Array()
+		for k in 13:
+			var a := PI * float(k) / 12.0
+			arc.append(centers[i] + Vector2(cos(a) * rxs[i], sin(a) * rxs[i] * elev))
+		draw_polyline(arc, Color(col.r, col.g, col.b, 0.8), UiKit.LINE, true)
+	# the mouth
 	if vp.y < top_y:
-		var ell := _circ(top_y, -PI, PI, 24, float(rads[0]), zc, vp)
+		var ring := PackedVector2Array()
+		for k in 24:
+			var a2 := TAU * float(k) / 24.0
+			ring.append(centers[0] + Vector2(cos(a2) * rxs[0], sin(a2) * rxs[0] * elev))
 		var tc := Color(col.r * 0.22, col.g * 0.22, col.b * 0.22)
-		var ctr := (ell[0] + ell[ell.size() / 2]) * 0.5
-		for i in ell.size() - 1:
-			draw_primitive(PackedVector2Array([ctr, ell[i], ell[i + 1]]), PackedColorArray([tc, tc, tc]), PackedVector2Array())
-		draw_polyline(ell, Color(col.r, col.g, col.b, 0.9), 2.0, true)
+		for k in ring.size():
+			draw_primitive(PackedVector2Array([centers[0], ring[k], ring[(k + 1) % ring.size()]]), PackedColorArray([tc, tc, tc]), PackedVector2Array())
+		var closed := ring.duplicate()
+		closed.append(ring[0])
+		draw_polyline(closed, Color(col.r, col.g, col.b, 0.9), 2.0, true)
 
 
 ## A barrel as a real cylinder in the depth camera: the hoops and the lower edge are arcs that follow the perspective,
@@ -486,10 +517,11 @@ func _draw_barrel(r: Rect2, vp: Vector2, rim: Color) -> void:
 	draw_polyline(outline, col, UiKit.LINE, true)
 	if vp.y < top_y:
 		var ell := _circ(top_y, -PI, PI, 28, rad, zc, vp)
+		ell.remove_at(ell.size() - 1)  # the last point equals the first: keep the loop closed without a zero-length segment (it drew spikes)
 		var tc := Color(col.r * 0.22, col.g * 0.22, col.b * 0.22)
 		var ctr := (ell[0] + ell[ell.size() / 2]) * 0.5
-		for i in ell.size() - 1:
-			draw_primitive(PackedVector2Array([ctr, ell[i], ell[i + 1]]), PackedColorArray([tc, tc, tc]), PackedVector2Array())
+		for i in ell.size():
+			draw_primitive(PackedVector2Array([ctr, ell[i], ell[(i + 1) % ell.size()]]), PackedColorArray([tc, tc, tc]), PackedVector2Array())
 		var closed := ell.duplicate()
 		closed.append(ell[0])
 		draw_polyline(closed, Color(col.r, col.g, col.b, 0.9), 2.0, true)

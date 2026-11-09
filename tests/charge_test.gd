@@ -25,10 +25,12 @@ func _clear_level(_lv: LevelBase) -> void:
 
 
 ## Plays `id` on P1 against a fresh dummy 80 px in front: returns {dmg, push, frames_to_hit, charge}.
-func _trial(lv: LevelBase, id: String, hold_frames: int) -> Dictionary:
+func _trial(lv: LevelBase, id: String, hold_frames: int, dist := 90.0) -> Dictionary:
 	var f: Fighter = lv.fighters[0]
 	var p: PlayerInput = Inp.players[0]
 	p.script_set(Vector2.ZERO, [])
+	f.attack.last_hit_dmg = 0.0  # no hit yet in this trial
+	f.attack.last_hit_kb = 0.0
 	for n in get_tree().get_nodes_in_group("hurt_enemy"):
 		if n is Enemy:
 			n.queue_free()
@@ -40,7 +42,7 @@ func _trial(lv: LevelBase, id: String, hold_frames: int) -> Dictionary:
 	f.state = "idle"
 	Coop.combo = 0  # the team combo multiplies damage: every trial starts from none
 	Coop.combo_t = 0.0
-	var e: Enemy = lv.spawn_enemy("dummy", Vector2(790.0, lv.ground_y - 1.0))
+	var e: Enemy = lv.spawn_enemy("dummy", Vector2(700.0 + dist, lv.ground_y - 1.0))
 	e.invuln = 0.0
 	e.max_hp = 5000.0
 	e.hp = 5000.0  # plenty of health: the damage must not be capped by the dummy dying
@@ -158,9 +160,67 @@ func _ready() -> void:
 			hammer_n += 1
 	check(hammer_n == 4, "four Hammer moves can be charged (%d)" % hammer_n)
 	check(MoveDB.get_move("thrust_lunge").charge_stretch, "the lunge's hit window stretches with its longer path")
+	# 2c. what changed after playtesting
+	check(not MoveDB.get_move("off_hand_jab").is_chargeable(), "the Off-hand Jab stays a quick, weak punch (no charge)")
+	check(MoveDB.get_move("shockwave").is_chargeable() and MoveDB.get_move("shockwave").charge_range > 0.0, "the Shockwave Clap charges for range and knockback")
+	var sp0: Dictionary = await _move_trial(lv, "spin_kick", 0)
+	var sp1: Dictionary = await _move_trial(lv, "spin_kick", 200)
+	check(float(sp1["dist"]) > float(sp0["dist"]) * 1.8, "a fully charged Spin Kick travels much further (%.0f vs %.0f px)" % [sp1["dist"], sp0["dist"]])
+	var up0: Dictionary = await _trial(lv, "uppercut", 0, 45.0)
+	var up1: Dictionary = await _trial(lv, "uppercut", 200, 45.0)
+	check(float(up1["push"]) > float(up0["push"]) * 2.5, "a fully charged Uppercut has much more knockback (%.0f vs %.0f)" % [up1["push"], up0["push"]])
+	var cl0: Dictionary = await _trial(lv, "shockwave", 0, 200.0)
+	var cl1: Dictionary = await _trial(lv, "shockwave", 200, 200.0)
+	check(float(cl0["dmg"]) == 0.0 and float(cl1["dmg"]) > 0.0, "the clap reaches a far enemy only when charged (tap hit: %s, charged hit: %s)" % [float(cl0["dmg"]) > 0.0, float(cl1["dmg"]) > 0.0])
+	# a short press shows no ring, a real hold does
+	var f0: Fighter = lv.fighters[0]
+	var pin: PlayerInput = Inp.players[0]
+	for n in get_tree().get_nodes_in_group("hurt_enemy"):
+		if n is Enemy:
+			n.queue_free()
+	f0.global_position = Vector2(500.0, lv.ground_y - 1.0)
+	f0.state = "idle"
+	await frames(10)
+	pin.script_set(Vector2.ZERO, [PlayerInput.Btn.B])
+	f0.start_attack(MoveDB.get_move_for("haymaker", f0.class_id), PlayerInput.Btn.B)
+	await frames(28)  # the wind-up takes 22 frames, so the button has been held about 6 frames at the charge point
+	check(f0.attack._charge_fx == null, "no charge ring while the button has only been held a moment")
+	pin.script_set(Vector2.ZERO, [])
+	await frames(120)
+	check(not f0.attack.active, "a short press releases the move normally")
+	f0.state = "idle"
+	await frames(10)
+	pin.script_set(Vector2.ZERO, [PlayerInput.Btn.B])
+	f0.start_attack(MoveDB.get_move_for("haymaker", f0.class_id), PlayerInput.Btn.B)
+	await frames(60)
+	check(f0.attack._charge_fx != null and is_instance_valid(f0.attack._charge_fx), "the ring appears once the button is really held")
+	pin.script_set(Vector2.ZERO, [])
+	await frames(120)
 	# 3. a charged projectile (Fireball is a Magic move: borrow its data on the Brawler's attack runner)
 	var fb := MoveDB.get_move("fireball")
 	check(fb.is_chargeable(), "Fireball can be charged")
+	# the Pull Hook drags a container to the player instead of damaging it
+	var crate := lv.spawn_prop("crate", Vector2(780.0, lv.ground_y - 1.0))
+	await frames(20)
+	f0.global_position = Vector2(500.0, lv.ground_y - 1.0)
+	f0.facing = 1
+	f0.state = "idle"
+	var cx0 := crate.global_position.x
+	var chp := crate.hp
+	await frames(5)
+	f0.start_attack(MoveDB.get_move_for("pull_hook", f0.class_id), PlayerInput.Btn.X)
+	await frames(60)
+	check(is_instance_valid(crate) and crate.global_position.x < cx0 - 120.0, "the Pull Hook drags a crate towards the player (%.0f -> %.0f)" % [cx0, crate.global_position.x if is_instance_valid(crate) else -1.0])
+	check(is_instance_valid(crate) and crate.hp == chp and crate.state == "idle", "...without damaging or launching it")
+	# class stat bars: every class has a clear low and a clear high
+	for cid in ClassData.IDS:
+		var r: Dictionary = ClassData.get_class_data(cid)["ratings"]
+		var lo := 99
+		var hi := 0
+		for k in r:
+			lo = mini(lo, int(r[k]))
+			hi = maxi(hi, int(r[k]))
+		check(lo <= 4 and hi >= 7, "%s: lowest stat %d, highest %d (a real spread)" % [cid, lo, hi])
 	# 4. the badge text
 	var hm := MoveDB.get_move("haymaker")
 	check(hm.charge_bonus_text().contains("DMG") and hm.charge_bonus_text().contains("KB"), "the card badge shows the bonus: '%s'" % hm.charge_bonus_text())

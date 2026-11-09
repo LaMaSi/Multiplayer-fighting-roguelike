@@ -137,13 +137,19 @@ func charge_move_mult() -> float:
 	return 1.0 + (move.charge_move * charge_t() if move != null and move.is_chargeable() else 0.0)
 
 
+## A short press is just the move: the ring and the ticks only start after the button has been held this long.
+const CHARGE_SHOW_FRAMES := 14
+
+
 func _charge_tick() -> void:
+	if _hold_frames < CHARGE_SHOW_FRAMES:
+		return
 	if _charge_fx == null or not is_instance_valid(_charge_fx):
 		_charge_fx = ChargeFx.new()
 		_charge_fx.runner = self
 		_charge_fx.actor = actor
 		actor.add_child(_charge_fx)
-	if _hold_frames % 30 == 1:
+	if (_hold_frames - CHARGE_SHOW_FRAMES) % 30 == 0:
 		Sfx.play("buff", 0.7 + 0.8 * charge_t())  # a rising tick every half second
 
 
@@ -281,7 +287,8 @@ func _do_event(e: Dictionary) -> void:
 			a.velocity = Vector2(float(e["vx"]) * a.facing, float(e["vy"]))
 			Sfx.play("whoosh", 0.7)
 		"ring":
-			Fx.ring(parent, a.global_position + Vector2(0, -6), a.figure.color, float(e["radius"]), 0.35)
+			var rk := 1.0 + (move.charge_range * charge_t() if move.charge_range > 0.0 else 0.0)  # the shockwave grows with the charge
+			Fx.ring(parent, a.global_position + Vector2(0, -6), a.figure.color, float(e["radius"]) * rk, 0.35)
 			Fx.dust(parent, a.global_position, 14)
 			if e.has("sfx"):
 				Sfx.play(String(e["sfx"]))
@@ -414,6 +421,17 @@ func world_rect(box: Rect2) -> Rect2:
 	return Rect2(p.x - box.position.x - box.size.x, p.y + box.position.y, box.size.x, box.size.y)
 
 
+## The hitbox of a hit, grown by the charge (charge_range) for moves that reach further when charged.
+func _charged_box(h: Dictionary) -> Rect2:
+	var b: Rect2 = h["box"]
+	if move == null or move.charge_range <= 0.0 or charge_t() <= 0.0:
+		return b
+	var k := 1.0 + move.charge_range * charge_t()
+	if bool(h.get("radial", false)):
+		return Rect2(b.position.x * k, b.position.y, b.size.x * k, b.size.y)  # centred on the fighter: grows both ways
+	return Rect2(b.position.x, b.position.y, b.size.x * k, b.size.y)  # forward hits grow forward
+
+
 ## How long a hit stays active: a charged lunge keeps hitting along its longer path.
 func _hit_dur(h: Dictionary) -> int:
 	var d := int(h["dur"])
@@ -440,7 +458,7 @@ func _hits() -> void:
 				Fx.afterimage(actor.get_parent(), actor.figure, actor.figure.color)
 		if frame < at or frame >= at + _hit_dur(h):
 			continue
-		var rect := world_rect(h["box"])
+		var rect := world_rect(_charged_box(h))
 		var crects: Array = _contact_rects() if not bool(h.get("radial", false)) else []
 		var all_r := rect
 		for cr: Rect2 in crects:
@@ -531,7 +549,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		var fx := KB_EMPOWERED if empowered else KB_PLAYER
 		# Flights are sideways, not skyward: only launchers keep their full lift, and nothing rises past a single jump (~170 px).
 		var lift := 1.0 if move.tags.has("launcher") else 0.6
-		kb = Vector2(kb.x * fx, maxf(kb.y * lift, -780.0 * (1.0 + 0.5 * charge_t())) if kb.y < 0.0 else kb.y)
+		kb = Vector2(kb.x * fx, maxf(kb.y * lift, -780.0 * (1.0 + (move.charge_kb * charge_t() if move.is_chargeable() else 0.0))) if kb.y < 0.0 else kb.y)
 		if move.is_chargeable():
 			kb *= charge_kb_mult()
 	if info.friendly and not bool(h.get("partner_safe", false)):

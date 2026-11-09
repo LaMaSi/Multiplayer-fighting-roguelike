@@ -33,6 +33,7 @@ var hold_max := 600
 var charge_max := 0
 var charge_dmg := 1.0
 var charge_kb := 0.8
+var charge_range := 0.0  ## extra hitbox size at full charge (a clap that reaches twice as far)
 var charge_move := 0.0  ## extra distance at full charge: lunges, drives and jumps of the move scale by (1 + this)
 var charge_stretch := false  ## the hit window stretches with the charged movement (a lunge keeps hitting along its longer path)
 var steer := 0.0  ## fraction of run speed the player can still steer with during the move
@@ -60,6 +61,8 @@ func charge_bonus_text() -> String:
 	var t := "+%d%% DMG  +%d%% KB" % [int(round(charge_dmg * 100.0)), int(round(charge_kb * 100.0))]
 	if charge_move > 0.0:
 		t += "  +DIST"
+	if charge_range > 0.0:
+		t += "  +RANGE"
 	return t
 
 

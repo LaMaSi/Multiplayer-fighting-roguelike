@@ -200,14 +200,14 @@ Input: down, down-forward, forward, twice, then B. The generic super (1 of 8, X)
 Some moves can be **charged**: tap the button and the move plays normally; hold it and the figure winds up at the move's charge point, building charge for up to **3 s (180 frames)**. A full charge multiplies the hit's **damage** by `1 + charge_dmg` and its **knockback** by `1 + charge_kb` (projectiles also grow by up to 60 %); a partial charge gives a proportional bonus. Releasing plays the move out, and at full charge it releases by itself.
 
 - **Data** (`MoveData`): `charge_max` (180), `charge_dmg`, `charge_kb`, plus the existing `hold`/`hold_frame` (the frame to wait at, just before the first hit or shot). The table `MoveDB.CHARGE` lists them; the badge tag `charge` is added automatically.
-- **Which moves**: every category has some. **B:** Heavy Haymaker (Brawler), Thrust Lunge (Sword), Overhead Smash, Guard Breaker, Side Sweep and Sky Launcher (Hammer), Fireball (Magic). **X:** Off-hand Jab and Spark Shot. **Y:** Uppercut and Spin Kick.
+- **Which moves**: every category has some. **B:** Heavy Haymaker (Brawler), Thrust Lunge (Sword), Overhead Smash, Guard Breaker, Side Sweep and Sky Launcher (Hammer), Fireball (Magic). **X:** Spark Shot and Shockwave Clap (the Off-hand Jab stays a quick, weak punch). **Y:** Uppercut and Spin Kick.
 
 | Move | Category | Full charge |
 |---|---|---|
-| Off-hand Jab | X | +150 % damage, +100 % knockback |
+| Shockwave Clap | X | +80 % damage, +150 % knockback, **double range** (the blast and its ring grow) |
 | Spark Shot | X | +150 % damage, +100 % knockback, bigger shot |
-| Uppercut | Y | +100 % damage, +60 % knockback (higher launch) |
-| Spin Kick | Y | +100 % damage, +80 % knockback |
+| Uppercut | Y | +100 % damage, **+200 % knockback** (a huge launch), +50 % distance |
+| Spin Kick | Y | +100 % damage, +80 % knockback, **about 3x the travel distance** |
 | Heavy Haymaker | B Brawler | +120 % damage, +90 % knockback |
 | Thrust Lunge | B Sword | +100 % damage, +90 % knockback, **about twice the lunge distance**; the hit stays active along the longer path |
 | Overhead Smash | B Hammer | +100 % damage, +80 % knockback |
@@ -216,7 +216,22 @@ Some moves can be **charged**: tap the button and the move plays normally; hold 
 | Sky Launcher | B Hammer | +120 % damage, +70 % knockback, a higher jump with the launch |
 | Fireball | B Magic | +100 % damage, +80 % knockback, bigger fireball |
 
-- **Movement:** a charge also stretches the move's own movement (`charge_move`, the 4th number in `MoveDB.CHARGE`): lunges (`vel` events) cover about `1 + charge_move` times the distance, drives (`drive`) are `1 + charge_move` times as fast, and jumps rise higher. Launch speeds scale with the square root of the bonus because friction and gravity make distance grow with the square of the speed. Moves with movement: Thrust Lunge (+100 %), Side Sweep, Spin Kick and Sky Launcher (+80 %), Heavy Haymaker (+70 %), Uppercut and Off-hand Jab (+50 %). The Thrust Lunge's hit window also stretches (`charge_stretch`) so a longer lunge keeps hitting along its path. The card badge shows `+DIST` for these.
+- **Movement:** a charge also stretches the move's own movement (`charge_move`, the 4th number in `MoveDB.CHARGE`; the optional 5th, `charge_range`, grows the hitbox): lunges (`vel` events) cover about `1 + charge_move` times the distance, drives (`drive`) are `1 + charge_move` times as fast, and jumps rise higher. Launch speeds scale with the square root of the bonus because friction and gravity make distance grow with the square of the speed. Moves with movement: Spin Kick (+180 %), Thrust Lunge (+100 %), Side Sweep and Sky Launcher (+80 %), Heavy Haymaker (+70 %), Uppercut (+50 %). The Thrust Lunge's hit window also stretches (`charge_stretch`) so a longer lunge keeps hitting along its path. The card badge shows `+DIST` for these.
 - **Co-op:** the charging player stands still and unarmoured while the ring fills, which is exactly what the partner can cover (see `DESIGN.md` charge-up elements).
 - **Feedback:** a ring fills round the body (player colour turning gold) with motes streaming in, a rising tick every half second, and a "MAX" flash at full charge (`ChargeFx`). Every attack card (reward, shop, loadout, run setup, pause menu) shows a **"HOLD TO CHARGE 3s"** badge with the bonus (`UiKit.charge_chip`), so players can see which moves can be charged and what it pays.
 - **Test:** `tests/charge_test.tscn` (coverage by category and class, 3 s, damage and knockback scaling, partial charge).
+
+**Short presses:** the charge ring, the ticks and the glow only start after the button has been held 14 frames (`AttackRunner.CHARGE_SHOW_FRAMES`), so a quick tap just plays the move.
+
+## 12. Pull Hook and containers
+The Pull Hook no longer damages or launches containers: it **drags them along the ground to the player** (`Prop` handles hits of kind `pull`).
+
+## 13. Class stat bars (run setup)
+The bars show hand-authored 1 to 10 `ratings` per class (`ClassData`), so every class has a clear low and a clear high:
+
+| Class | Speed | Health | Reach | Damage |
+|---|---|---|---|---|
+| Brawler | 9 | 5 | 2 | 3 |
+| Sword | 4 | 5 | 7 | 5 |
+| Hammer | 2 | 9 | 7 | 10 |
+| Magic | 6 | 2 | 10 | 3 |

@@ -261,10 +261,11 @@ static func _build() -> void:
 
 ## Moves that can be charged by holding the button (up to 3 s). Each category has some: weapon (B), universal (X) and
 ## adaptive (Y). id -> [frame to wait at (just before the first hit, shot or step), extra damage, extra knockback,
-## extra distance]. The distance bonus scales the move's own movement (lunge, drive, jump) at full charge.
+## extra distance, extra range]. The distance bonus scales the move's own movement (lunge, drive, jump) and the range
+## bonus its hitbox, both at full charge. (The Off-hand Jab stays a quick weak punch.)
 const CHARGE := {
-	"off_hand_jab": [1, 1.5, 1.0, 0.5], "spark_shot": [5, 1.5, 1.0, 0.0],
-	"uppercut": [4, 1.0, 0.6, 0.5], "spin_kick": [5, 1.0, 0.8, 0.8],
+	"spark_shot": [5, 1.5, 1.0, 0.0], "shockwave": [7, 0.8, 1.5, 0.0, 1.0],
+	"uppercut": [4, 1.0, 2.0, 0.5], "spin_kick": [5, 1.0, 0.8, 1.8],
 	"haymaker": [22, 1.2, 0.9, 0.7], "thrust_lunge": [4, 1.0, 0.9, 1.0], "overhead_smash": [23, 1.0, 0.8, 0.0],
 	"guard_breaker": [30, 1.2, 0.8, 0.0], "fireball": [9, 1.0, 0.8, 0.0],
 	"side_sweep": [11, 1.0, 0.9, 0.8], "sky_launcher": [26, 1.2, 0.7, 0.8],
@@ -284,6 +285,7 @@ static func _apply_charge() -> void:
 		m.charge_dmg = float(c[1])
 		m.charge_kb = float(c[2])
 		m.charge_move = float(c[3])
+		m.charge_range = float(c[4]) if c.size() > 4 else 0.0
 		m.charge_stretch = id == "thrust_lunge"
 		if not m.tags.has("charge"):
 			m.tags.append("charge")

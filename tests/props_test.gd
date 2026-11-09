@@ -48,6 +48,10 @@ func _ready() -> void:
 	await frames(80)
 	check(absf(v.global_position.y - gy) < 6.0, "a player dropped onto a vase lands on the ground, not on the vase (y=%.1f, ground=%.1f)" % [v.global_position.y, gy])
 	check(vase._depth > 60.0, "the vase is drawn set back (%.0f px)" % vase._depth)
+	# 1c. crates are cubes: a square front face and a shallow depth
+	check(crate.w == crate.h, "a crate's front face is square (%.0f x %.0f)" % [crate.w, crate.h])
+	var tnt := lv.spawn_prop("explosive", Vector2(1100.0, gy - 1.0))
+	check(tnt.w == tnt.h, "a TNT crate's front face is square (%.0f x %.0f)" % [tnt.w, tnt.h])
 	# 2. a player on the ground inside a crate's footprint is not pushed up or blocked (the sides are not solid)
 	p.global_position = Vector2(300.0, gy - 1.0)
 	p.velocity = Vector2.ZERO

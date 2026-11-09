@@ -4,7 +4,7 @@ extends Node2D
 ## cleared. Jumps and launched bodies stop against it, so enemies bounce back down into the fight. Drawn in the shared depth
 ## camera (DepthLayer): you see its dark underside with light strips from below.
 
-const THICK := 70.0
+const THICK := 3500.0  ## it reaches up past the top of the screen: its upper side is never visible
 const SLIDE := 520.0  ## how far above its place it waits
 
 var x0 := 0.0
