@@ -246,6 +246,14 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 			c.draw_rect(r, Color(0.95, 0.4, 0.25, 0.85) if trail >= t1 else Color(0.95, 0.4, 0.25, 0.5))
 		else:
 			c.draw_rect(r, Color(col.r, col.g, col.b, 0.22), false, 2.0)
+	# stun meter: a thin amber strip under the HP blocks; while dazed it drains with the time left to wake up
+	var sr := Rect2(hx + 22.0, hy + 43.0, 350.0, 4.0)
+	var stunned := f.state == "stunned"
+	var sfrac := clampf(f.stunned_t / Actor.STUN_TIME, 0.0, 1.0) if stunned else clampf(f.stun_meter / Actor.STUN_MAX, 0.0, 1.0)
+	c.draw_rect(sr, Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.9))
+	if sfrac > 0.0:
+		var sc := Color(2.2, 2.0, 0.5) if stunned and int(_clock * 8.0) % 2 == 0 else Color(1.9, 1.3, 0.3)
+		c.draw_rect(Rect2(sr.position, Vector2(sr.size.x * sfrac, sr.size.y)), sc)
 	# super meter: calm below the usable mark, gold + soft pulse when usable, burning when full
 	var mxp := hx + 14.0
 	var myp := hy + 66.0

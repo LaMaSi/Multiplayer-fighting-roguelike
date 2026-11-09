@@ -23,6 +23,10 @@ var heal_self := 0.0
 var ignite := 0.0  ## seconds of burning to apply (burning targets take extra damage)
 var shock := 0.0  ## seconds of shock to apply (hits on a shocked target arc to a neighbour)
 var frost := 0.0  ## seconds of chill to apply (slow; three chilling hits freeze)
+var dir := -1  ## send direction in the attacker's frame (0 F, 1 UF, 2 U, 3 UB, 4 B, 5 DB, 6 D, 7 DF; -1 = does not send), see MoveDB.DIR_VECS
+var ground_fx := ""  ## down-angled spikes: "stop" (dead stop on the floor) or "bounce" (rebound for a follow-up)
+var meteor := false  ## set by the victim when a down-angled hit lands on an airborne target (or from the air)
+var clash := false  ## struck while the victim was mid-swing: short stagger, no launch
 var color := Color(1.6, 1.6, 1.6)
 var shake := 0.12
 var punch := 0.0

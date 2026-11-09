@@ -70,6 +70,21 @@ var _pinball_emit_t := 0.0  ## after knocking into someone, this body cannot pin
 const PINBALL_COOLDOWN := 1.0
 var _bounced := false
 var _wallbounce := false
+var _ground_fx := ""  ## spike landing: "stop" (dead stop) or "bounce" (rebound), set by the hit that launched us
+
+## Stun meter: every hit fills it; when full the actor is dazed (state "stunned") for STUN_TIME seconds or until it is hit.
+## Enemies have one too (not drawn: you see the stars). Friendly hits wake a stunned partner without damage.
+const STUN_MAX := 100.0
+const STUN_TIME := 5.0
+const STUN_PER_DMG := 1.5  ## meter gained per point of damage taken
+const STUN_DECAY := 14.0  ## meter lost per second once STUN_HOLD seconds passed without a hit
+const STUN_HOLD := 2.5
+const EDGE_PAD := 26.0  ## launched bodies rebound off the sides of the fixed fighting screen this far inside its edge
+var stun_meter := 0.0
+var stunned_t := 0.0
+var _stun_hold := 0.0
+var _stun_pending := false
+var _stun_fx: Node2D = null
 var _victim_freeze := false
 var _walk_phase := 0.0
 
@@ -233,6 +248,9 @@ func take_hit(info: HitInfo) -> bool:
 		return false
 	if _filter_hit(info):
 		return true
+	if state == "stunned":
+		_end_stun()  # any hit wakes a dazed actor (a friendly one does so without damage)
+	_apply_dir(info)
 	if team == "enemy" and not info.friendly:
 		if _chain_t <= 0.0:
 			hit_chain = 0
@@ -276,6 +294,8 @@ func take_hit(info: HitInfo) -> bool:
 	if atk != null and atk.team != team:
 		last_hitter = atk
 	var lethal := hp <= 0.0
+	if not info.friendly and not lethal:
+		_gain_stun(dmg)
 	var armored := armor_t > 0.0 and not lethal
 	if attack.active and not armored:
 		attack.interrupt()
@@ -297,6 +317,8 @@ func take_hit(info: HitInfo) -> bool:
 		velocity = Vector2(clampf((atk.global_position.x - global_position.x) * 5.0, -info.pull_speed, info.pull_speed), 0)
 	elif launch:
 		_start_launch(info, lethal)
+		if info.meteor and not info.friendly:
+			Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 34.0), "METEOR!", Color(2.2, 1.6, 0.5), 24)
 	else:
 		state = "hurt"
 		stun_frames = _prorated_stun(info.stun)
@@ -366,6 +388,7 @@ func _start_launch(info: HitInfo, lethal: bool) -> void:
 			velocity.x = 160.0 * (-1 if facing > 0 else 1)
 	juggle_hits = juggle_hits + 1 if was_launched else 0
 	_trail_col = _trail_color_for(info.attacker)
+	_ground_fx = info.ground_fx if info.kind == "spike" else ""
 	state = "launched"
 	_launch_t = 0.0
 	_bounced = false
@@ -407,6 +430,101 @@ func apply_direct_damage(amount: float, label := "") -> void:
 		dying = true
 
 
+# ------------------------------------------------------------------ send directions, clashes, stun
+
+## Down-angled hits (DOWN / DOWN-BACK / DOWN-FORWARD) are meteor strikes when the target or the attacker is in the air:
+## the victim is sent straight to the floor (or down a pit) and takes extra damage. Used on two grounded fighters they only
+## press the victim into the floor: a longer stagger, no launch.
+func _apply_dir(info: HitInfo) -> void:
+	if info.dir < 5 or info.dir > 7 or info.friendly or info.kind == "pull":
+		return
+	var atk := info.attacker as Actor
+	var aerial := not is_on_floor() or state == "launched" or (atk != null and not atk.is_on_floor())
+	if aerial:
+		info.kind = "spike"
+		info.meteor = true
+		info.kb = Vector2(info.kb.x * 0.25, maxf(info.kb.length(), 900.0))
+		info.dmg *= 1.35
+		info.stop += 2
+	else:
+		info.kind = "normal"
+		info.kb = Vector2(info.kb.x * 0.3, 0.0)
+		info.stun = maxi(info.stun, 30)
+		squash = Vector2(1.5, 0.6)
+
+
+## Stun meter: damage fills it; a full meter dazes the actor as soon as it can act again (after hit-stun / getting up).
+func _gain_stun(dmg: float) -> void:
+	_stun_hold = STUN_HOLD
+	if state == "stunned":
+		return
+	stun_meter += dmg * STUN_PER_DMG * (0.5 if launch_resist else 1.0)
+	if stun_meter >= STUN_MAX:
+		stun_meter = 0.0
+		_stun_pending = true
+
+
+func _check_stun() -> void:
+	if _stun_pending and hp > 0.0 and state == "idle":
+		_begin_stun()
+	_stun_pending = _stun_pending and hp > 0.0
+
+
+func _begin_stun() -> void:
+	_stun_pending = false
+	state = "stunned"
+	stunned_t = STUN_TIME
+	velocity.x = 0.0
+	if attack.active:
+		attack.interrupt()
+	if _stun_fx == null or not is_instance_valid(_stun_fx):
+		_stun_fx = StunFx.new()
+		(_stun_fx as StunFx).actor = self
+		add_child(_stun_fx)
+	Fx.number(get_parent(), global_position + Vector2(0, -body_h * body_scale - 22.0), "STUNNED!", Color(2.2, 2.0, 0.5), 22)
+	Sfx.play("block", 0.6)
+
+
+func _end_stun() -> void:
+	stunned_t = 0.0
+	stun_meter = 0.0
+	_stun_pending = false
+
+
+func _st_stunned(delta: float) -> void:
+	velocity.x = move_toward(velocity.x, 0.0, 1800.0 * delta)
+	velocity.y = 50.0 if is_on_floor() else minf(velocity.y + GRAVITY * delta, MAX_FALL)
+	move_and_slide()
+	stunned_t -= delta
+	if stunned_t <= 0.0:
+		_end_stun()
+		state = "idle"
+
+
+## Two swings trading at once: the enemy loses the clash. It is cut off mid-swing and staggered for a moment.
+func clash_stagger(winner: Actor) -> void:
+	if attack.active:
+		attack.interrupt()
+	armor_t = 0.0
+	state = "hurt"
+	stun_frames = 22 if launch_resist else 40
+	var away := signf(global_position.x - winner.global_position.x)
+	velocity = Vector2((away if away != 0.0 else float(-facing)) * 150.0, 0.0)
+	freeze = 6
+	_victim_freeze = true
+	flash_t = 0.1
+	squash = Vector2(1.35, 0.75)
+	clash_fx(get_parent(), center())
+
+
+static func clash_fx(parent: Node, pos: Vector2) -> void:
+	Fx.ring(parent, pos, Color(2.2, 2.0, 1.0), 90.0, 0.25)
+	Fx.sparks(parent, pos, Color(2.2, 2.0, 1.0), 10)
+	Fx.number(parent, pos + Vector2(0, -34), "CLASH!", Color(2.2, 2.0, 1.0), 24)
+	Sfx.play("parry", 1.3)
+	Juice.shake(0.3)
+
+
 # ------------------------------------------------------------------ grabs / throws
 
 func can_be_grabbed() -> bool:
@@ -416,6 +534,7 @@ func can_be_grabbed() -> bool:
 func grab(by: Node) -> void:
 	if attack.active:
 		attack.interrupt()
+	_end_stun()  # grabbing a dazed partner (or enemy) wakes it: no damage, ready to be thrown
 	state = "grabbed"
 	holder = by
 	velocity = Vector2.ZERO
@@ -432,6 +551,7 @@ func release() -> void:
 
 
 func thrown(vel: Vector2, by: Actor) -> void:
+	_end_stun()
 	state = "launched"
 	holder = null
 	velocity = vel
@@ -464,6 +584,7 @@ func _physics_process(delta: float) -> void:
 		"launched": _st_launched(delta)
 		"down": _st_down(delta)
 		"getup": _st_getup(delta)
+		"stunned": _st_stunned(delta)
 		"grabbed": _st_grabbed(delta)
 		"attack": _st_attack(delta)
 		"dead": pass
@@ -510,6 +631,9 @@ func _tick_timers(delta: float) -> void:
 	_pinball_t = maxf(0.0, _pinball_t - delta)
 	_pinball_emit_t = maxf(0.0, _pinball_emit_t - delta)
 	_chain_t = maxf(0.0, _chain_t - delta)
+	_stun_hold = maxf(0.0, _stun_hold - delta)
+	if _stun_hold <= 0.0 and stun_meter > 0.0 and state != "stunned":
+		stun_meter = maxf(0.0, stun_meter - STUN_DECAY * delta)
 	_tick_burn(delta)
 	shock_t = maxf(0.0, shock_t - delta)
 	frost_t = maxf(0.0, frost_t - delta)
@@ -581,6 +705,7 @@ func _st_hurt(delta: float) -> void:
 	stun_frames -= 1
 	if stun_frames <= 0:
 		state = "idle"
+		_check_stun()
 
 
 ## The trail colour: the player who sent the enemy flying, red for everything else (enemies, hazards, explosions).
@@ -611,9 +736,19 @@ func _st_launched(delta: float) -> void:
 	var vy_before := velocity.y
 	move_and_slide()
 	figure.rot += _tumble * facing * 10.0 * delta
-	if is_on_wall() and absf(vx_before) > 230.0:
-		var n := get_wall_normal()
-		velocity.x = n.x * absf(vx_before) * 0.45
+	# the sides of the fixed fighting screen are walls too: launched bodies rebound off them
+	var edge_n := Vector2.ZERO
+	var lo := Coop.bounds.position.x + EDGE_PAD
+	var hi := Coop.bounds.end.x - EDGE_PAD
+	if global_position.x <= lo and vx_before < -230.0:
+		edge_n = Vector2.RIGHT
+	elif global_position.x >= hi and vx_before > 230.0:
+		edge_n = Vector2.LEFT
+	if edge_n != Vector2.ZERO:
+		global_position.x = clampf(global_position.x, lo, hi)
+	if (is_on_wall() and absf(vx_before) > 230.0) or edge_n != Vector2.ZERO:
+		var n := get_wall_normal() if edge_n == Vector2.ZERO else edge_n
+		velocity.x = n.x * absf(vx_before) * (0.45 if edge_n == Vector2.ZERO else 0.6)
 		Fx.impact(get_parent(), global_position + Vector2(-n.x * 14.0, -50.0), Color(1.6, 1.6, 1.6), 0.9, n)
 		Sfx.impact(18.0 + absf(vx_before) * 0.02)
 		Juice.shake(0.3)
@@ -670,7 +805,27 @@ func _land_from_launch(vy: float) -> void:
 	var parent := get_parent()
 	Fx.dust(parent, global_position, 8 + int(vy / 300.0))
 	squash = Vector2(1.3, 0.7)
-	if vy > 850.0 and not _bounced and not dying:
+	var fx := _ground_fx
+	_ground_fx = ""
+	if fx == "stop" and vy > 500.0 and not dying:
+		# spiked straight down: a dead stop on the floor, no rebound (big slam, long enough on the ground to finish)
+		apply_direct_damage(minf(vy / 180.0, 8.0), "SLAM")
+		Fx.ring(parent, global_position + Vector2(0, -4), Color(1.8, 1.4, 0.6), 110.0, 0.35)
+		Sfx.play("boom", 1.2)
+		Juice.shake(0.5)
+		Juice.zoom_punch(0.05)
+		velocity = Vector2.ZERO
+		if hp > 0.0:
+			state = "down"
+			_down_t = 0.85
+		else:
+			_on_defeated()
+		juggle_hits = 0
+		thrown_by = null
+		_bumped.clear()
+		figure.rot = fmod(figure.rot + PI, TAU) - PI
+		return
+	if (vy > 850.0 or (fx == "bounce" and vy > 500.0)) and not _bounced and not dying:
 		# spiked: bounce back up for the next hit
 		_bounced = true
 		velocity = Vector2(velocity.x * 0.5, -vy * 0.4)
@@ -711,6 +866,7 @@ func _st_getup(delta: float) -> void:
 	_getup_t -= delta
 	if _getup_t <= 0.0:
 		state = "idle"
+		_check_stun()
 
 
 func _st_grabbed(_delta: float) -> void:
@@ -752,6 +908,9 @@ func _update_visuals(delta: float) -> void:
 		"grabbed":
 			figure.set_target(PoseLib.grabbed())
 			figure.rot = lerpf(figure.rot, 0.0, 0.3)
+		"stunned":
+			figure.set_target(PoseLib.hurt())
+			figure.rot = lerpf(figure.rot, sin(Time.get_ticks_msec() / 260.0) * 0.14, 0.2)
 		"attack":
 			pass
 		_:

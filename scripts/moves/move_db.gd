@@ -176,6 +176,61 @@ static func _make_variant(m: MoveData, class_id: String) -> MoveData:
 
 # ---------------------------------------------------------------- helpers
 
+## The 8 basic send directions, in the attacker's frame (+x forward, y down is positive): F, UF, U, UB, B, DB, D, DF.
+const DIR_VECS: Array[Vector2] = [
+	Vector2(1, 0), Vector2(0.7071, -0.7071), Vector2(0, -1), Vector2(-0.7071, -0.7071),
+	Vector2(-1, 0), Vector2(-0.7071, 0.7071), Vector2(0, 1), Vector2(0.7071, 0.7071)]
+const DIR_NAMES: Array[String] = ["FORWARD", "UP-FORWARD", "UP", "UP-BACK", "BACK", "DOWN-BACK", "DOWN", "DOWN-FORWARD"]
+
+
+## Direction (0..7) a hit sends its victim, or -1 when it does not send (a stagger). An explicit "dir" key wins.
+## Launch / spike hits fly along their (snapped) knockback; trips pop up forward; ordinary hits only shove along the floor.
+static func hit_dir(h: Dictionary) -> int:
+	if h.has("dir"):
+		return int(h["dir"])
+	var kb: Vector2 = h["kb"]
+	match String(h.get("kind", "normal")):
+		"launch", "spike":
+			if kb.length() < 60.0:
+				return -1
+			return posmod(int(round(atan2(-kb.y, kb.x) / (PI / 4.0))), 8)
+		"trip":
+			return 1 if kb.x >= 0.0 else 3
+		"pull":
+			return 4
+		_:
+			if absf(kb.x) >= 160.0:
+				return 0 if kb.x > 0.0 else 4
+			return -1
+
+
+## What a down-angled hit does on touching the floor when the move does not say: straight down stops, diagonals bounce.
+static func default_ground(dir: int) -> String:
+	if dir == 6:
+		return "stop"
+	if dir == 5 or dir == 7:
+		return "bounce"
+	return ""
+
+
+## Card info for a move: its strongest hit's send direction ({dir, ground, name}) or {} when it has no hit to describe.
+static func card_dir(m: MoveData) -> Dictionary:
+	var best: Dictionary = {}
+	var bk := -1.0
+	for h in m.hits:
+		if h.get("grab", false):
+			continue
+		var k := (h["kb"] as Vector2).length() + (1000.0 if h.has("dir") else 0.0)
+		if k > bk:
+			bk = k
+			best = h
+	if best.is_empty():
+		return {}
+	var d := hit_dir(best)
+	var g := String(best.get("ground", default_ground(d))) if d >= 5 else ""
+	return {"dir": d, "ground": g, "name": DIR_NAMES[d] if d >= 0 else "NO SEND"}
+
+
 static func _hit(at: int, dur: int, box: Rect2, dmg: float, stun: int, kb: Vector2, extra := {}) -> Dictionary:
 	var h := {"at": at, "dur": dur, "box": box, "dmg": dmg, "stun": stun, "kb": kb,
 		"kind": "normal", "stop": 3, "low": false, "shake": 0.12, "radial": false}
@@ -468,7 +523,7 @@ static func _build_player() -> void:
 			[18, _idle()]],
 		"events": [{"at": 8, "type": "dive", "vx": 380.0, "vy": 1150.0}, {"at": 8, "type": "tilt", "rot": -0.85},
 			{"at": 9, "type": "tilt", "rot": 0.0}, {"at": 9, "type": "ring", "radius": 90.0, "sfx": "land", "shake": 0.3}],
-		"hits": [_hit(8, 1, Rect2(-8, -34, 78, 62), 12, 30, Vector2(150, 900), {"kind": "spike", "stop": 6, "shake": 0.3}),
+		"hits": [_hit(8, 1, Rect2(-8, -34, 78, 62), 12, 30, Vector2(150, 900), {"kind": "spike", "ground": "bounce", "stop": 6, "shake": 0.3}),
 			_hit(9, 3, Rect2(-80, -28, 160, 30), 5, 20, Vector2(200, -300), {"radial": true, "kind": "launch"})]})
 
 	# --- 18 Rising dragon -----------------------------------------------

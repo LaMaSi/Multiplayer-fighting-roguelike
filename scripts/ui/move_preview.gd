@@ -65,6 +65,50 @@ static func draw(c: CanvasItem, move_id: String, class_id: String, player: int, 
 	var dst := Rect2(r.position + (r.size - Vector2(w, h)) * 0.5, Vector2(w, h))
 	c.draw_rect(dst, Color(1, 1, 1, 0.05))
 	c.draw_texture_rect(tex, dst, false)
+	_draw_dir_badge(c, dst, move_id, class_id)
+
+
+static var _dir_cache: Dictionary = {}
+
+
+## Small compass in the corner of the picture: the arrow shows where the move's strongest hit sends its target
+## (8 directions); a dot means it does not send. Down angles say how they land: STOP (dead stop) or BOUNCE.
+static func _draw_dir_badge(c: CanvasItem, dst: Rect2, move_id: String, class_id: String) -> void:
+	var key := move_id + "|" + class_id
+	if not _dir_cache.has(key):
+		var m: MoveData = MoveDB.get_move_for(move_id, class_id) if class_id != "" else MoveDB.get_move(move_id)
+		_dir_cache[key] = MoveDB.card_dir(m) if m != null else {}
+	var info: Dictionary = _dir_cache[key]
+	if info.is_empty():
+		return
+	var rad := clampf(dst.size.x * 0.13, 13.0, 22.0)
+	var ctr := dst.end - Vector2(rad + 4.0, rad + 4.0)
+	var gold := Color(2.0, 1.6, 0.5)
+	c.draw_circle(ctr, rad, Color(0.04, 0.03, 0.06, 0.6))
+	c.draw_arc(ctr, rad, 0.0, TAU, 32, Color(1, 1, 1, 0.35), 1.0, true)
+	var d := int(info["dir"])
+	var font := ThemeDB.fallback_font
+	var fs := 9 if rad < 12.0 else 10
+	if d < 0:
+		c.draw_circle(ctr, rad * 0.22, Color(0.7, 0.7, 0.8, 0.9))
+		c.draw_string(font, ctr + Vector2(-rad - 14.0, -rad + 3.0), "NO SEND", HORIZONTAL_ALIGNMENT_RIGHT, rad * 2.0 + 14.0, fs, Color(0.75, 0.75, 0.85, 0.9))
+		return
+	var v: Vector2 = MoveDB.DIR_VECS[d]
+	var tip := ctr + v * (rad * 0.92)
+	var tail := ctr - v * (rad * 0.7)
+	var side := Vector2(-v.y, v.x)
+	var hd := rad * 0.8
+	var base := tip - v * hd
+	var head := PackedVector2Array([tip, base + side * hd * 0.62, base - side * hd * 0.62])
+	var ink := Color(0.03, 0.02, 0.05, 0.95)
+	# dark outline first so the arrow reads on any background, then the bold shaft and a big solid head
+	c.draw_line(tail, base, ink, 6.5, true)
+	c.draw_colored_polygon(PackedVector2Array([tip + v * 2.0, base + side * (hd * 0.62 + 2.0), base - side * (hd * 0.62 + 2.0)]), ink)
+	c.draw_line(tail, base, gold, 3.5, true)
+	c.draw_colored_polygon(head, gold)
+	var tag := String(info["ground"]).to_upper()
+	if tag != "":
+		c.draw_string(font, ctr + Vector2(-rad - 50.0, -rad + 3.0), tag, HORIZONTAL_ALIGNMENT_RIGHT, rad * 2.0 + 50.0, fs, Color(gold.r, gold.g, gold.b, 0.95))
 
 
 ## The pose of the move at `frame`: linear blend between the surrounding keyframes.

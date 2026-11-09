@@ -562,7 +562,29 @@ func _hits() -> void:
 				_connect(h, t, rect)
 
 
-const KB_PLAYER := 1.9 ## player knockback multiplier: enemies reach the partner for team combos
+## True while one of the move's hits is active this frame (a swing that can connect right now).
+func is_striking() -> bool:
+	if not active or move == null:
+		return false
+	for h in move.hits:
+		if not h.get("grab", false) and frame >= int(h["at"]) and frame < int(h["at"]) + int(h["dur"]):
+			return true
+	return false
+
+
+## World rects of the hits that are active this frame (authored boxes plus weapon / limb contact rects).
+func strike_rects() -> Array:
+	var out: Array = []
+	if not is_striking():
+		return out
+	for h in move.hits:
+		if not h.get("grab", false) and frame >= int(h["at"]) and frame < int(h["at"]) + int(h["dur"]):
+			out.append(world_rect(h["box"]))
+	out.append_array(_contact_rects())
+	return out
+
+
+const KB_PLAYER := 1.9## player knockback multiplier: enemies reach the partner for team combos
 const KB_EMPOWERED := 0.8  ## empowered moves keep the target close (personal combo starter)
 
 
@@ -576,9 +598,22 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 			Sfx.impact(8.0)
 			Fx.impact(a.get_parent(), rect.get_center(), a.figure.color, 0.5)
 		return
+	# CLASH: two swings landing at the same moment. The player wins it: the enemy is staggered and its swing is cancelled.
+	var clash := false
+	if t is Actor and (t as Actor).team != a.team and (t as Actor).attack.is_striking():
+		if a.team == "player":
+			clash = true
+		else:
+			var mine := a.get_hurt_rect()
+			for sr: Rect2 in (t as Actor).attack.strike_rects():
+				if sr.intersects(mine):
+					a.clash_stagger(t as Actor)
+					(t as Actor).freeze = maxi((t as Actor).freeze, 5)
+					return
 	var info := HitInfo.new()
 	info.attacker = a
 	info.team = a.team
+	info.clash = clash
 	info.dmg = float(h["dmg"]) * a.dmg_mult() * a.upgrade_mult(move.id, "dmg") * (1.3 if empowered else 1.0)
 	if a.team == "enemy":
 		info.dmg *= Coop.enemy_dmg_mult
@@ -618,7 +653,26 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		kb = Vector2(kb.x * fx, maxf(kb.y * lift, -780.0 * (1.0 + (move.charge_kb * charge_t() if move.is_chargeable() else 0.0))) if kb.y < 0.0 else kb.y)
 		if move.is_chargeable():
 			kb *= charge_kb_mult()
+	# send direction: launches fly along one of the 8 basic directions; moves that do not send only nudge the target
+	info.dir = MoveDB.hit_dir(h)
+	info.ground_fx = String(h.get("ground", MoveDB.default_ground(info.dir)))
+	if info.dir >= 0 and info.kind in ["launch", "spike", "trip"]:
+		kb = MoveDB.DIR_VECS[info.dir] * kb.length()
+		if info.kind == "trip":
+			kb.y = minf(kb.y, -240.0)
+	elif info.dir < 0:
+		kb = Vector2(clampf(kb.x, -40.0, 40.0), 0.0)
+	if clash:
+		# a clash is a stagger, not a launch: the enemy stays close, reeling, and the swing it started is gone
+		info.kind = "normal"
+		info.dmg *= 1.25
+		info.stun = maxi(info.stun, 36)
+		info.stop += 4
+		kb = Vector2(clampf(kb.x, -90.0, 90.0), 0.0)
+		info.dir = -1
+		(t as Actor).armor_t = 0.0
 	if info.friendly and not bool(h.get("partner_safe", false)):
+		info.dir = -1
 		# Player-vs-player: no damage or effects, only a light stagger that interrupts the other player.
 		info.dmg = 0.0
 		info.no_combo = true
@@ -652,6 +706,8 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		# impact: the attacker compresses into the blow while the pose is held, then rebounds as the freeze ends
 		var iw := clampf((float(h["dmg"]) - 4.0) / 20.0, 0.0, 1.0)
 		a.squash = Vector2(lerpf(1.12, 1.3, iw), lerpf(0.94, 0.8, iw))
+		if info.clash:
+			Actor.clash_fx(a.get_parent(), info.pos)
 		var drain := float(h.get("drain", 0.0))
 		if drain > 0.0 and t is Actor and not info.friendly and info.dmg > 0.0:
 			# life drain: a share of the damage dealt comes back as health, a smaller share to a nearby partner

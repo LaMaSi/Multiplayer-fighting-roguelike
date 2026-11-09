@@ -150,7 +150,7 @@ func set_move(slot: String, id: String) -> void:
 
 func _tick_timers(delta: float) -> void:
 	super._tick_timers(delta)
-	if state in ["hurt", "launched", "attack", "dash", "downed", "tossed", "ledge", "dead"]:
+	if state in ["hurt", "launched", "attack", "dash", "downed", "tossed", "ledge", "dead", "stunned"]:
 		_sprint = 0  # a sprint never survives being hit, attacking or hanging
 	_dash_cd = maxf(0.0, _dash_cd - delta)
 	_fling_grace = maxf(0.0, _fling_grace - delta)
@@ -596,6 +596,7 @@ func _on_damaged(_info: HitInfo) -> void:
 
 
 func begin_toss(dir: int, _by: Actor) -> void:
+	_end_stun()
 	state = "tossed"
 	holder = null
 	_toss_t = 0.6
@@ -884,7 +885,7 @@ func _update_visuals(delta: float) -> void:
 	# eyes follow the stick (falling back to the facing direction); figure space is flipped by facing
 	var aim_w := input.dir if input.dir.length() > 0.2 else Vector2(facing, 0)
 	figure.aim = Vector2(aim_w.x * facing, aim_w.y)
-	figure.squint = 1.0 if (state == "hurt" or state == "launched") else 0.0
+	figure.squint = 1.0 if (state == "hurt" or state == "launched" or state == "stunned") else 0.0
 	if held != null and is_instance_valid(held):
 		if held is Prop:
 			# the prop rests on the raised hands (so the arms visibly reach up to it, whatever its size)
