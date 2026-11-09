@@ -213,6 +213,15 @@ static func grabbed() -> Dictionary:
 	}
 
 
+## Carrying a crate / barrel / vase: both arms stretched up and a little apart, the hands under the object (the held prop
+## is placed on the hands, see Fighter._update_visuals).
+static func carry_prop() -> Dictionary:
+	return {
+		"lean": -0.04, "th_f": 0.3, "kn_f": 0.4, "th_b": -0.3, "kn_b": 0.4,
+		"ua_f": 2.8, "la_f": 0.3, "ua_b": 3.5, "la_b": -0.3,
+	}
+
+
 static func carry() -> Dictionary:
 	return {
 		"lean": -0.05, "th_f": 0.3, "kn_f": 0.4, "th_b": -0.3, "kn_b": 0.4,

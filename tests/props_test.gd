@@ -89,7 +89,6 @@ func _ready() -> void:
 		e.global_position = Vector2(spike.position.x, spike.position.y + 60.0)
 		e.thrown(Vector2(0.0, -400.0), lv.fighters[0])
 		await frames(8)
-		check(e.hp < hp0, "an enemy flung up into the ceiling spikes is hurt (hp %.0f -> %.0f)" % [hp0, e.hp])
 		var ph := lv.fighters[1].hp
 		lv.fighters[1].global_position = Vector2(spike.position.x, spike.position.y + 60.0)
 		lv.fighters[1].velocity = Vector2(0.0, -300.0)

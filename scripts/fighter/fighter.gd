@@ -808,7 +808,7 @@ func adapt_pose(kf: Dictionary, airborne: bool) -> Dictionary:
 func _loco_pose() -> Dictionary:
 	var p := _loco_pose_base()
 	var base := _base_pose()
-	if not base.is_empty() and not p.is_empty():
+	if not base.is_empty() and not p.is_empty() and held == null:  # carrying: the class guard must not override the raised arms
 		if state == "idle" or state == "land":
 			p = base.duplicate() if state == "idle" else PoseLib.blend(p, base, 0.5)
 		else:
@@ -863,7 +863,7 @@ func _loco_pose_base() -> Dictionary:
 		_:
 			p = PoseLib.idle(Time.get_ticks_msec() / 1000.0 + player_index)
 	if held != null:
-		var c := PoseLib.carry()
+		var c := PoseLib.carry_prop() if held is Prop else PoseLib.carry()
 		for k in ["ua_f", "la_f", "ua_b", "la_b", "lean"]:
 			p[k] = c[k]
 	return p
@@ -886,7 +886,12 @@ func _update_visuals(delta: float) -> void:
 	figure.aim = Vector2(aim_w.x * facing, aim_w.y)
 	figure.squint = 1.0 if (state == "hurt" or state == "launched") else 0.0
 	if held != null and is_instance_valid(held):
-		held.global_position = global_position + Vector2(facing * 4.0, -body_h - 22.0)
+		if held is Prop:
+			# the prop rests on the raised hands (so the arms visibly reach up to it, whatever its size)
+			var hm := (figure.to_global(figure.hand_f_pos) + figure.to_global(figure.hand_b_pos)) * 0.5
+			held.global_position = hm + Vector2(0.0, 14.0 - (held as Prop).h * 0.5)  # a prop's origin is its centre: its underside sits on the hands
+		else:
+			held.global_position = global_position + Vector2(facing * 4.0, -body_h - 22.0)
 	queue_redraw()
 
 

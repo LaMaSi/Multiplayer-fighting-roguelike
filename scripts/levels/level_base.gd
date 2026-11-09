@@ -291,9 +291,7 @@ func _spawn_hazards() -> void:
 		var pos := Vector2(x, ground_top(x))
 		match kind:
 			"spikes":
-				var st := SpikeTrap.new()
-				st.position = pos
-				add_child(st)
+				pass  # ground spikes were removed from the game (ceiling spikes stay)
 			"ceiling_spikes":
 				var tip_h := ground_top(x) - (float(hz["y"]) + SpikeTrap.H)
 				if tip_h < SpikeTrap.AIR_MIN_H:

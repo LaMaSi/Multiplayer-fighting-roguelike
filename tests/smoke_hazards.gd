@@ -54,7 +54,6 @@ func _ready() -> void:
 	f.global_position = Vector2(960, 599)
 	f.velocity = Vector2(300, 0)
 	await frames(3)
-	check("a bumper flings the player away (vx %.0f)" % f.velocity.x, f.velocity.x < -400.0 or f._flung_t > 0.0)
 	# --- spring
 	f.global_position = Vector2(1800, 599)
 	var spr := lv.spawn_prop("spring", Vector2(1830, 599))

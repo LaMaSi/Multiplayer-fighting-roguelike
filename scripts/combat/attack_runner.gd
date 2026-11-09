@@ -149,9 +149,13 @@ func charge_kb_mult() -> float:
 	return 1.0 + (move.charge_kb * charge_t() if move != null and move.is_chargeable() else 0.0)
 
 
-## Scale for the move's own movement (lunge, drive, jump): 1 for a tap, up to 1 + charge_move at full charge.
+## Scale for the move's own movement (lunge, drive, jump): 1 for a tap, up to 1 + charge_move at full charge. The distance
+## is front-loaded (ease-out): half a charge already gives three quarters of the extra distance, so a short hold is felt.
 func charge_move_mult() -> float:
-	return 1.0 + (move.charge_move * charge_t() if move != null and move.is_chargeable() else 0.0)
+	if move == null or not move.is_chargeable():
+		return 1.0
+	var ct := charge_t()
+	return 1.0 + move.charge_move * (1.0 - (1.0 - ct) * (1.0 - ct))
 
 
 ## A short press is just the move: the ring and the ticks only start after the button has been held this long.
@@ -233,6 +237,24 @@ func _keyframes() -> void:
 		_kf_idx = idx
 		_kf_air = air
 		actor.figure.set_target(actor.adapt_pose(move.kf[idx][1], air))
+	_follow_through(idx, air)
+
+
+## Long end lag used to hold the strike pose until the next keyframe, which reads as unresponsive. After the last hit the
+## pose now keeps moving: a short overshoot past the strike (follow-through), then a smooth settle into the next keyframe.
+func _follow_through(idx: int, air: bool) -> void:
+	if idx < 0 or idx + 1 >= move.kf.size() or move.hits.is_empty() or actor.figure == null:
+		return
+	var f0 := int(move.kf[idx][0])
+	var f1 := int(move.kf[idx + 1][0])
+	var start := maxi(f0, move.last_hit_end()) + 2
+	if f1 - start < 6 or frame < start or frame >= f1:
+		return
+	var t := float(frame - start) / float(f1 - start)
+	var k := t * t * (3.0 - 2.0 * t) - 0.12 * sin(PI * clampf(t * 1.6, 0.0, 1.0))
+	var a: Dictionary = StickFigure.NEUTRAL.merged(actor.adapt_pose(move.kf[idx][1], air), true)  # full poses, so keys one side leaves out still blend
+	var b: Dictionary = StickFigure.NEUTRAL.merged(actor.adapt_pose(move.kf[idx + 1][1], air), true)
+	actor.figure.set_target(PoseLib.blend(a, b, k))
 
 
 func _spin_drive() -> void:
