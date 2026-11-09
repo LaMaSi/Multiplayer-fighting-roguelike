@@ -50,6 +50,8 @@ var _flash: Array[String] = ["", ""]
 var _flash_t: Array[float] = [0.0, 0.0]
 var _settled: Array = [[false, false, false, false, false], [false, false, false, false, false]]
 var _leaving := false
+var _lv: LoadoutView  ## swap moves between buttons / directions on the reveal screen (X)
+var _lv_open := false
 var scene_changer: Callable  ## tests set this to observe scene changes instead of leaving the screen
 
 
@@ -57,6 +59,15 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Juice.reset_time()
 	Dbg._hint.visible = false
+	_lv = LoadoutView.new(
+		func(p: int) -> Dictionary: return RunState.loadouts[p],
+		func(p: int, slot: String, id: String) -> void:
+			if id == "":
+				(RunState.loadouts[p] as Dictionary).erase(slot)
+			else:
+				(RunState.loadouts[p] as Dictionary)[slot] = id,
+		func(p: int) -> String: return RunState.classes[p],
+		func(p: int) -> Dictionary: return RunState.upgrades[p])
 	add_child(ScreenBackdrop.new())
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -185,6 +196,20 @@ func _physics_process(delta: float) -> void:
 		_flash_t[p] = maxf(0.0, _flash_t[p] - delta)
 	if phase == "reveal":
 		reveal_t += delta
+	if _lv_open:
+		_lv.update(delta)
+		if _lv.close_requested:
+			_lv.reset()
+			_lv_open = false
+		return
+	if phase == "reveal" and reveal_t >= REVEAL_END:
+		for p in (1 if RunState.solo else 2):
+			if Inp.players[p].pressed(PlayerInput.Btn.X) and not ready_flags[p]:
+				_lv.reset()
+				_lv_open = true
+				ready_flags = [false, false]
+				Sfx.play("ui")
+				return
 	for p in (1 if RunState.solo else 2):
 		var inp: PlayerInput = Inp.players[p]
 		var d := inp.digital_dir()
@@ -282,6 +307,10 @@ func paint_back(c: Control) -> void:
 
 
 func paint(c: Control) -> void:
+	if _lv_open:
+		c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.92))
+		_lv.paint_screen(c)
+		return
 	if phase == "pick":
 		_title(c, "CHOOSE YOUR WEAPON")
 		for p in (1 if RunState.solo else 2):
@@ -432,7 +461,7 @@ func _paint_reveal(c: Control, p: int, r: Rect2) -> void:
 func _paint_prompt(c: Control) -> void:
 	if reveal_t < REVEAL_END:
 		return
-	var txt := "A  START THE RUN     UP/DOWN  SELECT A MOVE     Y  REROLL IT  (P1: %d  P2: %d LEFT)" % [RunState.setup_rerolls[0], RunState.setup_rerolls[1]]
+	var txt := "A  START THE RUN     X  SWAP BUTTONS     UP/DOWN  SELECT A MOVE     Y  REROLL IT  (P1: %d  P2: %d LEFT)" % [RunState.setup_rerolls[0], RunState.setup_rerolls[1]]
 	var col := Color(1, 1, 1, 0.55 + 0.45 * sin(_t * 5.0))
 	if ready_flags[0] or ready_flags[1]:
 		var waiting := 1 if ready_flags[0] and not ready_flags[1] else 0
