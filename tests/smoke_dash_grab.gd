@@ -52,6 +52,39 @@ func _ready() -> void:
 	await frames(3)
 	check("pressing a button throws in the aimed direction (up: vy %.0f)" % d.velocity.y, d.state == "launched" and d.velocity.y < -300.0)
 
+	# hit while grabbing: the grabbed enemy takes the blow, the grab ends, the grabber is invincible
+	f.attack.interrupt()
+	f.state = "idle"
+	f.hp = f.max_hp
+	f.invuln = 0.0
+	f.facing = 1
+	await frames(120)  # the thrown dummy lands and gets up
+	d.state = "idle"
+	d.velocity = Vector2.ZERO
+	d.hit_chain = 0
+	d.global_position = Vector2(f.global_position.x + 35, f.global_position.y)
+	d.hp = d.max_hp
+	await frames(5)
+	f.input.script_set(Vector2.ZERO, [PlayerInput.Btn.LB])
+	await frames(2)
+	f.input.script_set(Vector2.ZERO, [])
+	await frames(30)
+	check("(setup) grabbing the enemy again", f.attack.grabbed == d and d.state == "grabbed")
+	var hp_f := f.hp
+	var hp_d := d.hp
+	var hi := HitInfo.new()
+	hi.team = "enemy"
+	hi.dmg = 10.0
+	hi.kb = Vector2(-200, 0)
+	hi.pos = f.global_position
+	var took := f.take_hit(hi)
+	check("the hit is absorbed", took)
+	check("the grabber takes no damage", f.hp == hp_f)
+	check("the grabbed enemy took the hit instead", d.hp < hp_d)
+	check("the grab has ended", f.attack.grabbed == null and not f.attack.active and d.state != "grabbed")
+	check("the grabber is invincible for a moment", f.invuln > 0.5)
+	check("a second hit during the i-frames does nothing", not f.take_hit(hi) and f.hp == hp_f)
+
 	# a KO'd player is not an obstacle
 	other._on_defeated()
 	check("downed player is non-solid", not other.get_collision_layer_value(3))

@@ -223,6 +223,8 @@ func _dodges(_info: HitInfo) -> bool:
 func take_hit(info: HitInfo) -> bool:
 	if not is_targetable() or invuln > 0.0:
 		return false
+	if _hit_while_grabbing(info):
+		return true
 	if _dodges(info):
 		return false
 	if _filter_hit(info):
@@ -310,6 +312,37 @@ func take_hit(info: HitInfo) -> bool:
 	_on_damaged(info)
 	if lethal:
 		dying = true
+	return true
+
+
+## A player who is holding something (enemy, prop or partner) and gets hit: the held one takes the blow instead,
+## the grab ends and the holder is briefly invincible.
+func _hit_while_grabbing(info: HitInfo) -> bool:
+	if team != "player" or info.friendly:
+		return false
+	var g: Node = null
+	if attack.active and attack.grabbed != null:
+		g = attack.grabbed  # grab-throw: an enemy or the partner
+		attack.grabbed = null
+		attack.aiming = false
+		attack.interrupt()
+		state = "idle"
+		figure.set_target(PoseLib.idle(0.0))
+		velocity.x = 0.0
+	elif get("held") != null:
+		g = get("held")  # a carried crate / prop
+		set("held", null)
+	else:
+		return false
+	invuln = maxf(invuln, 0.8)
+	if is_instance_valid(g):
+		if g.has_method("release"):
+			g.release()
+		if g.has_method("take_hit"):
+			if g is Node2D:
+				info.pos = (g as Node2D).global_position + Vector2(0, -50)
+			g.take_hit(info)
+	Fx.ring(get_parent(), global_position + Vector2(0, -45), Color(1.9, 1.9, 2.2), 70.0, 0.25)
 	return true
 
 
