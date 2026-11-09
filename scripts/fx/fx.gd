@@ -96,6 +96,25 @@ static func impact(parent: Node, pos: Vector2, col: Color, power: float = 1.0, d
 	sl.dir = d
 	sl.position = pos
 	parent.add_child(sl)
+	if power >= 1.8:
+		# heavy blow: a second, shorter slash crosses the first, plus a white-hot core flash
+		var sl2 := FxShape.new()
+		sl2.mode = "slash"
+		sl2.col = col
+		sl2.size = (50.0 + 22.0 * power) * maxf(sc, 0.3)
+		sl2.dur = 0.09
+		sl2.alpha = 0.8
+		sl2.dir = d.rotated(0.9)
+		sl2.position = pos
+		parent.add_child(sl2)
+		var core := FxShape.new()
+		core.mode = "burst"
+		core.col = Color(2.2, 2.2, 2.2)
+		core.size = (18.0 + 8.0 * power) * maxf(sc, 0.3)
+		core.dur = 0.07
+		core.alpha = 0.7
+		core.position = pos
+		parent.add_child(core)
 	sparks(parent, pos, col, int(3 + 4 * power), dir)
 
 

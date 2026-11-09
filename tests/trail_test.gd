@@ -36,7 +36,7 @@ func _clear_trails(lv: Node) -> void:
 func _launch(lv: LevelBase, attacker: Node, src: String) -> void:
 	_clear_trails(lv)
 	for old in get_tree().get_nodes_in_group("hurt_enemy"):
-		if old is Enemy and old.name != "keep":
+		if old is Enemy and old != attacker:  # (an attacker that is an enemy must survive the clean-up)
 			old.queue_free()
 	await frames(2)
 	var e: Enemy = lv.spawn_enemy("dummy", Vector2(900.0, lv.ground_y - 1.0))
