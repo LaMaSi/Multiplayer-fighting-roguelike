@@ -145,10 +145,20 @@ func _on_defeated() -> void:
 	Fx.shatter(parent, pos, figure.color, 26)
 	Fx.impact(parent, pos, figure.color, 1.6)
 	Sfx.play("death")
-	Juice.shake(0.3 if not bool(def.get("boss", false)) else 0.8)
-	if bool(def.get("boss", false)):
+	var boss := bool(def.get("boss", false))
+	var lvl: Node = get_parent()
+	var finale: bool = lvl != null and lvl.has_method("is_final_kill") and bool(lvl.call("is_final_kill"))
+	Juice.shake(0.8 if boss else (0.7 if finale else 0.3))
+	if finale:
+		# the last enemy of a battle: a long slow-motion finish with a heavy camera hit
+		Juice.slowmo(0.15, 1.1)
+		Juice.zoom_punch(0.14)
+		Juice.kick(Vector2(float(-facing) * 40.0, -8.0))
+		Fx.ring(parent, pos, Color(2.2, 2.0, 1.2), 160.0, 0.5)
+	elif boss:
 		Juice.slowmo(0.25, 0.5)
 		Juice.zoom_punch(0.1)
+	if boss:
 		Pickup.spawn(parent, global_position, "hp_m")
 		Pickup.spawn(parent, global_position, "hp_m")
 		Pickup.spawn(parent, global_position, "meter")
@@ -307,7 +317,7 @@ func _inner_dir() -> float:
 
 ## Walks toward a platform that gets us up toward the target and hops when underneath. Returns the wanted horizontal velocity (0 = nothing found).
 func _climb(dy: float) -> float:
-	var lvl := get_parent()
+	var lvl: Node = get_parent()
 	if lvl == null or not ("platforms" in lvl):
 		return 0.0
 	var best: Rect2 = Rect2()
@@ -413,7 +423,7 @@ func _jump(dir: float, speed: float, up: float) -> void:
 ## Terrain-aware jumping while walking toward the target. Returns 0 = nothing to do, 1 = jumped (a pit it can cross, or a
 ## step / wall up to ~130 px), 2 = a pit it cannot cross (the caller makes it wait at the edge).
 func _terrain_jump(dir: float) -> int:
-	var lvl := get_parent()
+	var lvl: Node = get_parent()
 	if lvl == null or not lvl.has_method("ground_at") or not is_on_floor() or _air_t > 0.0 or dir == 0.0:
 		return 0
 	var here: float = lvl.ground_at(global_position.x)

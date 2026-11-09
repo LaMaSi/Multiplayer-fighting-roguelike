@@ -23,6 +23,8 @@ var objective := ""  ## one-line goal shown under the revive hearts
 
 var _canvas: Canvas
 var _trail: Array[float] = [100.0, 100.0]
+var _hp_prev: Array[float] = [-1.0, -1.0]
+var _hp_shake: Array[float] = [0.0, 0.0]  ## health bar shake per player: jumps on damage, decays fast
 var _banner := ""
 var _banner_t := 0.0
 var _banner_col := Color.WHITE
@@ -124,6 +126,10 @@ func _process(delta: float) -> void:
 	for i in Coop.fighters.size():
 		var f := Coop.fighters[i]
 		_trail[i] = move_toward(_trail[i], f.hp, 40.0 * delta)
+		if _hp_prev[i] >= 0.0 and f.hp < _hp_prev[i] - 0.01:
+			_hp_shake[i] = clampf(0.5 + (_hp_prev[i] - f.hp) / 30.0, 0.5, 1.0)
+		_hp_prev[i] = f.hp
+		_hp_shake[i] = maxf(0.0, _hp_shake[i] - 3.2 * delta)
 	if _result != "":
 		for p in Inp.players:
 			if p.pressed(PlayerInput.Btn.JUMP):
@@ -212,6 +218,8 @@ func _paint_player(c: Control, f: Fighter, i: int) -> void:
 		var k := 1.0 + 0.032 * (0.5 + 0.5 * sin(_clock * (5.0 + 5.0 * (1.0 - hp / LOW_HP))))
 		var anchor := Vector2(1280.0 - x0, y0) if flip else Vector2(x0, y0)
 		base = Transform2D(0.0, Vector2(k, k), 0.0, anchor * (1.0 - k))
+	if _hp_shake[i] > 0.0:
+		base.origin += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 12.0 * _hp_shake[i]
 	var cx := 1280.0 - (x0 + 38.0) if flip else x0 + 38.0
 	var cy := y0 + 38.0
 	var mx := Transform2D(Vector2(-1, 0), Vector2(0, 1), Vector2(1280, 0)) if flip else Transform2D.IDENTITY
