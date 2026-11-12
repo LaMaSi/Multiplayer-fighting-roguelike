@@ -13,6 +13,8 @@ class Canvas extends Control:
 		last_drawn_open = menu != null and menu.open
 		if menu != null and menu.open:
 			menu.paint(self)
+		elif menu != null and menu._lv.any_open():
+			menu._lv.paint_open(self, 0.6, "B / BACK  CLOSE")  # live loadout: only that player's half, game running
 
 
 var level: LevelBase
@@ -25,6 +27,7 @@ var _lo_player := 0
 var _spawn_idx := 1
 var _last_dir: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO]
 var _lv: LoadoutView
+var _idle_input: Array[PlayerInput] = [PlayerInput.new(0), PlayerInput.new(1)]  ## neutral controls for a fighter whose player is in the loadout panel
 var _b_guard := false  ## ignore B until it is released (the loadout screen closes on B)
 var _t := 0.0
 var _toggle_cd := 0.0
@@ -64,6 +67,7 @@ func _toggle() -> void:
 	if level._cleared or Coop.is_over:
 		return
 	open = not open
+	_release_fighters()
 	get_tree().paused = open
 	if level.hud != null:
 		level.hud.visible = not open  # the pause screens replace the HUD
@@ -140,28 +144,26 @@ func _physics_process(delta: float) -> void:
 		start_pressed = start_pressed or p.pressed(PlayerInput.Btn.START)
 		back_pressed = back_pressed or p.pressed(PlayerInput.Btn.BACK)
 	if _toggle_cd <= 0.0:
-		if back_pressed:
+		if back_pressed and open:
 			_toggle_cd = 0.2
-			if not open:
-				_toggle()
-				if open:
-					_lv.reset()
-					_go("loadout", 0)
-			elif _page == "loadout":
+			if _page == "loadout":
 				_lv.reset()
 				_toggle()
+				return  # this Back press closed the menu: it must not also open the live panel below
 			else:
 				_lv.reset()
+				_lv.open_all()
 				_go("loadout", 0)
 		elif start_pressed:
 			_toggle_cd = 0.2
 			_lv.reset()
 			_toggle()  # Start again closes the menu from any page, the loadout screen included
 	if not open:
+		_live_loadout(delta)
 		return
 	if _page == "loadout":
 		_lv.update(delta)
-		if _lv.close_requested:
+		if not _lv.any_open():
 			_lv.reset()
 			_b_guard = true
 			_go("main", 1)
@@ -187,6 +189,39 @@ func _physics_process(delta: float) -> void:
 			else:
 				_toggle()
 	_canvas.queue_redraw()
+
+
+## Back while playing: that player's loadout panel opens over THEIR half only and the game keeps running. Their fighter
+## stands still meanwhile (stick and buttons drive the panel), and gets its controls back once the panel is closed and
+## every button is released, so the closing B / A press is not also an attack or a jump.
+func _live_loadout(delta: float) -> void:
+	var playing := not (level._cleared or Coop.is_over)
+	for p in mini(Coop.fighters.size(), 1 if RunState.solo else 2):
+		var inp: PlayerInput = Inp.players[p]
+		if playing and inp.pressed(PlayerInput.Btn.BACK):
+			_lv.toggle(p)
+			Sfx.play("ui")
+		if not playing and _lv.open[p]:
+			_lv.close(p)
+	_lv.update(delta)
+	for p in Coop.fighters.size():
+		var f := Coop.fighters[p]
+		if _lv.open[p]:
+			f.input = _idle_input[p]
+		elif f.input == _idle_input[p]:
+			var any := false
+			for b in PlayerInput.Btn.COUNT:
+				any = any or Inp.players[p].is_held(b)
+			if not any:
+				f.input = Inp.players[p]
+	_canvas.queue_redraw()
+
+
+## Gives every fighter its real controls back (the pause menu opens, the level ends).
+func _release_fighters() -> void:
+	for p in Coop.fighters.size():
+		if is_instance_valid(Coop.fighters[p]) and Coop.fighters[p].input == _idle_input[p]:
+			Coop.fighters[p].input = Inp.players[p]
 
 
 func _nav(d: Vector2i) -> void:
@@ -234,6 +269,7 @@ func _activate() -> void:
 			_toggle()
 		"loadout":
 			_lv.reset()
+			_lv.open_all()
 			_go("loadout", 0)
 		"options":
 			_go("options", 0)
@@ -277,7 +313,7 @@ func _title(c: Control, text: String, pos: Vector2, size: int) -> void:
 func paint(c: Control) -> void:
 	if _page == "loadout":
 		c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.8))
-		_lv.paint_screen(c)
+		_lv.paint_open(c, 0.0)
 		return
 	c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.68))
 	var heading := {"main": "PAUSED", "options": "OPTIONS", "testing": "TESTING", "lab": "MOVE LAB"}[_page] as String

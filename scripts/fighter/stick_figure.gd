@@ -84,16 +84,26 @@ func _process(delta: float) -> void:
 			_blink_t = randf_range(2.0, 5.0)
 		_blink = maxf(0.0, _blink - delta)
 	if not frozen:
-		var dt := minf(delta, 1.0 / 30.0)
+		# The spring is integrated in small sub-steps: one big step (a high time scale or a slow frame) makes it
+		# unstable and the pose, root offset included, explodes off screen.
+		var dt := minf(delta, 0.1)
 		var w := follow_speed
 		var k := w * w
 		var c := 2.0 * zeta * w
+		var n := maxi(1, ceili(dt * maxf(120.0, 4.0 * w)))
+		var h := dt / float(n)
 		for key in pose:
 			var v: float = _vel.get(key, 0.0)
 			var p: float = pose[key]
-			v += (k * (float(target[key]) - p) - c * v) * dt
+			var tg := float(target[key])
+			for _s in n:
+				v += (k * (tg - p) - c * v) * h
+				p += v * h
+			if not (is_finite(p) and is_finite(v)):
+				p = tg
+				v = 0.0
 			_vel[key] = v
-			pose[key] = p + v * dt
+			pose[key] = p
 		if trail_on:
 			_trail.push_back([to_global(weapon_tip if weapon in ["sword", "hammer"] else hand_f_pos), to_global(hand_b_pos), to_global(foot_f_pos), to_global(foot_b_pos)])
 			if _trail.size() > 8:

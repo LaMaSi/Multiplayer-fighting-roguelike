@@ -45,7 +45,8 @@ var last_hitter: Actor = null
 var juggle_hits := 0
 var hit_chain := 0  ## hits taken back to back without getting to act (enemies): feeds the combo breaker
 var _chain_t := 0.0
-const MIN_HITSTOP := 3  ## frames every involved character holds still when a hit connects
+const LAND_STAGGER := 18  ## frames an enemy reels after landing from a launch (it is not knocked down)
+const MIN_HITSTOP := 3 ## frames every involved character holds still when a hit connects
 const CHAIN_BREAK := 14  # after this many hits in a row the enemy breaks out (short invulnerability + shove)
 var buffs: Dictionary = {}
 var upgrades: Dictionary = {}  ## move_id -> {dmg, spd, kb} multipliers earned from rewards
@@ -380,6 +381,9 @@ func _start_launch(info: HitInfo, lethal: bool) -> void:
 		velocity = Vector2(kb.x * 0.3, absf(kb.y))
 	else:
 		velocity = Vector2(kb.x, kb.y * sc if kb.y < 0.0 else -260.0)
+		if info.sends:
+			# flat sends still leave the floor (a low liner), and a send behind the attacker arcs over their head
+			velocity.y = minf(velocity.y, -440.0 if info.ang > 135.0 else -260.0)
 		if info.kind == "trip":
 			velocity.y = minf(velocity.y, -240.0)
 		if lethal and velocity.y > -320.0:
@@ -421,7 +425,7 @@ func _hit_feedback(info: HitInfo, dmg: float) -> void:
 		var zp := clampf((dmg - 5.0) / 80.0, 0.0, 0.14)
 		if info.punch > 0.0 or info.relay or zp > 0.0:
 			Juice.zoom_punch(maxf(maxf(info.punch, zp), 0.05 if info.relay else 0.0))
-		if (dmg >= 12.0 or hp <= 0.0 or info.relay) and Engine.time_scale > 0.9 * Juice.user_time_scale:
+		if (dmg >= 12.0 or hp <= 0.0 or info.relay) and Engine.time_scale > 0.9 * Juice.normal_scale():
 			Juice.slowmo(0.22, 0.12 if hp > 0.0 else 0.22)
 
 
@@ -440,6 +444,24 @@ func apply_direct_damage(amount: float, label := "") -> void:
 ## the victim is sent straight to the floor (or down a pit) and takes extra damage. Used on two grounded fighters they only
 ## press the victim into the floor: a longer stagger, no launch.
 func _apply_dir(info: HitInfo) -> void:
+	if info.sends:
+		# A player's spike (-90 degrees). In the air (target or attacker): a meteor, straight into the floor, which bounces
+		# the target back up. On the ground: the blow pops the target straight up off the floor. Either way it stays in
+		# play for the partner; nothing is pinned down.
+		if info.kind != "spike" or info.friendly:
+			return
+		var by := info.attacker as Actor
+		if not is_on_floor() or state == "launched" or (by != null and not by.is_on_floor()):
+			info.meteor = true
+			info.kb = Vector2(info.kb.x * 0.25, maxf(info.kb.length(), 900.0))
+			info.dmg *= 1.35
+			info.stop += 2
+		else:
+			info.kind = "launch"
+			info.kb = Vector2(0.0, -clampf(info.kb.length() * 0.8, 600.0, 860.0))
+			squash = Vector2(1.5, 0.6)
+			Fx.ring(get_parent(), global_position + Vector2(0, -4), Color(1.8, 1.4, 0.6), 80.0, 0.25)
+		return
 	if info.dir < 5 or info.dir > 7 or info.friendly or info.kind == "pull":
 		return
 	var atk := info.attacker as Actor
@@ -808,6 +830,8 @@ func _land_from_launch(vy: float) -> void:
 	squash = Vector2(1.3, 0.7)
 	var fx := _ground_fx
 	_ground_fx = ""
+	if team == "enemy" and fx == "stop":
+		fx = "bounce"  # no hard knockdowns on enemies: a spiked enemy rebounds and stays in play
 	if fx == "stop" and vy > 500.0 and not dying:
 		# spiked straight down: a dead stop on the floor, no rebound (big slam, long enough on the ground to finish)
 		apply_direct_damage(minf(vy / 180.0, 8.0), "SLAM")
@@ -844,6 +868,14 @@ func _land_from_launch(vy: float) -> void:
 	figure.rot = fmod(figure.rot + PI, TAU) - PI
 	if hp <= 0.0:
 		_on_defeated()
+		return
+	if team == "enemy":
+		# Enemies are never knocked flat: they skid to their feet, reeling for a moment and still open to the next hit
+		# (lying down made them untouchable and stopped the rally between the two players).
+		state = "hurt"
+		stun_frames = LAND_STAGGER
+		velocity.x *= 0.55
+		figure.rot = 0.0
 		return
 	state = "down"
 	_down_t = 0.55

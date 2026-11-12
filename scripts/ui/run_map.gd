@@ -20,8 +20,7 @@ const DESCS := {
 var _sel := 0
 var _last: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO]
 var _t := 0.0
-var _lv: LoadoutView  ## loadout screen, opened with Y between levels
-var _lv_open := false
+var _lv: LoadoutView  ## loadout panels, opened with Y between levels (each player their own half)
 
 
 func _ready() -> void:
@@ -59,27 +58,21 @@ func _start_pos() -> Vector2:
 
 ## Input for the loadout screen is read in the physics step (right after Inp polls).
 func _physics_process(delta: float) -> void:
-	if _lv_open:
-		_lv.update(delta)
-		if _lv.close_requested:
-			_lv.reset()
-			_lv_open = false
-		return
+	# Y opens / closes that player's own loadout panel (their half of the screen only)
+	_lv.update(delta)
 	for p in Inp.players:
-		if p.pressed(PlayerInput.Btn.Y):
-			_lv.reset()
-			_lv_open = true
+		if p.pressed(PlayerInput.Btn.Y) and (p.index == 0 or not RunState.solo):
+			_lv.toggle(p.index)
 			Sfx.play("ui")
-			return
 
 
 func _process(delta: float) -> void:
 	_t += delta
-	if _lv_open:
-		queue_redraw()
-		return
 	var opts := RunState.available_next()
 	for p in Inp.players:
+		if _lv.open[p.index]:
+			_last[p.index] = p.digital_dir()
+			continue  # busy in their loadout panel: the other player can still pick the next stop
 		var d := p.digital_dir()
 		if d != _last[p.index] and d.y != 0 and opts.size() > 0:
 			_sel = posmod(_sel + d.y, opts.size())
@@ -169,9 +162,7 @@ func _draw() -> void:
 		draw_rect(Rect2(x, 170, 230, 12), Color(0.12, 0.05, 0.08))
 		draw_rect(Rect2(x, 170, 230.0 * frac, 12), Color(1.0, 0.25 + 0.7 * frac, 0.25 + 0.7 * frac))
 		_txt(Vector2(x, 202), "%d / %d HP" % [int(RunState.hp[p]), int(RunState.max_hp[p])], 13, Color(1, 1, 1, 0.7))
-	if _lv_open:
-		draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.88))
-		_lv.paint_screen(self)
+	_lv.paint_open(self, 0.88, "B / Y  CLOSE")
 
 
 func _edge(a: Vector2, b: Vector2, hot: bool) -> void:

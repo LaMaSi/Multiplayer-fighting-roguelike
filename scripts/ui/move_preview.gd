@@ -72,7 +72,8 @@ static var _dir_cache: Dictionary = {}
 
 
 ## Small compass in the corner of the picture: the arrow shows where the move's strongest hit sends its target
-## (8 directions); a dot means it does not send. Down angles say how they land: STOP (dead stop) or BOUNCE.
+## at its own angle (0 ahead .. 90 up, down = SPIKE, backwards = BACK), with the angle written beside it; a dot means
+## the move only staggers.
 static func _draw_dir_badge(c: CanvasItem, dst: Rect2, move_id: String, class_id: String) -> void:
 	var key := move_id + "|" + class_id
 	if not _dir_cache.has(key):
@@ -86,14 +87,15 @@ static func _draw_dir_badge(c: CanvasItem, dst: Rect2, move_id: String, class_id
 	var gold := Color(2.0, 1.6, 0.5)
 	c.draw_circle(ctr, rad, Color(0.04, 0.03, 0.06, 0.6))
 	c.draw_arc(ctr, rad, 0.0, TAU, 32, Color(1, 1, 1, 0.35), 1.0, true)
-	var d := int(info["dir"])
 	var font := ThemeDB.fallback_font
 	var fs := 9 if rad < 12.0 else 10
-	if d < 0:
+	if not bool(info["sends"]):
 		c.draw_circle(ctr, rad * 0.22, Color(0.7, 0.7, 0.8, 0.9))
-		c.draw_string(font, ctr + Vector2(-rad - 14.0, -rad + 3.0), "NO SEND", HORIZONTAL_ALIGNMENT_RIGHT, rad * 2.0 + 14.0, fs, Color(0.75, 0.75, 0.85, 0.9))
+		c.draw_string(font, ctr + Vector2(-rad - 14.0, -rad + 3.0), "STAGGER", HORIZONTAL_ALIGNMENT_RIGHT, rad * 2.0 + 14.0, fs, Color(0.75, 0.75, 0.85, 0.9))
 		return
-	var v: Vector2 = MoveDB.DIR_VECS[d]
+	# the arrow points along the move's own angle (the fighter on the card faces right)
+	var ar := deg_to_rad(float(info["ang"]))
+	var v := Vector2(cos(ar), -sin(ar))
 	var tip := ctr + v * (rad * 0.92)
 	var tail := ctr - v * (rad * 0.7)
 	var side := Vector2(-v.y, v.x)
@@ -106,7 +108,7 @@ static func _draw_dir_badge(c: CanvasItem, dst: Rect2, move_id: String, class_id
 	c.draw_colored_polygon(PackedVector2Array([tip + v * 2.0, base + side * (hd * 0.62 + 2.0), base - side * (hd * 0.62 + 2.0)]), ink)
 	c.draw_line(tail, base, gold, 3.5, true)
 	c.draw_colored_polygon(head, gold)
-	var tag := String(info["ground"]).to_upper()
+	var tag := String(info["name"])
 	if tag != "":
 		c.draw_string(font, ctr + Vector2(-rad - 50.0, -rad + 3.0), tag, HORIZONTAL_ALIGNMENT_RIGHT, rad * 2.0 + 50.0, fs, Color(gold.r, gold.g, gold.b, 0.95))
 

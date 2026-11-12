@@ -122,7 +122,8 @@ func _ready() -> void:
 	await frames(2)
 	f.input.script_set(Vector2.ZERO, [])
 	await frames(3)
-	check("LB throws it again (vx %.0f)" % crate.velocity.x, f.held == null and crate.velocity.x > 1000.0)
+	var crate_vx: float = crate.velocity.x if is_instance_valid(crate) else 9999.0  # it may already have smashed into something
+	check("LB throws it again (vx %.0f)" % crate_vx, f.held == null and crate_vx > 1000.0)
 	# grab and throw the partner: a fast jump you can act out of
 	f.state = "idle"
 	f.attack.interrupt()

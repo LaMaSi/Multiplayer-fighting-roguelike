@@ -44,6 +44,8 @@ var land_wait := -1  ## frame at which to wait until the actor touches the floor
 var tier := ""  ## "weapon" (B slots, class-locked), "adaptive" (Y, reshaped by the class), "universal" (X), "" = enemy / legacy
 var class_id := ""  ## owning class for weapon moves; the applied class for an adaptive variant
 var height := "mid"  ## "high" / "mid" / "low": the height of the first hit
+var sends := false  ## the move sends its target flying (see MoveDB.SEND); false = it only staggers
+var send_ang := 0.0  ## the angle shown on the card, degrees: 0 ahead .. 90 up, -90 spike, 180 behind the attacker
 var meter_cost := 0.0  ## reserved: Style meter cost of the LT version (super meter design pending)
 
 

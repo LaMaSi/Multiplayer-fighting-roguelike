@@ -11,7 +11,13 @@ static var mode := "run"  ## "run" or "training", set by the main menu before op
 
 const OPTIONS := ["brawler", "sword", "hammer", "magic", "random"]
 const REVEAL_SLOTS := ["B", "B_UP", "B_SIDE", "X", "Y"]
-const SLOT_LABEL := {"B": "B", "B_UP": "UP + B", "B_SIDE": "SIDE + B", "X": "X", "Y": "Y"}
+const SLOT_LABEL := {
+	"B": "B", "B_UP": "UP + B", "B_SIDE": "SIDE + B", "B_DOWN": "DOWN + B",
+	"X": "X", "X_UP": "UP + X", "X_SIDE": "SIDE + X", "X_DOWN": "DOWN + X",
+	"Y": "Y", "Y_UP": "UP + Y", "Y_SIDE": "SIDE + Y", "Y_DOWN": "DOWN + Y",
+}
+## every slot a move can sit on, in the order the reveal lists them
+const ALL_SLOTS := ["B", "B_UP", "B_SIDE", "B_DOWN", "X", "X_UP", "X_SIDE", "X_DOWN", "Y", "Y_UP", "Y_SIDE", "Y_DOWN"]
 const ROLL_START := 0.35
 const ROLL_STEP := 0.4
 const ROLL_TIME := 0.45
@@ -50,8 +56,7 @@ var _flash: Array[String] = ["", ""]
 var _flash_t: Array[float] = [0.0, 0.0]
 var _settled: Array = [[false, false, false, false, false], [false, false, false, false, false]]
 var _leaving := false
-var _lv: LoadoutView  ## swap moves between buttons / directions on the reveal screen (X)
-var _lv_open := false
+var _lv: LoadoutView  ## swap moves between buttons / directions on the reveal screen (X): each player opens their own half
 var scene_changer: Callable  ## tests set this to observe scene changes instead of leaving the screen
 
 
@@ -175,6 +180,17 @@ func _back_to_pick(p: int) -> void:
 	Sfx.play("ui", 0.8)
 
 
+## The slots player p's starting moves sit on right now. Fresh from the roll that is REVEAL_SLOTS, but X (swap buttons)
+## can move a move to any direction, which empties the slot it came from: the reveal follows the moves, not fixed slots.
+func reveal_slots(p: int) -> Array:
+	var lo: Dictionary = RunState.loadouts[p]
+	var out: Array = []
+	for s in ALL_SLOTS:
+		if String(lo.get(s, "")) != "" and MoveDB.has_move(String(lo[s])) and out.size() < REVEAL_SLOTS.size():
+			out.append(s)
+	return out
+
+
 func _go_map() -> void:
 	_goto("res://scenes/run_map.tscn")
 
@@ -196,27 +212,26 @@ func _physics_process(delta: float) -> void:
 		_flash_t[p] = maxf(0.0, _flash_t[p] - delta)
 	if phase == "reveal":
 		reveal_t += delta
-	if _lv_open:
-		_lv.update(delta)
-		if _lv.close_requested:
-			_lv.reset()
-			_lv_open = false
-		return
-	if phase == "reveal" and reveal_t >= REVEAL_END:
+	# X opens / closes that player's own loadout panel over their half; the other player carries on with their moves
+	var was_open: Array[bool] = [_lv.open[0], _lv.open[1]]
+	_lv.update(delta)
+	if phase != "reveal":
+		_lv.reset()
+	elif reveal_t >= REVEAL_END:
 		for p in (1 if RunState.solo else 2):
 			if Inp.players[p].pressed(PlayerInput.Btn.X) and not ready_flags[p]:
-				_lv.reset()
-				_lv_open = true
-				ready_flags = [false, false]
+				_lv.toggle(p)
 				Sfx.play("ui")
-				return
 	for p in (1 if RunState.solo else 2):
 		var inp: PlayerInput = Inp.players[p]
+		if was_open[p] or _lv.open[p]:
+			_last[p] = inp.digital_dir()
+			continue  # this player is in their loadout panel (B closed it this step: not also "back to weapons")
 		var d := inp.digital_dir()
 		var edge := d != _last[p] and d != Vector2i.ZERO
 		_last[p] = d
 		if phase == "reveal" and edge and d.y != 0 and reveal_t >= REVEAL_END and not ready_flags[p]:
-			rev_cursor[p] = posmod(rev_cursor[p] + d.y, REVEAL_SLOTS.size())
+			rev_cursor[p] = posmod(rev_cursor[p] + d.y, maxi(reveal_slots(p).size(), 1))
 			Sfx.play("ui")
 		if phase == "pick":
 			if edge and not locked[p]:
@@ -255,7 +270,7 @@ func _physics_process(delta: float) -> void:
 				if RunState.setup_rerolls[p] <= 0:
 					_say(p, "NO REROLLS LEFT")
 					Sfx.play("ui", 0.7)
-				elif RunState.reroll_move(p, REVEAL_SLOTS[rev_cursor[p]]):
+				elif rev_cursor[p] < reveal_slots(p).size() and RunState.reroll_move(p, reveal_slots(p)[rev_cursor[p]]):
 					Sfx.play("relay")
 					_reroll_at[p][rev_cursor[p]] = reveal_t  # replay the roll for this move only
 					_settled[p][rev_cursor[p]] = false
@@ -307,10 +322,6 @@ func paint_back(c: Control) -> void:
 
 
 func paint(c: Control) -> void:
-	if _lv_open:
-		c.draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.0, 0.06, 0.92))
-		_lv.paint_screen(c)
-		return
 	if phase == "pick":
 		_title(c, "CHOOSE YOUR WEAPON")
 		for p in (1 if RunState.solo else 2):
@@ -320,6 +331,7 @@ func paint(c: Control) -> void:
 		for p in (1 if RunState.solo else 2):
 			_paint_reveal(c, p, Rect2(30 + p * 615, 120, 605, 540))
 		_paint_prompt(c)
+		_lv.paint_open(c, 0.97, "B / X  CLOSE")
 
 
 func _class_label(cid: String) -> String:
@@ -402,8 +414,10 @@ func _paint_reveal(c: Control, p: int, r: Rect2) -> void:
 		c.draw_colored_polygon(UiKit.chamfer(chip, 7.0), Color(UiKit.AMBER.r, UiKit.AMBER.g, UiKit.AMBER.b, 0.9))
 		UiKit.txt(c, UiKit.head(), chip.position + Vector2(0, 19), "RANDOM", 13, UiKit.INK, HORIZONTAL_ALIGNMENT_CENTER, chip.size.x)
 	var lo: Dictionary = RunState.loadouts[p]
-	for i in REVEAL_SLOTS.size():
-		var slot: String = REVEAL_SLOTS[i]
+	var slots := reveal_slots(p)
+	rev_cursor[p] = clampi(rev_cursor[p], 0, maxi(slots.size() - 1, 0))
+	for i in slots.size():
+		var slot: String = slots[i]
 		var rr := Rect2(r.position.x + 18, r.position.y + 62 + i * 94.0, r.size.x - 36, 84)
 		var start := ROLL_START + i * ROLL_STEP + p * 0.08
 		if float(_reroll_at[p][i]) >= 0.0:

@@ -213,22 +213,97 @@ static func default_ground(dir: int) -> String:
 	return ""
 
 
-## Card info for a move: its strongest hit's send direction ({dir, ground, name}) or {} when it has no hit to describe.
-static func card_dir(m: MoveData) -> Dictionary:
-	var best: Dictionary = {}
-	var bk := -1.0
-	for h in m.hits:
-		if h.get("grab", false):
+## ------------------------------------------------------------------ send angles ("fighting-game tennis")
+## Every player attack SENDS its target somewhere, so the partner can catch it from a distance. Each move has its own
+## angle in degrees, in the attacker's frame: 0 = straight ahead, 90 = straight up, anything between is an arc;
+## -90 = spike (straight down: slams an airborne target into the floor, which bounces it back up; pops a grounded one
+## off the floor); 180 = behind the attacker (back over your head, towards a partner standing behind you).
+## A move's LAST hit sends; the earlier hits of a multi-hit move only stagger, so the whole move connects first.
+## The few moves in STAGGER never send: quick jabs to start or keep a combo.
+const SEND := {
+	# brawler
+	"jab3": 25.0, "dash_punch": 5.0, "rising_dragon": 90.0, "haymaker": 10.0, "wall_elbow": 0.0,
+	"shoulder_rush": 0.0, "popup_kick": 85.0, "back_kick": 180.0,
+	# sword
+	"long_slash": 60.0, "long_slash2": 180.0, "thrust_lunge": 0.0, "rising_slash": 80.0, "low_cut": 10.0,
+	# hammer
+	"overhead_smash": 60.0, "side_sweep": 10.0, "sky_launcher": 90.0, "quake_line": 80.0, "whirlwind_haul": 45.0,
+	"guard_breaker": 30.0, "home_run": 20.0,
+	# magic
+	"teleport_strike": 20.0, "arcane_beam": 15.0,
+	# Y: adaptive
+	"uppercut": 80.0, "sweep": 15.0, "spin_kick": 35.0, "cyclone": 60.0, "stomp": 70.0, "dive_kick": 55.0,
+	"anti_air": 65.0, "pillar_smash": -90.0, "flurry": 20.0, "slide_strike": 10.0, "bicycle_kick": 180.0,
+	# X: off-hand
+	"shockwave": 30.0, "grapple_dash": 180.0,
+	# supers
+	"super_generic": 55.0, "super_brawler": 50.0, "super_sword": 60.0, "super_hammer": 60.0, "super_magic": 40.0,
+}
+const STAGGER: Array[String] = ["jab", "jab2", "off_hand_jab", "off_hand_jab2", "heal_pulse"]
+## Fixed send speeds (px/s) for hits that must stay catchable by the move's own follow-up.
+const SEND_SPEED := {"long_slash": 430.0}
+
+
+## Gives every player hit its send angle ("ang", degrees) or marks it as a stagger. See SEND.
+static func _apply_send() -> void:
+	for id in _db:
+		var m: MoveData = _db[id]
+		if m.enemy:
 			continue
-		var k := (h["kb"] as Vector2).length() + (1000.0 if h.has("dir") else 0.0)
-		if k > bk:
-			bk = k
-			best = h
-	if best.is_empty():
+		var last := -1
+		for i in m.hits.size():
+			if not m.hits[i].get("grab", false) and (last < 0 or int(m.hits[i]["at"]) >= int(m.hits[last]["at"])):
+				last = i
+		for i in m.hits.size():
+			var h: Dictionary = m.hits[i]
+			if h.get("grab", false) or h.has("ang"):
+				continue
+			var kind := String(h.get("kind", "normal"))
+			if kind == "pull" and not (i == last and SEND.has(id)):
+				continue  # drags targets in for the move's last hit
+			if String(id) in STAGGER:
+				h["dir"] = -1
+				h["kind"] = "normal"
+			elif kind == "spike":
+				h["ang"] = -90.0
+			elif i == last and SEND.has(id):
+				h["ang"] = float(SEND[id])
+			elif i == last or kind in ["launch", "trip", "push"]:
+				# not in the table: the authored knockback gives the angle, folded into 0 (ahead) .. 90 (up)
+				var kb: Vector2 = h["kb"]
+				h["ang"] = clampf(rad_to_deg(atan2(-kb.y, absf(kb.x))), 0.0, 90.0) if kb.length() > 1.0 else 20.0
+			else:
+				h["dir"] = -1  # an earlier hit of a multi-hit move: holds the target for the last one
+			if h.has("ang"):
+				h["kind"] = "spike" if float(h["ang"]) < -45.0 else "launch"
+				if SEND_SPEED.has(id) and i == last:
+					h["speed"] = float(SEND_SPEED[id])
+		# the angle shown on the card: a spike if the move has one, else its last hit
+		if last >= 0 and m.hits[last].has("ang"):
+			m.sends = true
+			m.send_ang = float(m.hits[last]["ang"])
+		for h in m.hits:
+			if h.has("ang") and float(h["ang"]) < -45.0:
+				m.sends = true
+				m.send_ang = float(h["ang"])
+
+
+## Card info for a move: {} when it has no hit, else {sends, ang (degrees), name}.
+static func card_dir(m: MoveData) -> Dictionary:
+	var has_hit := false
+	for h in m.hits:
+		if not h.get("grab", false):
+			has_hit = true
+	if not has_hit:
 		return {}
-	var d := hit_dir(best)
-	var g := String(best.get("ground", default_ground(d))) if d >= 5 and String(best.get("kind", "normal")) == "spike" else ""
-	return {"dir": d, "ground": g, "name": DIR_NAMES[d] if d >= 0 else "NO SEND"}
+	if not m.sends:
+		for h in m.hits:
+			if String(h.get("kind", "normal")) == "pull":
+				return {"sends": true, "ang": 180.0, "name": "PULL"}  # drags the target to the attacker
+		return {"sends": false, "ang": 0.0, "name": "STAGGER"}
+	var a := m.send_ang
+	var label := "SPIKE" if a < -45.0 else ("BACK" if a > 135.0 else "%d°" % int(round(a)))
+	return {"sends": true, "ang": a, "name": label}
 
 
 static func _hit(at: int, dur: int, box: Rect2, dmg: float, stun: int, kb: Vector2, extra := {}) -> Dictionary:
@@ -297,6 +372,7 @@ static func _build() -> void:
 	_apply_status()
 	_lengthen_short_hits()
 	_soften_x_moves()
+	_apply_send()
 	_apply_charge()
 	# tiers (weapon / adaptive / universal), owning class and the height of the first hit
 	for id in _db:
@@ -545,6 +621,19 @@ static func _build_player() -> void:
 			[18, _idle()]],
 		"events": [{"at": 4, "type": "sfx", "name": "whoosh"}, {"at": 5, "type": "vel", "vx": -60.0, "vy": -330.0}],
 		"hits": [_hit(5, 4, Rect2(-5, -215, 105, 150), 9, 26, Vector2(120, -640), {"kind": "launch", "stop": 4, "shake": 0.2})]})
+
+	# --- 19b Overhead kick (bicycle kick / Fallrückzieher) ----------------
+	# Hop, throw the body backwards into a flip and kick over the head: the target is sent BEHIND you (180 degrees).
+	_mk({"id": "bicycle_kick", "name": "Overhead Kick", "short": "OVRHD", "desc": "Backflip kick over your head. Sends the enemy behind you, to your partner.",
+		"total": 40, "cancel_from": 20, "spin": {"at": 5, "dur": 23, "turns": -1.0},
+		"kf": [[0, {"lean": 0.25, "th_f": 0.7, "kn_f": 1.3, "th_b": -0.3, "kn_b": 1.2, "ua_f": 0.6, "la_f": 1.2, "ua_b": 0.4, "la_b": 1.2}],
+			[6, {"lean": -0.35, "th_f": 0.5, "kn_f": 1.5, "th_b": 1.9, "kn_b": 0.3, "ua_f": -0.9, "la_f": 0.6, "ua_b": -1.4, "la_b": 0.6, "fist_f": 1.0, "fist_b": 1.0, "reach_f": 1.0, "reach_b": 1.0}],
+			[11, {"lean": -0.2, "th_f": 2.3, "kn_f": 0.0, "th_b": 0.8, "kn_b": 1.7, "ua_f": -1.1, "la_f": 0.6, "ua_b": -1.6, "la_b": 0.6, "fist_f": 1.0, "fist_b": 1.0, "reach_f": 1.0, "reach_b": 1.0}],
+			[17, {"lean": 0.1, "th_f": 1.2, "kn_f": 1.2, "th_b": 0.6, "kn_b": 1.5, "ua_f": 0.3, "la_f": 0.8, "ua_b": 0.2, "la_b": 0.8}],
+			[30, _idle()]],
+		"events": [{"at": 4, "type": "vel", "vx": 0.0, "vy": -620.0}, {"at": 9, "type": "sfx", "name": "whoosh"},
+			{"at": 10, "type": "ghost"}, {"at": 13, "type": "ghost"}],
+		"hits": [_hit(10, 6, Rect2(-80, -190, 165, 130), 12, 28, Vector2(520, -200), {"stop": 6, "shake": 0.3})]})
 
 	# --- 20 Heavy haymaker ----------------------------------------------
 	_mk({"id": "haymaker", "name": "Heavy Haymaker", "short": "HAYMKR", "desc": "Slow, huge knockback, armoured windup.",
