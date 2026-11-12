@@ -575,7 +575,7 @@ func _spring_tick(delta: float) -> void:
 			var sx := a.velocity.x * 0.8
 			if absf(sx) < 240.0:
 				sx = (signf(sx) if sx != 0.0 else float(a.facing)) * 300.0  # always carried sideways so it lands beside the spring
-			var v := Vector2(sx, -1100.0)  # apex ~263 px: the highest platforms (SPRING_REACH) are reachable from a spring
+			var v := Vector2(sx, -898.0)  # apex ~175 px (two thirds of the old ~263 px)
 			var by: Actor = a
 			if a.team == "enemy" and a.last_hitter != null and is_instance_valid(a.last_hitter):
 				by = a.last_hitter
