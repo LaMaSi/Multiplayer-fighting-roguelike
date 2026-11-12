@@ -60,7 +60,7 @@ func _ready() -> void:
 	check(f2.get_run_speed() < f1.get_run_speed(), "hammer is slower than sword")
 	check(f2.max_hp > f1.max_hp, "hammer has more HP")
 	check(f1.loadout.get("B", "") != "", "training loadout has B moves")
-	check(ClassData.X_POOL.size() == 10 and ClassData.Y_POOL.size() == 10, "10 universal X and 10 adaptive Y")
+	check(ClassData.X_POOL.size() == 10 and ClassData.Y_POOL.size() == 11, "10 universal X and 11 adaptive Y")
 	for cid in ClassData.IDS:
 		var pool: Array = ClassData.get_class_data(cid)["b_pool"]
 		check(pool.size() == 8, "%s has 8 B moves" % cid)

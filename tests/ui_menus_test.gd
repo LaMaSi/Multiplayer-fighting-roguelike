@@ -94,6 +94,7 @@ func _ready() -> void:
 	lv.holding[1] = ""
 	# --- input driven: lift with A, move right, drop with A
 	lv.reset()
+	lv.open_all()
 	var p1: PlayerInput = Inp.players[0]
 	var A := [PlayerInput.Btn.JUMP]
 	lv.cursor[0] = s.find("Y_UP")  # sweep
@@ -140,7 +141,7 @@ func _ready() -> void:
 	await frames(3)
 	Inp.players[0].script_set(Vector2.ZERO, [])
 	await frames(6)
-	check("Y opens the loadout on the run map", rm._lv_open)
+	check("Y opens only that player's loadout panel on the run map", rm._lv.open[0] and not rm._lv.open[1])
 	await snap(out + "/ui_map_loadout.png")
 	rm.queue_free()
 	await frames(3)
@@ -152,6 +153,7 @@ func _ready() -> void:
 	level.menu._toggle()
 	await frames(5)
 	await snap(out + "/ui_pause.png")
+	level.menu._lv.open_all()
 	level.menu._go("loadout", 0)
 	var lifted := ""
 	for sl in ["B", "B_UP", "B_SIDE", "B_DOWN"]:

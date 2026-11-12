@@ -53,6 +53,20 @@ func _ready() -> void:
 	var lv: LevelBase = load("res://scenes/streets.tscn").instantiate()
 	add_child(lv)
 	await frames(20)
+	check(is_equal_approx(Engine.time_scale, Juice.GAME_SPEED) and Engine.physics_ticks_per_second == roundi(60 * Juice.GAME_SPEED), "a level runs at the game speed with matching physics ticks (x%.2f, %d ticks)" % [Engine.time_scale, Engine.physics_ticks_per_second])
+	# the pose spring stays stable with big frame steps (it used to explode above x1.25 and the models flew away)
+	var fig := StickFigure.new()
+	add_child(fig)
+	fig.follow_speed = 52.0
+	fig.zeta = 0.5
+	fig.set_target(PoseLib.idle(0.0), true)
+	fig.set_target({"root_x": 30.0, "ua_f": 2.0})
+	var worst := 0.0
+	for i in 120:
+		fig._process(1.0 / 12.0)
+		worst = maxf(worst, absf(float(fig.pose["root_x"])))
+	check(worst < 60.0 and absf(float(fig.pose["root_x"]) - 30.0) < 0.5, "the pose spring settles at 12 fps steps (peak %.1f, end %.2f)" % [worst, float(fig.pose["root_x"])])
+	fig.queue_free()
 	lv.encounters = []
 	check(lv.hud.go_visible(), "the GO sign shows in the level")
 	var door := Door.new()

@@ -63,6 +63,12 @@ func _ready() -> void:
 	if hammer_idx >= 0:
 		check("P1 (sword) cannot take the hammer move", shop._can_take(shop.stock[hammer_idx], 0) == "OTHER CLASS")
 		check("P2 (hammer) can", shop._can_take(shop.stock[hammer_idx], 1) == "")
+	# Down jumps to the leave button from any card, Up returns to that card
+	shop.cursor = [2, 0]
+	await tap(p1, [], Vector2(0, 1))
+	check("Down focuses LEAVE SHOP", shop.cursor[0] == 6)
+	await tap(p1, [], Vector2(0, -1))
+	check("Up returns to the card", shop.cursor[0] == 2)
 	# leaving needs both players
 	shop.cursor = [6, 6]
 	await tap(p1, A)

@@ -586,6 +586,8 @@ func strike_rects() -> Array:
 
 const KB_PLAYER := 1.9## player knockback multiplier: enemies reach the partner for team combos
 const KB_EMPOWERED := 0.8  ## empowered moves keep the target close (personal combo starter)
+const SEND_MIN := 680.0  ## slowest a sending hit throws its target (px/s): far enough that the partner need not stand close
+const SEND_MAX := 1600.0
 
 
 func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
@@ -644,7 +646,26 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		info.no_combo = true
 	info.pos = rect.get_center().clamp(t.get_hurt_rect().position, t.get_hurt_rect().end)
 	var kb: Vector2 = (h["kb"] as Vector2) * a.upgrade_mult(move.id, "kb")
-	if a.team == "player":
+	var sends: bool = a.team == "player" and h.has("ang")
+	if sends:
+		# The hit sends its target along the move's own angle (MoveDB.SEND). The authored knockback only sets how hard:
+		# always hard enough to carry the target well away from the attacker, towards wherever the partner waits.
+		var speed := clampf(Vector2(kb.x * KB_PLAYER, kb.y).length(), SEND_MIN, SEND_MAX)
+		if h.has("speed"):
+			speed = float(h["speed"]) * a.upgrade_mult(move.id, "kb")
+		if empowered:
+			speed *= 0.55  # an empowered move is a personal combo starter: the target stays near the attacker
+		var lift_cap := 1000.0 if move.tags.has("launcher") else 880.0  # nothing rises much past a single jump
+		if move.is_chargeable():
+			speed *= charge_kb_mult()
+			lift_cap *= 1.0 + move.charge_kb * charge_t()
+		var ang := deg_to_rad(float(h["ang"]))
+		kb = Vector2(cos(ang), -sin(ang)) * speed
+		kb.y = maxf(kb.y, -lift_cap)
+		info.sends = true
+		info.ang = float(h["ang"])
+		info.kind = "spike" if info.ang < -45.0 else "launch"
+	elif a.team == "player":
 		# Normal moves hit hard enough to send an enemy across to the partner (team combos); an empowered move is a
 		# personal combo starter instead: the target barely leaves the attacker.
 		var fx := KB_EMPOWERED if empowered else KB_PLAYER
@@ -654,14 +675,19 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		if move.is_chargeable():
 			kb *= charge_kb_mult()
 	# send direction: launches fly along one of the 8 basic directions; moves that do not send only nudge the target
-	info.dir = MoveDB.hit_dir(h)
-	info.ground_fx = String(h.get("ground", MoveDB.default_ground(info.dir)))
 	info.stun_mult = float(h.get("stun_mult", 1.0))
-	if info.dir >= 0 and info.kind in ["launch", "spike"]:
-		kb = MoveDB.DIR_VECS[info.dir] * kb.length()
-	elif info.dir < 0:
-		kb = Vector2(clampf(kb.x, -40.0, 40.0), 0.0)
+	if sends:
+		info.ground_fx = "bounce"  # a spiked target rebounds off the floor: never a dead stop
+	else:
+		# hits without an angle (enemy moves, staggering jabs): the old 8 directions, or only a nudge
+		info.dir = MoveDB.hit_dir(h)
+		info.ground_fx = String(h.get("ground", MoveDB.default_ground(info.dir)))
+		if info.dir >= 0 and info.kind in ["launch", "spike"]:
+			kb = MoveDB.DIR_VECS[info.dir] * kb.length()
+		elif info.dir < 0:
+			kb = Vector2(clampf(kb.x, -40.0, 40.0), 0.0)
 	if clash:
+		info.sends = false
 		# a clash is a stagger, not a launch: the enemy stays close, reeling, and the swing it started is gone
 		info.kind = "normal"
 		info.dmg *= 1.25
@@ -672,6 +698,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		(t as Actor).armor_t = 0.0
 	if info.friendly and not bool(h.get("partner_safe", false)):
 		info.dir = -1
+		info.sends = false
 		# Player-vs-player: no damage or effects, only a light stagger that interrupts the other player.
 		info.dmg = 0.0
 		info.no_combo = true

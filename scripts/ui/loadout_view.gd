@@ -1,8 +1,9 @@
 class_name LoadoutView
 extends RefCounted
-## Loadout screen logic and drawing, shared by the pause menu and the run map. Both players edit
-## their own 3x4 grid (rows X / Y / B, columns neutral / up / side / down) at the same time:
-## stick moves the cursor, A lifts a move, A on another slot drops it (the two moves swap), B cancels.
+## Loadout panel logic and drawing, shared by the run setup, the run map and the level (Back). It never takes the
+## whole screen: every player opens and closes their OWN panel, which covers only their half (P1 left, P2 right),
+## so the other player keeps seeing and using theirs. Each edits a 3x4 grid (rows X / Y / B, columns neutral / up /
+## side / down): stick moves the cursor, A lifts a move, A on another slot drops it (the two moves swap), B closes.
 ## A move always stays on its own button: X moves can only move between the X slots, Y between the Y
 ## slots and B between the B slots (so only the direction changes). Upgrades belong to the move, so
 ## they travel with it.
@@ -24,7 +25,7 @@ var get_upgrades: Callable
 
 var cursor: Array[int] = [0, 0]
 var holding: Array[String] = ["", ""]  ## slot the move was lifted from
-var close_requested := false
+var open: Array[bool] = [false, false]  ## which players have their panel up
 var t := 0.0
 
 var _last: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ZERO]
@@ -39,11 +40,48 @@ func _init(p_get_loadout: Callable, p_set_slot: Callable, p_get_class: Callable,
 	get_upgrades = p_get_upgrades
 
 
+## Closes every panel.
 func reset() -> void:
 	cursor = [0, 0]
 	holding = ["", ""]
-	close_requested = false
+	open = [false, false]
 	_last = [Vector2i.ZERO, Vector2i.ZERO]
+
+
+func open_for(p: int) -> void:
+	open[p] = true
+	holding[p] = ""
+	_last[p] = Inp.players[p].digital_dir()  # a held stick must not move the cursor at once
+
+
+func close(p: int) -> void:
+	open[p] = false
+	holding[p] = ""
+
+
+func toggle(p: int) -> void:
+	if open[p]:
+		close(p)
+	else:
+		open_for(p)
+
+
+func open_all() -> void:
+	for p in (1 if RunState.solo else 2):
+		open_for(p)
+
+
+func any_open() -> bool:
+	return open[0] or open[1]
+
+
+## The half of the 1280 x 720 screen that belongs to player p.
+static func half_rect(p: int) -> Rect2:
+	return Rect2(640.0 * p, 0.0, 640.0, 720.0)
+
+
+static func panel_rect(p: int) -> Rect2:
+	return Rect2(30.0 + p * 615.0, 126.0, 605.0, 470.0)
 
 
 # ------------------------------------------------------------------ rules
@@ -106,6 +144,8 @@ func update(delta: float) -> void:
 	t += delta
 	for p in (1 if RunState.solo else 2):
 		_flash_t[p] = maxf(0.0, _flash_t[p] - delta)
+		if not open[p]:
+			continue
 		var inp: PlayerInput = Inp.players[p]
 		var d := inp.digital_dir()
 		if d != _last[p] and d != Vector2i.ZERO:
@@ -124,8 +164,9 @@ func update(delta: float) -> void:
 			if holding[p] != "":
 				holding[p] = ""
 				Sfx.play("ui", 0.8)
-			elif RunState.solo or holding[1 - p] == "":
-				close_requested = true
+			else:
+				close(p)
+				Sfx.play("ui", 0.8)
 
 
 # ------------------------------------------------------------------ drawing
@@ -158,17 +199,18 @@ static func _wrap(f: Font, s: String, size: int, width: float) -> PackedStringAr
 	return lines
 
 
-## Whole screen: title, both players' panels and the key hints (drawn over a dimmed backdrop).
-func paint_screen(c: Control) -> void:
-	c.draw_set_transform_matrix(UiKit.italic(Vector2(40, 74), -0.02))
-	for k in 3:
-		UiKit.txt(c, UiKit.head(), Vector2.ZERO, "LOADOUT", 48, Color(2.0, 0.7, 1.2, 0.16), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 8 + k * 8, Color(2.0, 0.7, 1.2, 0.08))
-	UiKit.txt(c, UiKit.head(), Vector2.ZERO, "LOADOUT", 48, UiKit.TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 4, Color(0.05, 0.0, 0.1))
-	c.draw_set_transform_matrix(Transform2D.IDENTITY)
-	UiKit.txt(c, UiKit.body(), Vector2(40, 104), "SWAP MOVES BETWEEN BUTTONS  ·  BOTH PLAYERS AT ONCE", 18, UiKit.PINK)
-	paint_player(c, 0, Rect2(30, 126, 605, 470))
-	if not RunState.solo:
-		paint_player(c, 1, Rect2(645, 126, 605, 470))
+## Draws the panel of every player who has theirs open, each over a dim that covers only that player's half of the
+## screen. `dim` is the darkness of that half (0 = none: the owner already darkened the screen).
+func paint_open(c: Control, dim := 0.6, close_hint := "B  CLOSE") -> void:
+	for p in 2:
+		if not open[p]:
+			continue
+		if dim > 0.0:
+			c.draw_rect(half_rect(p), Color(0.02, 0.0, 0.06, dim))
+		var r := panel_rect(p)
+		UiKit.txt(c, UiKit.head(), Vector2(r.position.x + 4.0, r.position.y - 14.0), "LOADOUT", 26, UiKit.TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 4, Color(0.05, 0.0, 0.1))
+		paint_player(c, p, r)
+		UiKit.txt(c, UiKit.body(), Vector2(r.position.x, r.end.y + 26.0), "A  LIFT / DROP     %s" % close_hint, 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 
 
 func paint_player(c: Control, p: int, r: Rect2) -> void:

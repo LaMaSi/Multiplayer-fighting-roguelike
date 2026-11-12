@@ -28,6 +28,7 @@ class View extends Control:
 var stock: Array = []  ## 4 item dictionaries (see _make_item)
 var cursor: Array[int] = [0, 0]  ## 0..4 cards, 5 reroll, 6 leave
 var vote: Array[int] = [-1, -1]  ## only used for LEAVE (both must agree)
+var _card: Array[int] = [0, 0]  ## the card each cursor was on before Down sent it to LEAVE
 var _pickers: Array[SlotPicker] = [SlotPicker.new(), SlotPicker.new()]
 var _refund: Array[int] = [0, 0]  ## price to give back when a button step is cancelled
 var rerolls := 0
@@ -304,6 +305,15 @@ func _physics_process(_delta: float) -> void:
 		if d != _last[i] and d.x != 0:
 			cursor[i] = clampi(cursor[i] + d.x, 0, 6)
 			Sfx.play("ui")
+		elif d != _last[i] and d.y > 0 and cursor[i] != 6:
+			# Down always jumps to LEAVE SHOP (Up brings you back to the card you were on)
+			if cursor[i] <= 4:
+				_card[i] = cursor[i]
+			cursor[i] = 6
+			Sfx.play("ui")
+		elif d != _last[i] and d.y < 0 and cursor[i] >= 5:
+			cursor[i] = clampi(_card[i], 0, maxi(stock.size() - 1, 0))
+			Sfx.play("ui")
 		_last[i] = d
 		if p.pressed(PlayerInput.Btn.JUMP):
 			_act(cursor[i], i)
@@ -391,7 +401,7 @@ func paint(c: Control) -> void:
 	# info strip
 	var vr := Rect2(CARD_X, 458, 1014, 40)
 	c.draw_colored_polygon(UiKit.chamfer(vr, 10.0), Color(UiKit.INK.r, UiKit.INK.g, UiKit.INK.b, 0.8))
-	var line := "STICK: MOVE    A: BUY FOR YOURSELF    LEAVING NEEDS BOTH PLAYERS"
+	var line := "STICK: MOVE    A: BUY FOR YOURSELF    DOWN: LEAVE" + ("" if RunState.solo else " (NEEDS BOTH PLAYERS)")
 	var lcol := UiKit.TEXT
 	if vote[0] == 6 or vote[1] == 6:
 		line = "LEAVE THE SHOP?  WAITING FOR P%d" % (2 if vote[0] == 6 else 1)
@@ -399,7 +409,7 @@ func paint(c: Control) -> void:
 	if _flash_t > 0.0:
 		line = _flash
 		lcol = _flash_col
-	UiKit.txt(c, body, Vector2(CARD_X + 16, 485), line, 22, lcol)
+	UiKit.txt(c, body, Vector2(CARD_X + 16, 485), line, _fit(body, line, 22, 1014.0 - 32.0), lcol)
 	# buttons
 	_paint_button(c, Rect2(CARD_X, 516, 220, 44), 5, "REROLL STOCK", reroll_cost())
 	_paint_button(c, Rect2(CARD_X + 1014.0 - 220.0, 516, 220, 44), 6, "LEAVE SHOP", -1)

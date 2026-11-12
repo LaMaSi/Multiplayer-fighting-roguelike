@@ -13,10 +13,10 @@ const X_POOL: Array[String] = [
 	"off_hand_jab", "spark_shot", "guard", "shockwave", "pull_hook",
 	"grapple_dash", "heal_pulse", "rage_taunt", "boost_spark", "pocket_mine",
 ]
-## Y: adaptive moves (10)
+## Y: adaptive moves (11)
 const Y_POOL: Array[String] = [
 	"uppercut", "sweep", "spin_kick", "cyclone", "stomp",
-	"dive_kick", "anti_air", "pillar_smash", "flurry", "slide_strike",
+	"dive_kick", "anti_air", "pillar_smash", "flurry", "slide_strike", "bicycle_kick",
 ]
 ## Moves that may be rolled / offered first (the starred moves in CLASS_MOVES.md)
 const X_STARS: Array[String] = ["off_hand_jab", "spark_shot", "shockwave"]

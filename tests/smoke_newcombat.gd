@@ -69,20 +69,36 @@ func _run() -> void:
 
 	print("[card directions]")
 	var hm := MoveDB.card_dir(MoveDB.get_move("haymaker"))
-	check(int(hm.get("dir", -9)) == 0, "haymaker sends FORWARD (%s)" % str(hm))
+	check(bool(hm.get("sends", false)) and is_equal_approx(float(hm["ang"]), 10.0), "haymaker sends at its own angle, 10 degrees (%s)" % str(hm))
 	var dk := MoveDB.card_dir(MoveDB.get_move("dive_kick"))
-	check(int(dk.get("dir", -9)) == 6 and dk.get("ground") == "bounce", "dive kick sends DOWN and bounces (%s)" % str(dk))
+	check(is_equal_approx(float(dk.get("ang", 0.0)), -90.0) and dk.get("name") == "SPIKE", "dive kick is a spike, -90 degrees (%s)" % str(dk))
 	var jb := MoveDB.card_dir(MoveDB.get_move("jab"))
-	check(int(jb.get("dir", -9)) == -1, "jab does not send (%s)" % str(jb))
+	check(not bool(jb.get("sends", true)), "jab only staggers (%s)" % str(jb))
+	var bk := MoveDB.card_dir(MoveDB.get_move("bicycle_kick"))
+	check(is_equal_approx(float(bk.get("ang", 0.0)), 180.0) and "bicycle_kick" in ClassData.Y_POOL, "the overhead kick is a Y move that sends behind you (%s)" % str(bk))
 	var sent := {}
+	var staggers: Array = []
+	var spikes := 0
+	var backs := 0
 	for id in MoveDB.all_player_moves():
 		var m := MoveDB.get_move(id)
 		if m != null:
 			var cd := MoveDB.card_dir(m)
-			if not cd.is_empty():
-				sent[int(cd["dir"])] = true
-	print("  directions in use: ", sent.keys())
-	check(sent.size() >= 4, "several different directions are in use")
+			if cd.is_empty() or cd.get("name") == "PULL":
+				continue
+			if not bool(cd["sends"]):
+				staggers.append(id)
+				continue
+			var a := float(cd["ang"])
+			sent[int(round(a))] = true
+			spikes += 1 if a < -45.0 else 0
+			backs += 1 if a > 135.0 else 0
+			if not (is_equal_approx(a, -90.0) or is_equal_approx(a, 180.0) or (a >= 0.0 and a <= 90.0)):
+				check(false, "%s: angle %.0f is 0..90, -90 or 180" % [id, a])
+	print("  angles in use: ", sent.keys(), "  staggering moves: ", staggers)
+	check(sent.size() >= 10, "moves have their own angles (%d different ones)" % sent.size())
+	check(spikes >= 2 and backs >= 2, "a few spikes (%d) and sends behind the player (%d)" % [spikes, backs])
+	check(staggers.size() <= 3, "only a few moves stagger instead of sending: %s" % str(staggers))
 
 	print("[meteor + ground effects]")
 	var d := level.spawn_enemy("dummy", Vector2(1500, 599))
@@ -95,8 +111,54 @@ func _run() -> void:
 	hit(d, f1, 10.0, "launch", Vector2(150, 900), 6)
 	check(d.state == "launched" and d.velocity.y > 800.0, "down-angled hit on an airborne enemy spikes it (vy %.0f)" % d.velocity.y)
 	check(d.hp < hp0 - 10.0, "meteor bonus damage (%.1f)" % (hp0 - d.hp))
-	await frames(90)
-	check(d.state in ["down", "getup", "idle"] and d.is_on_floor(), "stop-type spike ends flat on the floor (%s)" % d.state)
+	# no hard knockdowns: a spiked enemy rebounds off the floor, and it never lies down afterwards
+	var flat := false
+	var rebound := false
+	for i in 150:
+		await get_tree().physics_frame
+		flat = flat or d.state in ["down", "getup"]
+		rebound = rebound or (d.state == "launched" and d.velocity.y < -100.0)
+	check(rebound, "a spiked enemy bounces back up off the floor")
+	check(not flat and d.state in ["idle", "hurt", "walk"] and d.is_on_floor(), "and lands on its feet, never knocked flat (%s)" % d.state)
+
+	print("[send angles]")
+	# a real move on a grounded enemy: launched along the move's angle, far enough to reach a partner, no knockdown
+	for spec in [["haymaker", 10.0], ["uppercut", 80.0], ["bicycle_kick", 180.0], ["pillar_smash", -90.0]]:
+		place(f1, Vector2(1400, 599))
+		f1.facing = 1
+		place(d, Vector2(1460, 599))
+		d.hp = d.max_hp
+		d.stun_meter = 0.0
+		d.hit_chain = 0
+		d.invuln = 0.0
+		d.state = "idle"
+		await frames(4)
+		var x0 := d.global_position.x
+		f1.start_attack(MoveDB.get_move(String(spec[0])))
+		var v0 := Vector2.ZERO
+		var far := 0.0
+		var knocked := false
+		for i in 150:
+			await get_tree().physics_frame
+			if v0 == Vector2.ZERO and d.state == "launched" and d.freeze == 0:
+				v0 = d.velocity
+			far = d.global_position.x - x0 if absf(d.global_position.x - x0) > absf(far) else far
+			knocked = knocked or d.state in ["down", "getup"]
+		var want := float(spec[1])
+		var ok := false
+		if want < -45.0:
+			ok = v0.y < -400.0 and absf(v0.x) < 120.0  # grounded spike: popped straight up off the floor
+		elif want > 135.0:
+			ok = v0.x < -400.0 and far < -150.0  # behind the attacker
+		elif want > 60.0:
+			ok = v0.y < -600.0 and v0.x >= 0.0
+		else:
+			ok = v0.x > 500.0 and far > 200.0
+		check(ok, "%s (%.0f deg) sends the enemy as its angle says (v %s, travelled %.0f px)" % [spec[0], want, str(v0.round()), far])
+		check(not knocked, "%s: the enemy is not knocked down" % spec[0])
+		f1.attack.interrupt()
+		f1.state = "idle"
+		await frames(20)
 
 	print("[stun meter]")
 	place(d, Vector2(1500, 599))

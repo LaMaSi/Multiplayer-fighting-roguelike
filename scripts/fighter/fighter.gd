@@ -2,15 +2,20 @@ class_name Fighter
 extends Actor
 ## A player character: locomotion, the 15-slot move loadout, dash, carrying, toss and revive.
 
-const RUN_SPEED := 400.0
+## Fighters are fast by their own numbers (run speed, acceleration, dash), not because the world is fast-forwarded:
+## the world runs at its authored tempo (Juice.GAME_SPEED = 1). Playtest target: about 800 px per second at a run.
+const RUN_SPEED := 800.0
 const WALK_FRAC := 0.42  ## a gentle stick tilt walks at this fraction of the run speed
 const WALK_TILT := 0.65
-const ACCEL := 7000.0
-const AIR_ACCEL := 4200.0
-const FRICTION := 8000.0
-const AIR_FRICTION := 900.0
+const ACCEL := 17000.0
+const AIR_ACCEL := 10000.0
+const FRICTION := 19000.0
+const AIR_FRICTION := 2200.0
 const FALL_MULT := 1.6
-const JUMP_V := -880.0
+## Jump: about 190 px high, 0.29 s up and 0.24 s down (roughly 0.55 s in the air). Lighter than
+## a fast-forwarded jump, snappier than the world gravity: the fighter has its own, enemies and props keep GRAVITY.
+const JUMP_V := -1262.0
+const JUMP_GRAVITY := 4310.0
 const COYOTE := 0.09
 const JUMP_BUFFER := 0.12
 const DROP_MAX_TIME := 0.6
@@ -76,7 +81,7 @@ func _configure() -> void:
 	body_h = 100.0
 	max_hp = 100.0
 	hp = max_hp
-	run_speed = RUN_SPEED
+	run_speed = 400.0  # only steers attacks (AttackRunner): moves keep their authored reach, whatever the run speed
 
 
 func _ready() -> void:
@@ -271,7 +276,7 @@ func _locomotion(delta: float) -> void:
 		velocity.y = 50.0
 	else:
 		_coyote -= delta
-		var g := GRAVITY * (FALL_MULT if velocity.y > 0.0 else 1.0) * (0.55 if _flung_t > 0.0 else 1.0)  # flung: a fast, floaty jump
+		var g := (GRAVITY if _flung_t > 0.0 else JUMP_GRAVITY) * (FALL_MULT if velocity.y > 0.0 else 1.0) * (0.55 if _flung_t > 0.0 else 1.0)  # flung: a fast, floaty jump
 		velocity.y = minf(velocity.y + g * delta, MAX_FALL)
 
 	if _flung_t > 0.0:
@@ -352,8 +357,10 @@ func _locomotion(delta: float) -> void:
 	elif absf(velocity.x) > 25.0:
 		state = "walk"
 		var dir_sign := 1.0 if velocity.x * facing >= 0.0 else -1.0
-		# the cycle is tied to distance (no foot sliding): ~150 px per two steps walking, ~240 px running
-		var cycle := lerpf(150.0, 240.0, _run_mix())
+		# the cycle is tied to distance (no foot sliding): ~210 px per two steps walking, ~460 px at full run and longer
+		# still in a sprint (long strides at a calm cadence,
+		# so a fast runner does not look like a fast-forwarded one)
+		var cycle := lerpf(210.0, 460.0, _run_mix()) + maxf(0.0, absf(velocity.x) - RUN_SPEED) * 0.3
 		_walk_phase += absf(velocity.x) * TAU / cycle * delta * dir_sign
 	else:
 		state = "idle"
@@ -498,12 +505,12 @@ func on_hit_landed(info: HitInfo, target: Node) -> void:
 func _start_dash() -> void:
 	var dir := signf(input.dir.x) if absf(input.dir.x) > 0.3 else float(facing)
 	state = "dash"
-	_dash_t = 0.25  # ~175 px: clears a 100 px spike trap plus the body width
+	_dash_t = 0.16  # ~220 px: clears a 100 px spike trap plus the body width, and stays faster than a sprint
 	_dash_cd = 0.7
 	if not is_on_floor():
 		_air_dash_used = true
-	velocity = Vector2(dir * 700.0, 0.0)
-	invuln = maxf(invuln, 0.2)  # i-frames cover most of the dash, so it carries you through floor spikes
+	velocity = Vector2(dir * 1375.0, 0.0)
+	invuln = maxf(invuln, 0.14)  # i-frames cover most of the dash, so it carries you through floor spikes
 	_ghost = true
 	set_collision_mask_value(5, false)  # phase through barriers
 	Sfx.play("whoosh", 1.2)
@@ -828,7 +835,7 @@ func _loco_pose() -> Dictionary:
 		var rm := _run_mix()
 		if rm > 0.0:
 			var bob := cos(_walk_phase)
-			var tgt := {"ua_f": -0.55 - 0.15 * bob, "la_f": 0.25, "wp_rot": 1.0, "ua_b": -1.25 + 0.2 * bob, "la_b": 0.5, "lean": 0.42}
+			var tgt := {"ua_f": -0.55 - 0.15 * bob, "la_f": 0.25, "wp_rot": 1.0, "ua_b": -1.25 + 0.2 * bob, "la_b": 0.5, "lean": 0.6}
 			for k: String in tgt:
 				p[k] = lerpf(float(p.get(k, 0.0)), float(tgt[k]), rm)
 	if _crouch > 0.01 and not p.is_empty():
@@ -838,7 +845,7 @@ func _loco_pose() -> Dictionary:
 
 ## 0 = walking, 1 = running (by ground speed).
 func _run_mix() -> float:
-	return smoothstep(190.0, 300.0, absf(velocity.x))
+	return smoothstep(380.0, 700.0, absf(velocity.x))
 
 
 func _loco_pose_base() -> Dictionary:
@@ -882,6 +889,9 @@ func _update_visuals(delta: float) -> void:
 		_air_spring = false
 		figure.follow_speed = 36.0
 		figure.zeta = 1.0
+	if not airborne and not attack.active:
+		# running: the limbs follow the cycle tightly, or the pose spring lags and rounds off the stride
+		figure.follow_speed = lerpf(36.0, 60.0, _run_mix()) if state == "walk" else 36.0
 	# eyes follow the stick (falling back to the facing direction); figure space is flipped by facing
 	var aim_w := input.dir if input.dir.length() > 0.2 else Vector2(facing, 0)
 	figure.aim = Vector2(aim_w.x * facing, aim_w.y)
@@ -1150,3 +1160,10 @@ func _try_super(class_super: bool) -> bool:
 	Juice.zoom_punch(0.08)
 	Sfx.play("relay")
 	return true
+
+
+## Moves were tuned around the old 400 px/s run: an attack started at full speed must not slide past its target, so
+## the momentum carried into a move is capped there. The move's own drive and lunge speeds are untouched.
+func start_attack(m: MoveData, btn := -1) -> void:
+	velocity.x = clampf(velocity.x, -400.0, 400.0)
+	super.start_attack(m, btn)

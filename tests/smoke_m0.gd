@@ -76,7 +76,7 @@ func _ready() -> void:
 	p1.script_set(Vector2.ZERO)
 	await frames(60)
 	var rise := y_start - y_min
-	check(rise > 130.0 and rise < 200.0, "full jump height ~%.0f px" % rise)
+	check(rise > 170.0 and rise < 215.0, "full jump height ~%.0f px" % rise)
 	check(f1.is_on_floor(), "lands again")
 
 	print("[variable jump]")
@@ -162,7 +162,7 @@ func _ready() -> void:
 	await frames(10)
 	f1.double_jump = false
 	p1.script_set(Vector2.ZERO, [A])
-	await frames(30)
+	await frames(12)
 	p1.script_set(Vector2.ZERO)
 	await frames(2)
 	p1.script_set(Vector2.ZERO, [A])  # second press in the air: nothing without the perk

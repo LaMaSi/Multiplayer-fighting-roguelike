@@ -128,6 +128,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	delta /= Juice.base_speed  # the HUD animates in menu time: banners and callouts stay readable at game speed
 	_clock += delta
 	_banner_t = maxf(0.0, _banner_t - delta)
 	_combo_end_t = maxf(0.0, _combo_end_t - delta)

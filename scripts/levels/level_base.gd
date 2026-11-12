@@ -58,9 +58,10 @@ func _setup() -> void:
 
 
 func _ready() -> void:
+	Juice.gameplay_time()
 	Coop.reset_run()
 	_setup()
-	par_time = 45.0 + level_w / 70.0
+	par_time = (45.0 + level_w / 70.0) / Juice.GAME_SPEED  # in real seconds, like the clock
 	Coop.enemy_hp_mult = enemy_hp_mult
 	Coop.enemy_dmg_mult = enemy_dmg_mult
 	Coop.bounds = Rect2(0, -1200, level_w, 2400)
@@ -351,7 +352,7 @@ func alive_enemies() -> int:
 func _physics_process(delta: float) -> void:
 	if _cleared:
 		return
-	Coop.stat_time += delta
+	Coop.stat_time += delta / Juice.base_speed  # real seconds
 	if in_room:
 		return  # encounters and the exit wait while the players are in a door room
 	if not _locked and exit_x > 0.0 and _enc_idx >= encounters.size():
