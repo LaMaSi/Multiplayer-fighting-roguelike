@@ -12,8 +12,8 @@ ground heights and higher platforms, and characters pass through each other inst
 - Platform tiers above the local ground: 150 / 210 / 270 px.
 
 ## Ledge grab (Phase 3)
-- Reaching the edge of a gap or platform while falling grabs the ledge and hangs (invulnerable).
-- Alone: 3 s to pull yourself up. With the partner nearby pressing interact: instant pull-up. Jump or Down = drop.
+- Reaching the edge of a gap or platform while falling grabs the ledge and the player climbs up at once (0.25 s).
+- No hanging, no partner help, and no input drops the player.
 
 ## Crowds
 - Players and enemies never block each other. While bodies overlap, movement is slowed to 50 % (`Actor.crowd_mult`).
