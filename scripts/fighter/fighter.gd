@@ -43,11 +43,10 @@ var _drop_clear_y := 0.0
 var _floor_collider: Object = null
 var last_safe := Vector2.ZERO  ## last solid ground (>= 60 px from a pit edge) stood on: where a fall respawns
 
-## Ledge grab: hang from the corner of a pit / platform; 3 s to climb alone, instant when the partner helps.
-const LEDGE_SOLO_TIME := 3.0
+## Ledge grab: catching the corner of a pit / platform pulls you straight up onto it (no hanging, no dropping).
+const LEDGE_CLIMB_TIME := 0.25
 const LEDGE_HANG_Y := 112.0  # feet this far below the corner: the raised hands are on it
-var _ledge := {}  # the corner being held ({p, dir}), empty when not hanging
-var _ledge_t := 0.0
+var _ledge := {}  # the corner being climbed ({p, dir}), empty otherwise
 var _ledge_cd := 0.0
 var _ledge_climb := 0.0
 var _ledge_from := Vector2.ZERO
@@ -937,8 +936,6 @@ func _draw() -> void:
 		var f := ThemeDB.fallback_font
 		var txt := "HOLD RB" if Coop.revives_left > 0 else "NO REVIVES"
 		draw_string(f, Vector2(-34, -92), txt, HORIZONTAL_ALIGNMENT_CENTER, 70.0, 13, Color(1, 1, 1, 0.8))
-	if state == "ledge" and _ledge_climb <= 0.0:
-		draw_arc(Vector2(0, -50), 34.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(_ledge_t / LEDGE_SOLO_TIME, 0.0, 1.0), 32, Color(2.0, 1.5, 0.4), 5.0, true)
 	if (attack.active and attack.aiming) or (held != null and is_instance_valid(held)):
 		_draw_throw_aim(held != null)
 	if Dbg.enabled:
@@ -956,7 +953,7 @@ func debug_text() -> String:
 
 # ------------------------------------------------------------------ ledge grab
 
-## While falling next to a pit edge or platform end, grab it and hang.
+## While falling next to a pit edge or platform end, grab it and climb up at once.
 func _try_ledge() -> bool:
 	var lvl := get_parent()
 	if lvl == null or not lvl.has_method("ledge_points"):
@@ -970,10 +967,11 @@ func _try_ledge() -> bool:
 		if dxf >= 2.0 and dxf <= 36.0 and dy >= -24.0 and dy <= 40.0:
 			_ledge = l
 			state = "ledge"
-			_ledge_t = 0.0
-			_ledge_climb = 0.0
 			velocity = Vector2.ZERO
 			global_position = Vector2(c.x - float(facing) * 16.0, c.y + LEDGE_HANG_Y)
+			_ledge_from = global_position
+			_ledge_to = Vector2(c.x + float(facing) * 26.0, c.y - 1.0)
+			_ledge_climb = LEDGE_CLIMB_TIME
 			_air_dash_used = false
 			_air_jump_ready = true
 			Sfx.play("pickup", 1.3)
@@ -983,40 +981,17 @@ func _try_ledge() -> bool:
 
 
 func _st_ledge(delta: float) -> void:
+	# pulling up: slide from the catch to the top of the ledge. Nothing interrupts it, so no input can drop you.
 	velocity = Vector2.ZERO
-	if _ledge_climb > 0.0:
-		# pulling up: slide from the hang to the top of the ledge
-		_ledge_climb = maxf(0.0, _ledge_climb - delta)
-		var k := 1.0 - _ledge_climb / 0.22
-		global_position = _ledge_from.lerp(_ledge_to, k)
-		if _ledge_climb <= 0.0:
-			global_position = _ledge_to
-			state = "idle"
-			_ledge = {}
-			_ledge_cd = 0.4
-			Fx.dust(get_parent(), global_position, 6)
-		return
-	if input.pressed(PlayerInput.Btn.JUMP) or input.dir.y > 0.7:
-		state = "fall"
+	_ledge_climb = maxf(0.0, _ledge_climb - delta)
+	var k := 1.0 - _ledge_climb / LEDGE_CLIMB_TIME
+	global_position = _ledge_from.lerp(_ledge_to, k * k * (3.0 - 2.0 * k))
+	if _ledge_climb <= 0.0:
+		global_position = _ledge_to
+		state = "idle"
 		_ledge = {}
-		_ledge_cd = 0.5
-		velocity = Vector2(-float(facing) * 60.0, -200.0 if input.pressed(PlayerInput.Btn.JUMP) else 60.0)
-		return
-	_ledge_t += delta
-	var helped := false
-	var p := Coop.partner_of(self)
-	if p != null and p.is_alive() and p.state != "downed" and absf(p.global_position.x - global_position.x) < 160.0 and absf(p.global_position.y - global_position.y) < 180.0:
-		if p.input.pressed(PlayerInput.Btn.INTERACT) or p.input.pressed(PlayerInput.Btn.LB):
-			helped = true
-	if helped or _ledge_t >= LEDGE_SOLO_TIME:
-		var c: Vector2 = _ledge["p"]
-		_ledge_from = global_position
-		_ledge_to = Vector2(c.x + float(facing) * 26.0, c.y - 1.0)
-		_ledge_climb = 0.22
-		if helped:
-			Fx.ring(get_parent(), global_position + Vector2(0, -60), Color(2.0, 1.7, 1.9), 60.0, 0.3)
-			Coop.callout("HELP!", Color(2.0, 1.7, 1.9))
-			Sfx.play("revive", 1.2)
+		_ledge_cd = 0.4
+		Fx.dust(get_parent(), global_position, 6)
 
 
 ## Small arrow plus a dotted arc showing where the throw will go (drawn in world-aligned local space).

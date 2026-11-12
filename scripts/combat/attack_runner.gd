@@ -514,6 +514,10 @@ func _hits() -> void:
 	for i in move.hits.size():
 		var h: Dictionary = move.hits[i]
 		var at: int = h["at"]
+		if frame == at - 1 and at > 0 and not _ev_done.has(2000 + i) and actor.team == "player" and float(h["dmg"]) >= 14.0 and (i == 0 or at - (int((move.hits[i - 1] as Dictionary)["at"]) + _hit_dur(move.hits[i - 1])) > 8):
+			# pre-impact hold: heavy blows pause for one frame at the top of the swing, just before contact
+			_ev_done[2000 + i] = true
+			actor.freeze = maxi(actor.freeze, 1)
 		if frame == at and not _ev_done.has(1000 + i):
 			# strike: stretch the body along the attack, ghost on heavy blows
 			_ev_done[1000 + i] = true

@@ -177,8 +177,8 @@ tests/      headless smoke tests (run with godot --headless -s)
 - Characters never block each other (only barriers, layer 5, do); overlapping bodies are slowed to 50 % (`Actor.crowd_mult`).
 - Terrain (`StreetsLevel._gen_terrain`): ground pieces with pits (180–300 px, or 360–440 with an island platform), raised and
   sunken blocks (50–100 px), platform tiers 150 / 270 px, arenas stay flat, falling respawns on the last safe ground (-8 HP).
-- Ledge grab (`Fighter._try_ledge`, state "ledge"): hang at pit edges / platform ends, 3 s solo climb, instant when the
-  partner presses interact / LB nearby, Down or jump drops.
+- Ledge grab (`Fighter._try_ledge`, state "ledge"): catching a pit edge / platform end pulls the player straight up
+  (0.25 s); there is no hanging, no partner help and no way to drop.
 - Combat model: combo damage +4 %/hit (30 hits) +25 %/relay, combo window 2.2 s, +3 hitstun on player hits, juggle decay
   loosened; Brute (230 HP) and Heavy (340 HP) are the default waves, 1 wave in 5 is a swarm of small enemies.
 - Combo money: a finished combo pays `(hits - 8) * 0.75 + relays * 3` coins into the shared wallet.

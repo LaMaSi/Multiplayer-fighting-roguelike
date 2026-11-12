@@ -13,13 +13,24 @@ static func sparks(parent: Node, pos: Vector2, col: Color, count: int = 10, dir:
 	_particles(parent, pos, count, col, d, spread, 150.0, 460.0, 0.38, Vector2(0, 700), 2.0, 3.6)
 
 
+## Chunky, tumbling chips that arc out and fall under gravity (shrapnel from a heavy blow, bigger on launches).
+static func debris(parent: Node, pos: Vector2, col: Color, count: int = 5, dir: Vector2 = Vector2.ZERO, power: float = 1.0) -> void:
+	var d := dir.normalized() if dir != Vector2.ZERO else Vector2(0, -1)
+	var p := _particles(parent, pos, count, col, d, 55.0, 220.0, 380.0 + 140.0 * power, 0.75, Vector2(0, 1500), 2.5, 4.0 + power)
+	if p != null:
+		p.angle_min = 0.0
+		p.angle_max = 360.0
+		p.angular_velocity_min = -540.0
+		p.angular_velocity_max = 540.0
+
+
 static func shatter(parent: Node, pos: Vector2, col: Color, count: int = 22) -> void:
 	_particles(parent, pos, count, col, Vector2(0, -1), 180.0, 120.0, 520.0, 0.8, Vector2(0, 900), 2.5, 5.5)
 
 
-static func _particles(parent: Node, pos: Vector2, count: int, col: Color, dir: Vector2, spread: float, v0: float, v1: float, life: float, grav: Vector2, s0: float, s1: float) -> void:
+static func _particles(parent: Node, pos: Vector2, count: int, col: Color, dir: Vector2, spread: float, v0: float, v1: float, life: float, grav: Vector2, s0: float, s1: float) -> CPUParticles2D:
 	if not is_instance_valid(parent) or not parent.is_inside_tree():
-		return
+		return null
 	var p := CPUParticles2D.new()
 	p.position = pos
 	p.z_index = 55
@@ -42,6 +53,7 @@ static func _particles(parent: Node, pos: Vector2, count: int, col: Color, dir: 
 	p.color_ramp = g
 	parent.add_child(p)
 	parent.get_tree().create_timer(life + 0.4).timeout.connect(p.queue_free)
+	return p
 
 
 static func ring(parent: Node, pos: Vector2, col: Color, radius: float = 60.0, dur: float = 0.25) -> void:
@@ -115,6 +127,8 @@ static func impact(parent: Node, pos: Vector2, col: Color, power: float = 1.0, d
 		core.alpha = 0.7
 		core.position = pos
 		parent.add_child(core)
+	if power >= 1.5:
+		debris(parent, pos, col, int(2 + 2.5 * power), dir, power)
 	sparks(parent, pos, col, int(3 + 4 * power), dir)
 
 

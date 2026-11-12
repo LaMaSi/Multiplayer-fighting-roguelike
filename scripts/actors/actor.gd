@@ -405,6 +405,8 @@ func _hit_feedback(info: HitInfo, dmg: float) -> void:
 	var power := clampf(dmg / 6.0, 0.9, 3.0)
 	var dir := info.kb.normalized() if info.kb != Vector2.ZERO else Vector2(facing, -0.3)
 	Fx.impact(parent, info.pos, info.color, power, dir)
+	if info.kind in ["launch", "spike"]:
+		Fx.debris(parent, info.pos, info.color, 4 + int(power * 2.0), dir, power + 0.5)  # a launch throws extra chips
 	var pitch := 1.0 + minf(Coop.combo, 24) * 0.025
 	if info.relay:
 		Sfx.play("relay", 1.0 + minf(Coop.relay, 6) * 0.08)
