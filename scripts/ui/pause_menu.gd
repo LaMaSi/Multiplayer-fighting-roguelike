@@ -342,7 +342,7 @@ func _paint_status(c: Control) -> void:
 	for h in n:
 		UiKit.heart(c, Vector2(x + 380 + h * 36, 176), 13.0, h < Coop.revives_left)
 	if RunState.active:
-		UiKit.txt(c, UiKit.body(), Vector2(x + 350, 182), "STREETS  ·  %d CLEARED" % RunState.levels_cleared, 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_RIGHT, 326.0)
+		UiKit.txt(c, UiKit.body(), Vector2(x + 350, 182), "%s  ·  %d CLEARED" % [RunState.biome_name(), RunState.levels_cleared], 16, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_RIGHT, 326.0)
 	_lv.paint_mini(c, 0, Rect2(x, 230, 370, 232))
 	if not RunState.solo:
 		_lv.paint_mini(c, 1, Rect2(x + 390, 230, 370, 232))

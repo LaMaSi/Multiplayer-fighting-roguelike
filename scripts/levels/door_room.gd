@@ -13,6 +13,8 @@ var x0 := 0.0
 var cleared := false
 var exit_x := 0.0
 var pick_move := false  ## the challenge reward includes a move choice (decided by the door)
+var floor_y := INF  ## the room's own floor height (INF = the level's ground line)
+var exit_by_door := true  ## leave through the exit door with the interact button (side rooms are left on foot)
 var _wave := 0
 var _t := 0.0
 var _hp_before := 1.0
@@ -43,6 +45,8 @@ func setup(lv: LevelBase, k: String) -> DoorRoom:
 
 
 func gy() -> float:
+	if floor_y != INF:
+		return floor_y
 	return level.ground_y
 
 
@@ -50,18 +54,7 @@ func enter() -> void:
 	z_index = -2
 	process_mode = Node.PROCESS_MODE_ALWAYS  # keeps running while a button / reward pick pauses the fighters
 	level.add_child(self)
-	level._make_body(Rect2(x0 - 300.0, gy(), ROOM_W + 600.0, 400.0), 1)
-	level._make_body(Rect2(x0 - 100.0, -1500.0, 100.0, 3000.0), 1)
-	level._make_body(Rect2(x0 + ROOM_W, -1500.0, 100.0, 3000.0), 1)
-	level.cam.set_bounds(x0, x0 + ROOM_W)
-	Coop.bounds = Rect2(x0, -1200.0, ROOM_W, 2400.0)
-	var i := 0
-	for f in level.fighters:
-		f.global_position = Vector2(x0 + 160.0 + i * 70.0, gy() - 1.0)
-		f.velocity = Vector2.ZERO
-		f.last_safe = f.global_position
-		i += 1
-	level.cam.snap()
+	_place()
 	_ui_layer = CanvasLayer.new()
 	_ui_layer.layer = 12
 	_ui_layer.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -77,12 +70,41 @@ func enter() -> void:
 		Coop.enemy_hp_mult = level.enemy_hp_mult * 1.3
 		level.hud.banner("CHALLENGE!", Color(2.2, 0.5, 0.4))
 		Sfx.play("boom", 1.1)
-		_spawn_wave()
+		_start_challenge()
 	else:
 		level.hud.banner("MOVE SHOP", Color(2.0, 1.6, 0.5))
 		_build_items()
 		cleared = true
 	queue_redraw()
+
+
+## Floor, walls, camera and the players' places. Side rooms (SideRoom) are attached to the level and replace this.
+func _place() -> void:
+	level._make_body(Rect2(x0 - 300.0, gy(), ROOM_W + 600.0, 400.0), 1)
+	level._make_body(Rect2(x0 - 100.0, -1500.0, 100.0, 3000.0), 1)
+	level._make_body(Rect2(x0 + ROOM_W, -1500.0, 100.0, 3000.0), 1)
+	level.cam.set_bounds(x0, x0 + ROOM_W)
+	Coop.bounds = Rect2(x0, -1200.0, ROOM_W, 2400.0)
+	var i := 0
+	for f in level.fighters:
+		f.global_position = Vector2(x0 + 160.0 + i * 70.0, gy() - 1.0)
+		f.velocity = Vector2.ZERO
+		f.last_safe = f.global_position
+		i += 1
+	level.cam.snap()
+
+
+func _start_challenge() -> void:
+	_spawn_wave()
+
+
+## One physics step of a running challenge.
+func _challenge_tick(_delta: float) -> void:
+	if level.alive_enemies() == 0:
+		if _wave < 2:
+			_spawn_wave()
+		else:
+			_finish_challenge()
 
 
 func _build_items() -> void:
@@ -92,7 +114,7 @@ func _build_items() -> void:
 	var picks: Array = []
 	# one off-hand or adaptive move both players can buy, then a weapon move for each class in play
 	var shared_pool: Array = []
-	for id in ClassData.X_POOL + ClassData.Y_POOL:
+	for id in ClassData.DEFAULT_POOL + ClassData.ADAPT_POOL:
 		var owned_both := true
 		for p in 2:
 			if not (id in (RunState.loadouts[p] as Dictionary).values()):
@@ -146,25 +168,21 @@ func _process(delta: float) -> void:
 		_ui.queue_redraw()  # the overlay shows the coins and the button picker; nothing else asks it to redraw
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if level == null or not level.in_room:
 		return
 	for p in 2:
 		if _pickers[p].active:
 			_pickers[p].update(Inp.players[p])
 	if kind == "challenge" and not cleared:
-		if level.alive_enemies() == 0:
-			if _wave < 2:
-				_spawn_wave()
-			else:
-				_finish_challenge()
+		_challenge_tick(delta)
 	if _reward_layer == null and not _pickers[0].active and not _pickers[1].active and level.get_tree().paused:
 		level.get_tree().paused = false
 	for f in level.fighters:
 		if not f.is_alive() or f.state == "downed" or _pickers[f.player_index].active or _reward_layer != null:
 			continue
 		if f.input.pressed(PlayerInput.Btn.INTERACT):
-			if cleared and absf(f.global_position.x - exit_x) < 90.0:
+			if cleared and exit_by_door and absf(f.global_position.x - exit_x) < 90.0:
 				level.leave_room()
 				return
 			if kind == "shop":
@@ -176,7 +194,20 @@ static func challenge_coins() -> int:
 	return 60 + 25 * (RunState.levels_cleared if RunState.active else 0)
 
 
+## Real seconds between the last kill and the "CLEARED!" payout: the slow-motion finish plays out first.
+const FINISH_HOLD := 1.25
+## Real seconds the payout stays on screen before the move choice opens (it pauses the game).
+const REWARD_DELAY := 1.1
+var _finishing := false
+
+
 func _finish_challenge() -> void:
+	if _finishing:
+		return
+	_finishing = true
+	await level.get_tree().create_timer(FINISH_HOLD, true, false, true).timeout
+	if not is_inside_tree():
+		return
 	cleared = true
 	var coins := challenge_coins()
 	_msg = "+%d COINS" % coins
@@ -190,7 +221,9 @@ func _finish_challenge() -> void:
 	Sfx.play("relay")
 	Coop.say(_msg, Color(2.0, 1.7, 0.4), Vector2(x0 + ROOM_W * 0.5, gy() - 220.0))
 	if pick:
-		_open_reward()
+		await level.get_tree().create_timer(REWARD_DELAY, true, false, true).timeout
+		if is_inside_tree() and level.in_room:
+			_open_reward()
 
 
 ## The move choice happens right now, in the room: both players pick from the same cards.
@@ -278,8 +311,18 @@ func paint_ui(c: Control) -> void:
 
 
 func _draw() -> void:
+	_draw_shell()
+	_draw_items()
+
+
+func room_color() -> Color:
+	return Color(1.0, 0.2, 0.25) if kind == "challenge" else Pal.interact()
+
+
+## Walls, floor, title and the exit.
+func _draw_shell() -> void:
 	var g := gy()
-	var col := Color(1.0, 0.2, 0.25) if kind == "challenge" else Pal.interact()
+	var col := room_color()
 	draw_rect(Rect2(x0 - 600.0, -900.0, ROOM_W + 1200.0, g + 900.0), Color(0.03, 0.015, 0.06))
 	for i in 12:
 		var px := x0 + 60.0 + i * 125.0
@@ -298,6 +341,12 @@ func _draw() -> void:
 	draw_rect(Rect2(exit_x - 46.0, g - 150.0, 92.0, 150.0), Color(ec.r * 0.1, ec.g * 0.1, ec.b * 0.1), true)
 	draw_rect(Rect2(exit_x - 46.0, g - 150.0, 92.0, 150.0), ec, false, 4.0)
 	draw_string(f, Vector2(exit_x - 60.0, g - 160.0), "EXIT" if cleared else "LOCKED", HORIZONTAL_ALIGNMENT_CENTER, 120.0, 20, ec)
+
+
+## The shop pedestals.
+func _draw_items() -> void:
+	var g := gy()
+	var f := ThemeDB.fallback_font
 	for it in _items:
 		var px2: float = it["x"]
 		var is_move := String(it["kind"]) == "move"

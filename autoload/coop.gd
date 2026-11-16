@@ -140,11 +140,13 @@ func post_hit(info: HitInfo, victim: Actor, dmg: float) -> void:
 	_count_hit(atk.player_index)
 	hits_by[atk.player_index] += 1
 	last_hit_pos = victim.global_position
-	atk.meter = minf(100.0, atk.meter + dmg * 0.7)
+	if not info.empowered:  # an empowered move spent meter: it does not refill it
+		atk.meter = minf(100.0, atk.meter + dmg * 0.7)
 	if info.relay:
 		relay += 1
 		stat_relay_hits += 1
-		atk.meter = minf(100.0, atk.meter + 8.0)
+		if not info.empowered:
+			atk.meter = minf(100.0, atk.meter + 8.0)
 		say("ALLEY-OOP!" if info.alley_oop else "RELAY x%d" % relay, RELAY_COLOR, victim.global_position + Vector2(0, -130))
 		Juice.shake(0.25)
 	combo_changed.emit()

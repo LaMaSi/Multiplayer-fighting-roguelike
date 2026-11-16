@@ -79,7 +79,7 @@ func _ready() -> void:
 	var sword_b: Array = ClassData.get_class_data("sword")["b_pool"]
 	var lo0: Dictionary = RunState.loadouts[0]
 	check("P1's B moves come from the Sword pool", lo0["B"] in sword_b and lo0["B_UP"] in sword_b and lo0["B_SIDE"] in sword_b)
-	check("X is an off-hand move and Y an adaptive move", lo0["X"] in ClassData.X_POOL and lo0["Y"] in ClassData.Y_POOL)
+	check("X is an off-hand move and Y an adaptive move", lo0["X"] in ClassData.DEFAULT_POOL and lo0["Y"] in ClassData.ADAPT_POOL)
 	await frames(30)
 	await snap(out + "/setup_roll.png")
 	await tap(0, Vector2.ZERO, A)  # skip the roll

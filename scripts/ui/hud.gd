@@ -28,7 +28,10 @@ var _hp_shake: Array[float] = [0.0, 0.0]  ## health bar shake per player: jumps 
 var _banner := ""
 var _banner_t := 0.0
 var _banner_col := Color.WHITE
+var go_text := "GO >>"  ## the "move on" prompt; vertical levels point up instead
+var go_pos := Vector2(1180, 380)
 var _go := false
+var _left := false  ## the result screen was answered: the scene is changing
 var _result := ""
 var _result_win := false
 var _stats: Dictionary = {}
@@ -146,9 +149,12 @@ func _process(delta: float) -> void:
 			_hp_shake[i] = clampf(0.5 + (_hp_prev[i] - f.hp) / 30.0, 0.5, 1.0)
 		_hp_prev[i] = f.hp
 		_hp_shake[i] = maxf(0.0, _hp_shake[i] - 3.2 * delta)
-	if _result != "":
+	if _result != "" and not _left:
+		# (a press lasts a whole physics tick, which can span several frames, and both players may press at once:
+		# act on the first one only. The scene change takes the level out of the tree right away.)
 		for p in Inp.players:
 			if p.pressed(PlayerInput.Btn.JUMP):
+				_left = true
 				if _result_win:
 					level.finish_level()
 				elif RunState.active:
@@ -156,9 +162,12 @@ func _process(delta: float) -> void:
 					level.to_menu()
 				else:
 					level.restart()
+				return
 			elif p.pressed(PlayerInput.Btn.B) and not _result_win:
+				_left = true
 				RunState.end_run()
 				level.to_menu()
+				return
 	_canvas.queue_redraw()
 
 
@@ -179,8 +188,8 @@ func paint(c: Control) -> void:
 		UiKit.txt(c, UiKit.body(), Vector2(0, 706), "TIME SCALE x%.2f" % Juice.user_time_scale, 16, Color(1.0, 0.75, 0.4, 0.8), HORIZONTAL_ALIGNMENT_CENTER, 1280.0)
 	if go_visible():  # (never inside a challenge room: you fight there, you do not leave)
 		var a := 0.5 + 0.5 * sin(_go_t * 8.0)
-		c.draw_set_transform_matrix(UiKit.italic(Vector2(1180, 380), -0.04))
-		UiKit.txt(c, UiKit.head(), Vector2(-100, 0), "GO >>", 46, Color(UiKit.AMBER.r, UiKit.AMBER.g, UiKit.AMBER.b, a), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 5, Color(0, 0, 0, a))
+		c.draw_set_transform_matrix(UiKit.italic(go_pos, -0.04))
+		UiKit.txt(c, UiKit.head(), Vector2(-100, 0), go_text, 46, Color(UiKit.AMBER.r, UiKit.AMBER.g, UiKit.AMBER.b, a), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 5, Color(0, 0, 0, a))
 		c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	if _banner_t > 0.0:
 		var k := clampf(_banner_t / 1.6, 0.0, 1.0)

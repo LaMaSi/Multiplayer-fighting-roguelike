@@ -13,7 +13,7 @@ const DESCS := {
 	"treasure": "A loot room full of containers. Reward: a level-up.",
 	"rest": "Recover 60% health, then choose a level-up.",
 	"mystery": "Could be anything...",
-	"boss": "The Big Boss. Defeat him to clear the Streets.",
+	"boss": "The Big Boss. Defeat him to clear the run.",
 	"shop": "Spend your shared coins on moves, upgrades and extra lives.",
 }
 
@@ -93,7 +93,7 @@ func _enter(node: Dictionary) -> void:
 	elif t == "shop":
 		get_tree().change_scene_to_file("res://scenes/shop.tscn")
 	else:
-		get_tree().change_scene_to_file("res://scenes/streets.tscn")
+		get_tree().change_scene_to_file(RunState.level_scene())
 
 
 static func _c(c: Color) -> Color:
@@ -110,7 +110,7 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 0, 1280, 720), Color(0.04, 0.02, 0.09))
 	for i in 20:
 		draw_rect(Rect2(0, 720.0 * i / 20.0, 1280, 37), Color(0.3, 0.08, 0.25, 0.02 * i))
-	_txt(Vector2(0, 62), "THE STREETS", 44, Color(1, 0.8, 0.5), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
+	_txt(Vector2(0, 62), ("THE " + RunState.biome_name()), 44, Color(1, 0.8, 0.5), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	_txt(Vector2(0, 92), "Levels cleared: %d   |   choose your next stop" % RunState.levels_cleared, 18, Color(1, 1, 1, 0.6), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	var opts := RunState.available_next()
 	# edges

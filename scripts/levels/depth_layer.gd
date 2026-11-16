@@ -16,6 +16,7 @@ const PLAT_BACK := 40.0  ## platform boxes reach this far behind the walking lin
 const PLAT_FRONT := 10.0  ## and this far in front of it
 const PLAT_LIP := 6.0  ## the box extends this far below the collision rectangle
 const TUNNEL_DEPTH := 90.0  ## a tunnel's roof reaches back to its far wall
+const SOLID_FILL := Color(0.075, 0.045, 0.14)  ## body colour of solid blocks (LevelBase.solids)
 const TUNNEL_EXTRA := 12.0  ## the roof is drawn this much thicker than its collision slab
 
 var level: LevelBase
@@ -82,8 +83,13 @@ func _draw() -> void:
 	# platforms: farthest (highest) first so lower ones overlap them
 	var plats: Array = level.platforms.duplicate()
 	plats.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.y < b.position.y)
+	var vy0 := _view.position.y - 400.0
+	var vy1 := _view.end.y + 400.0
+	for s: Rect2 in level.solids:
+		if s.end.x >= vx0 and s.position.x <= vx1 and s.end.y >= vy0 and s.position.y <= vy1:
+			draw_platform(self, s, ng, _vp, true, FLOOR_BACK * 0.6, SOLID_FILL)
 	for r: Rect2 in plats:
-		if r.end.x < vx0 or r.position.x > vx1:
+		if r.end.x < vx0 or r.position.x > vx1 or r.end.y < vy0 or r.position.y > vy1:
 			continue
 		if level.tunnel_roofs.has(r):
 			_draw_tunnel(r, np)
@@ -282,7 +288,7 @@ func surface_below(feet: Vector2) -> float:
 	var gy: float = level.ground_at(feet.x)
 	if gy != INF and gy >= feet.y - 8.0:
 		best = gy
-	for r: Rect2 in level.platforms:
+	for r: Rect2 in level.platforms + level.solids:
 		if feet.x >= r.position.x and feet.x <= r.end.x and r.position.y >= feet.y - 8.0 and r.position.y < best:
 			best = r.position.y
 	for n in get_tree().get_nodes_in_group("moving_platforms"):

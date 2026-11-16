@@ -621,6 +621,7 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 	info.team = a.team
 	info.clash = clash
 	info.dmg = float(h["dmg"]) * a.dmg_mult() * a.upgrade_mult(move.id, "dmg") * (1.3 if empowered else 1.0)
+	info.empowered = empowered
 	if a.team == "enemy":
 		info.dmg *= Coop.enemy_dmg_mult
 	info.stun = int(h["stun"]) + (3 if a.team == "player" else 0)  # a little extra hitstun: solo chains become possible

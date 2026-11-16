@@ -13,6 +13,7 @@ var level_w := 3200.0
 var ground_y := 600.0
 var platforms: Array = []  ## Rect2 (top-left, size)
 var tunnel_roofs: Array = []  ## the Rect2s in `platforms` that are tunnel roofs: drawn thick with a dark interior; walk through under them or jump over
+var solids: Array = []  ## Rect2 solid blocks anywhere in the level (layer 1): thick slabs you cannot jump through
 var ground_segs: Array = []  ## Rect2 (x, top_y, width, depth) pieces of ground; empty = one flat ground. Gaps between pieces are pits.
 var moving_specs: Array = []  ## {rect: Rect2, vertical: bool, travel: float (half), period: float, phase: float}
 var doors_spec: Array = []  ## {x, kind: "challenge" | "shop"}
@@ -61,7 +62,7 @@ func _ready() -> void:
 	Juice.gameplay_time()
 	Coop.reset_run()
 	_setup()
-	par_time = (45.0 + level_w / 70.0) / Juice.GAME_SPEED  # in real seconds, like the clock
+	par_time = _par_seconds() / Juice.GAME_SPEED  # in real seconds, like the clock
 	Coop.enemy_hp_mult = enemy_hp_mult
 	Coop.enemy_dmg_mult = enemy_dmg_mult
 	Coop.bounds = Rect2(0, -1200, level_w, 2400)
@@ -87,6 +88,11 @@ func _ready() -> void:
 	Coop.summon_requested.connect(_on_summon)
 	Coop.game_over.connect(_on_game_over)
 	queue_redraw()
+
+
+## Game seconds for an S on the time stat.
+func _par_seconds() -> float:
+	return 45.0 + level_w / 70.0
 
 
 func _build_environment() -> void:
@@ -134,8 +140,9 @@ func _make_body(rect: Rect2, layer: int, one_way := false) -> StaticBody2D:
 func _build_world() -> void:
 	for g: Rect2 in _ground_rects():
 		_make_body(Rect2(g.position.x, g.position.y, g.size.x, 400.0), 1)
-	_make_body(Rect2(-100, -1500, 100, 3000), 1)
-	_make_body(Rect2(level_w, -1500, 100, 3000), 1)
+	_build_walls()
+	for s: Rect2 in solids:
+		_make_body(s, 1)
 	for r: Rect2 in platforms:
 		var b := _make_body(r, 2, true)
 		b.set_meta("bottom_y", r.end.y)
@@ -143,6 +150,12 @@ func _build_world() -> void:
 		var mp := MovingPlatform.new()
 		add_child(mp)
 		mp.setup(m["rect"], bool(m["vertical"]), float(m["travel"]), float(m["period"]), float(m["phase"]), Pal.terrain())
+
+
+## The walls at both ends of the level.
+func _build_walls() -> void:
+	_make_body(Rect2(-100, -1500, 100, 3000), 1)
+	_make_body(Rect2(level_w, -1500, 100, 3000), 1)
 
 
 ## The ground pieces, with the first and last stretched past the level edges. Legacy levels: one flat slab.
@@ -158,8 +171,9 @@ func _ground_rects() -> Array:
 	return out
 
 
-## Top of the ground at x, or INF over a pit.
-func ground_at(x: float) -> float:
+## Top of the ground at x, or INF over a pit. `_from_y` (the height of whoever asks) only matters in levels with
+## floors above each other.
+func ground_at(x: float, _from_y := -INF) -> float:
 	for g: Rect2 in _ground_rects():
 		if x >= g.position.x and x <= g.end.x:
 			return g.position.y
@@ -324,10 +338,14 @@ func spawn_enemy(kind: String, pos: Vector2) -> Enemy:
 	var e := Enemy.new()
 	e.kind = kind
 	e.position = pos
-	e.kill_y = ground_y + 800.0
+	e.kill_y = _enemy_kill_y()
 	add_child(e)
 	_enemies.append(e)
 	return e
+
+
+func _enemy_kill_y() -> float:
+	return ground_y + 800.0
 
 
 ## True when the enemy that just fell was the last one of the battle: the final wave of an arena encounter or of a
@@ -355,6 +373,11 @@ func _physics_process(delta: float) -> void:
 	Coop.stat_time += delta / Juice.base_speed  # real seconds
 	if in_room:
 		return  # encounters and the exit wait while the players are in a door room
+	_run_encounters(delta)
+
+
+## Arena locks, enemy waves and the finish line. Vertical levels replace this.
+func _run_encounters(_delta: float) -> void:
 	if not _locked and exit_x > 0.0 and _enc_idx >= encounters.size():
 		var sum := 0.0
 		var n := 0
@@ -477,8 +500,14 @@ func _complete() -> void:
 	Coop.level_cleared.emit()
 
 
+var _finished := false
+
+
 ## Called from the result screen: runs go on to the reward screen, standalone levels return to the menu.
 func finish_level() -> void:
+	if _finished or not is_inside_tree():
+		return  # already on the way out (a second press in the same tick)
+	_finished = true
 	if RunState.active:
 		RunState.save_from(fighters)
 		RunState.level_cleared(float(result_stats.get("heal_bonus", 0.0)))
@@ -502,12 +531,16 @@ func _on_game_over() -> void:
 
 
 func restart() -> void:
+	if not is_inside_tree():
+		return
 	get_tree().paused = false
 	Juice.reset_time()
 	get_tree().reload_current_scene()
 
 
 func to_menu() -> void:
+	if not is_inside_tree():
+		return
 	get_tree().paused = false
 	Juice.reset_time()
 	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")

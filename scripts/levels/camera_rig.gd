@@ -9,6 +9,10 @@ const MARGIN := Vector2(1100.0, 650.0)  # extra world shown around the two playe
 
 var targets: Array[Node2D] = []
 var min_zoom := 0.45
+## Tower mode (vertical levels): the zoom is fixed to the level width and the level steers the screen centre itself.
+var tower := false
+var tower_zoom := 0.85
+var focus := Vector2.ZERO
 const CAM_LIFT := 170.0  # the camera sits this far above the fighters: less ground on screen, room for the platforms in the air
 
 
@@ -41,6 +45,11 @@ func _update(delta: float, instant: bool) -> void:
 	for t in targets:
 		if is_instance_valid(t):
 			live.append(t)
+	if tower:
+		var tz := tower_zoom * (1.0 + Juice.punch)
+		zoom = Vector2(tz, tz)
+		global_position = focus
+		return
 	if live.is_empty():
 		return
 	var mn := Vector2(INF, INF)

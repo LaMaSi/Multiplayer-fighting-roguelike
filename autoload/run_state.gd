@@ -10,6 +10,11 @@ const UP_MULT := {"dmg": 1.25, "spd": 1.2, "kb": 1.3}
 const UP_TEXT := {"dmg": "+25% damage", "spd": "+20% attack speed (shorter recovery)", "kb": "+30% knockback"}
 
 var active := false
+## The level set of the run: "streets" (side-scrolling) or "skyscraper" (vertical). Chosen on the main menu; it is
+## not reset by start_run.
+var biome := "streets"
+const BIOME_NAMES := {"streets": "STREETS", "skyscraper": "SKYSCRAPER"}
+const BIOME_SCENES := {"streets": "res://scenes/streets.tscn", "skyscraper": "res://scenes/skyscraper.tscn"}
 var coins := 0  ## one shared wallet for the whole run
 var bonus_revives := 0  ## extra shared lives bought in shops (added to every level)
 var map: Array = []  ## layers of node dictionaries {layer, idx, type, seed, next: [idx], done}
@@ -109,6 +114,15 @@ func reroll_move(p: int, slot: String) -> bool:
 
 func end_run() -> void:
 	active = false
+
+
+func biome_name() -> String:
+	return String(BIOME_NAMES.get(biome, "STREETS"))
+
+
+## The level scene of the current level set.
+func level_scene() -> String:
+	return String(BIOME_SCENES.get(biome, BIOME_SCENES["streets"]))
 
 
 # ------------------------------------------------------------------ map
@@ -225,6 +239,8 @@ func level_cleared(bonus_heal := 0.0) -> void:
 	if current["type"] == "boss":
 		finished = true
 		won = true
+		queue.clear()  # the run is over: no reward picks after the final boss (until there are more levels)
+		bonus_picks.clear()
 
 
 ## Leaving a shop: the node is done and no reward queue follows.
@@ -283,7 +299,7 @@ func make_cards(player: int, kind: String) -> Array:
 					pool.append(id)
 		else:
 			# shared pick: off-hand (X, universal) and adaptive (Y) moves. B moves come from personal level-ups.
-			for id in ClassData.X_POOL + ClassData.Y_POOL:
+			for id in ClassData.DEFAULT_POOL + ClassData.ADAPT_POOL:
 				if not (id in owned):
 					pool.append(id)
 		_shuffle(pool)
@@ -344,14 +360,14 @@ func _move_card(id: String, class_id: String) -> Dictionary:
 	var row := -1
 	match tier:
 		"universal":
-			tag = "OFF-HAND  (same for all)"
-			row = 0
+			tag = "DEFAULT  (same for all)"
+			row = 2
 		"adaptive":
 			tag = "ADAPTS TO YOUR WEAPON"
 			row = 1
 		"weapon":
 			tag = "WEAPON MOVE"
-			row = 2
+			row = 0
 	var card := {"kind": "move", "id": id, "tag": tag, "title": m.name, "desc": m.desc,
 		"extra": ", ".join(m.tags) if m.tags.size() > 0 else "melee"}
 	if row >= 0:

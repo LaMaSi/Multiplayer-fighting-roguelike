@@ -21,9 +21,9 @@ static func paint(c: Control, s: Dictionary, t: float) -> void:
 		UiKit.txt(c, head, Vector2(-400, 0), "LEVEL COMPLETE", 46, Color(2.0, 0.7, 1.2, 0.16), HORIZONTAL_ALIGNMENT_CENTER, 800.0, 8 + k * 8, Color(2.0, 0.7, 1.2, 0.08))
 	UiKit.txt(c, head, Vector2(-400, 0), "LEVEL COMPLETE", 46, UiKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER, 800.0, 4, Color(0.05, 0.0, 0.1))
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
-	var sub := "STREETS"
+	var sub := RunState.biome_name()
 	if RunState.active:
-		sub = "STREETS  ·  CLEARED %d" % (RunState.levels_cleared + 1)
+		sub = "%s  ·  CLEARED %d" % [RunState.biome_name(), RunState.levels_cleared + 1]
 	UiKit.txt(c, body, Vector2(240, 96), sub, 20, UiKit.PINK, HORIZONTAL_ALIGNMENT_CENTER, 800.0)
 	# rank plate
 	UiKit.txt(c, head, Vector2(180, 150), "TEAM RANK", 18, UiKit.DIM_TEXT, HORIZONTAL_ALIGNMENT_CENTER, 300.0)

@@ -122,7 +122,7 @@ func _make_item(kind: String, player := -1, extra := {}) -> Dictionary:
 func generate_stock() -> Array:
 	var out: Array = []
 	var taken: Array = []
-	for tier_pool in [ClassData.X_POOL, ClassData.Y_POOL]:
+	for tier_pool in [ClassData.DEFAULT_POOL, ClassData.ADAPT_POOL]:
 		var pool: Array = []
 		for id in tier_pool:
 			var owned_both := true

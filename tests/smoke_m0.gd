@@ -76,7 +76,7 @@ func _ready() -> void:
 	p1.script_set(Vector2.ZERO)
 	await frames(60)
 	var rise := y_start - y_min
-	check(rise > 170.0 and rise < 215.0, "full jump height ~%.0f px" % rise)
+	check(rise > 205.0 and rise < 245.0, "full jump height ~%.0f px" % rise)  # higher, shorter jump for vertical levels
 	check(f1.is_on_floor(), "lands again")
 
 	print("[variable jump]")

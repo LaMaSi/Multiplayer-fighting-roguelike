@@ -19,7 +19,7 @@ const DEFS := {
 	"heavy": {"name": "Heavy", "hp": 340.0, "speed": 110.0, "color": Color(1.2, 0.2, 0.9), "style": "horns", "ai": "melee", "build": {"limb": 2.0, "head": 1.2, "fill": true, "square": true},
 		"attacks": ["e_double", "e_punch"], "range": 78.0, "cd": 2.3, "scale": 1.4, "dmg": 1.6},
 	"boss_street": {"name": "Big Boss", "hp": 750.0, "speed": 145.0, "color": Color(1.45, 0.08, 0.08), "style": "crown", "ai": "boss", "build": {"limb": 1.9, "head": 1.1, "fill": true, "square": true},
-		"attacks": ["boss_swing", "boss_slam", "boss_charge"], "range": 100.0, "cd": 1.0, "scale": 1.5, "resist": true, "boss": true},
+		"attacks": ["boss_swing", "boss_slam", "boss_charge"], "range": 100.0, "cd": 1.0, "scale": 1.5, "tough": true, "boss": true},  # tough, but he can be launched and juggled like anyone
 }
 
 var kind := "thug"
@@ -34,6 +34,8 @@ var _drop_t := 0.0
 var _air_dir := 0.0  ## horizontal direction carried through a deliberate jump
 var _air_speed := 0.0
 var _air_t := 0.0
+const JUMP_SQUAT := 3  ## frames crouched before a jump leaves the ground
+var _squat_f := 0
 var _jump_vy := 0.0  ## pending jump impulse (applied after the ground-sticking step, which used to cancel every jump)
 var _regen_t := 0.0
 var _summoned: Array[bool] = [false, false]
@@ -50,6 +52,7 @@ func _configure() -> void:
 	run_speed = float(def["speed"])
 	body_scale = float(def.get("scale", 1.0))
 	launch_resist = bool(def.get("resist", false))
+	stun_resist = bool(def.get("tough", false))
 	no_grab = bool(def.get("boss", false))
 	_cd = randf_range(0.6, 1.6)
 	_strafe = 1.0 if randf() < 0.5 else -1.0
@@ -72,6 +75,8 @@ func _ready() -> void:
 
 
 func _loco_pose() -> Dictionary:
+	if state == "squat":
+		return PoseLib.land()
 	if state == "walk":
 		return PoseLib.walk_enemy(_walk_phase)
 	return PoseLib.idle_enemy(Time.get_ticks_msec() / 1000.0 + float(get_instance_id() % 7))
@@ -125,6 +130,8 @@ func _release_token() -> void:
 
 func _on_damaged(_info: HitInfo) -> void:
 	_release_token()
+	_squat_f = 0  # a hit cancels a jump about to happen
+	_jump_vy = 0.0
 	_aggro = true
 	if def["ai"] == "dummy":
 		_regen_t = 3.0
@@ -133,6 +140,9 @@ func _on_damaged(_info: HitInfo) -> void:
 func _fell_out() -> void:
 	_release_token()
 	state = "dead"
+	var lvl0: Node = get_parent()
+	if lvl0 != null and lvl0.has_method("on_ring_out"):
+		lvl0.call("on_ring_out", self)
 	defeated.emit(self)
 	queue_free()
 
@@ -216,7 +226,8 @@ func _control(delta: float) -> void:
 		var dy := target.global_position.y - global_position.y
 		var adx := absf(dx)
 		var dir := signf(dx) if dx != 0.0 else float(facing)
-		facing = int(dir)
+		if adx > 14.0:
+			facing = int(dir)  # (not while the target is right overhead: no flickering turn-arounds)
 		match String(def["ai"]):
 			"melee": want_x = _ai_melee(dir, adx, dy, delta)
 			"charger": want_x = _ai_charger(dir, adx, dy)
@@ -231,7 +242,7 @@ func _control(delta: float) -> void:
 				var cw := _climb(dy)  # walk to a platform that leads up to the target, hop onto it
 				if cw != 0.0:
 					want_x = cw
-			elif dy > 110.0 and adx < 420.0 and _drop_t <= 0.0:
+			elif dy > 110.0 and adx < 420.0 and _drop_t <= 0.0 and _may_drop():
 				_drop_t = 0.4
 				set_collision_mask_value(2, false)
 				global_position.y += 2.0
@@ -252,21 +263,38 @@ func _control(delta: float) -> void:
 			want_x += s * run_speed * 0.8
 	if _air_t <= 0.0:
 		want_x = clampf(want_x, -run_speed, run_speed) * crowd_mult() * chill  # enemies pass each other (and the players), slowed while overlapping
+	if _squat_f > 0:
+		want_x = 0.0  # crouching before the jump
 	velocity.x = move_toward(velocity.x, want_x, 2200.0 * delta)
-	if _jump_vy != 0.0:
+	if _squat_f > 0:
+		_squat_f -= 1
+		velocity.y = 50.0
+		if _squat_f == 0:
+			velocity.x = _air_dir * _air_speed  # take off with the jump's own speed
+	if _jump_vy != 0.0 and _squat_f == 0:
 		velocity.y = _jump_vy
 		_jump_vy = 0.0
+	elif _squat_f > 0:
+		pass
 	elif is_on_floor():
 		velocity.y = 50.0
 	else:
 		velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL)
 	move_and_slide()
 	global_position.x = clampf(global_position.x, Coop.bounds.position.x + 20.0, Coop.bounds.end.x - 20.0)
-	if absf(velocity.x) > 20.0:
+	if _squat_f > 0:
+		state = "squat"
+	elif absf(velocity.x) > 20.0:
 		state = "walk"
 		_walk_phase += absf(velocity.x) * 0.05 * delta
 	else:
 		state = "idle"
+
+
+## Dropping through the platform under our feet is fine unless the level says there is nothing but a fall below.
+func _may_drop() -> bool:
+	var lvl: Node = get_parent()
+	return lvl == null or not lvl.has_method("allow_drop") or bool(lvl.call("allow_drop", global_position))
 
 
 func _begin(id: String) -> void:
@@ -416,7 +444,8 @@ func _jump(dir: float, speed: float, up: float) -> void:
 	_air_dir = dir
 	_air_speed = speed
 	_air_t = 1.1
-	squash = Vector2(0.8, 1.25)
+	_squat_f = JUMP_SQUAT  # a short crouch first (anticipation), then the take-off
+	squash = Vector2(1.18, 0.84)
 	Fx.dust(get_parent(), global_position, 4)
 
 
@@ -426,17 +455,17 @@ func _terrain_jump(dir: float) -> int:
 	var lvl: Node = get_parent()
 	if lvl == null or not lvl.has_method("ground_at") or not is_on_floor() or _air_t > 0.0 or dir == 0.0:
 		return 0
-	var here: float = lvl.ground_at(global_position.x)
+	var here: float = lvl.ground_at(global_position.x, global_position.y)
 	if here == INF:
 		return 0
-	var ahead: float = lvl.ground_at(global_position.x + dir * 46.0)
+	var ahead: float = lvl.ground_at(global_position.x + dir * 46.0, global_position.y)
 	if ahead == INF:
 		# a pit: find where the ground resumes
 		var x := global_position.x + dir * 46.0
 		var gap := -1.0
 		for i in 22:
 			x += dir * 20.0
-			var g: float = lvl.ground_at(x)
+			var g: float = lvl.ground_at(x, global_position.y)
 			if g != INF and absf(g - here) < 120.0:
 				gap = absf(x - global_position.x)
 				break

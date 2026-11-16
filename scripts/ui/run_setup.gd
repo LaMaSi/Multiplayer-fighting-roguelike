@@ -10,14 +10,14 @@ extends Control
 static var mode := "run"  ## "run" or "training", set by the main menu before opening this scene
 
 const OPTIONS := ["brawler", "sword", "hammer", "magic", "random"]
-const REVEAL_SLOTS := ["B", "B_UP", "B_SIDE", "X", "Y"]
+const REVEAL_SLOTS := ["X", "Y", "B"]  ## one starting move on each button
 const SLOT_LABEL := {
 	"B": "B", "B_UP": "UP + B", "B_SIDE": "SIDE + B", "B_DOWN": "DOWN + B",
 	"X": "X", "X_UP": "UP + X", "X_SIDE": "SIDE + X", "X_DOWN": "DOWN + X",
 	"Y": "Y", "Y_UP": "UP + Y", "Y_SIDE": "SIDE + Y", "Y_DOWN": "DOWN + Y",
 }
 ## every slot a move can sit on, in the order the reveal lists them
-const ALL_SLOTS := ["B", "B_UP", "B_SIDE", "B_DOWN", "X", "X_UP", "X_SIDE", "X_DOWN", "Y", "Y_UP", "Y_SIDE", "Y_DOWN"]
+const ALL_SLOTS := ["X", "X_UP", "X_SIDE", "X_DOWN", "Y", "Y_UP", "Y_SIDE", "Y_DOWN", "B", "B_UP", "B_SIDE", "B_DOWN"]
 const ROLL_START := 0.35
 const ROLL_STEP := 0.4
 const ROLL_TIME := 0.45
@@ -437,7 +437,7 @@ func _paint_reveal(c: Control, p: int, r: Rect2) -> void:
 			continue
 		if age < 0.0:
 			# rolling: names flicker past
-			var pool: Array = ClassData.get_class_data(cid)["b_pool"] if slot.begins_with("B") else (ClassData.X_POOL if slot == "X" else ClassData.Y_POOL)
+			var pool: Array = ClassData.pool_for_slot(slot, cid)
 			var pick: String = pool[int(reveal_t * 22.0 + i * 3 + p * 5) % pool.size()]
 			c.draw_colored_polygon(poly, Color(col.r * 0.12, col.g * 0.12, col.b * 0.12, 0.9))
 			UiKit.poly_line(c, poly, Color(col.r, col.g, col.b, 0.6), 3.0)
