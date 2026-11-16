@@ -75,6 +75,16 @@ func set_target(t: Dictionary, snap := false) -> void:
 		_vel.clear()
 
 
+## Strike snap ("cut the in-between frames"): jump `snap_k` of the way to the new pose at once and carry the rest
+## in with enough speed to overshoot the target by roughly `over` of the travel before the spring settles it.
+func punch_to(t: Dictionary, snap_k: float, over: float) -> void:
+	target = NEUTRAL.merged(t, true)
+	for key in pose:
+		var d := float(target[key]) - float(pose[key])
+		pose[key] = float(pose[key]) + d * snap_k
+		_vel[key] = d * follow_speed * over * 1.55  # 1.55: what an under-damped spring (zeta ~0.36) needs to peak `over` past the target
+
+
 func _process(delta: float) -> void:
 	if eyes:
 		_eye_off = _eye_off.lerp(aim, 1.0 - exp(-12.0 * delta))

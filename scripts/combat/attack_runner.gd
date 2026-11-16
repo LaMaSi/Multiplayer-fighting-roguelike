@@ -234,10 +234,27 @@ func _keyframes() -> void:
 			idx = i
 	var air := not actor.is_on_floor()
 	if idx >= 0 and (idx != _kf_idx or air != _kf_air):
+		var strike := _strike_weight(idx) if idx != _kf_idx else -1.0
 		_kf_idx = idx
 		_kf_air = air
-		actor.figure.set_target(actor.adapt_pose(move.kf[idx][1], air))
+		if strike >= 0.0:
+			# the strike pose: no easing in. Most of the travel is cut, the limb overshoots and settles (heavier = harder)
+			actor.figure.punch_to(actor.adapt_pose(move.kf[idx][1], air), lerpf(0.55, 0.85, strike), lerpf(0.12, 0.25, strike))
+		else:
+			actor.figure.set_target(actor.adapt_pose(move.kf[idx][1], air))
 	_follow_through(idx, air)
+
+
+## -1 when keyframe `idx` is not a strike pose; otherwise 0..1, the weight of the hit that starts while it is shown.
+func _strike_weight(idx: int) -> float:
+	var f0 := int(move.kf[idx][0])
+	var f1 := int(move.kf[idx + 1][0]) if idx + 1 < move.kf.size() else move.total
+	var top := -1.0
+	for h in move.hits:
+		var at := int(h["at"])
+		if at >= f0 and at < f1 and at - f0 <= 8:
+			top = maxf(top, clampf((float(h["dmg"]) - 4.0) / 20.0, 0.0, 1.0))
+	return top
 
 
 ## Long end lag used to hold the strike pose until the next keyframe, which reads as unresponsive. After the last hit the
