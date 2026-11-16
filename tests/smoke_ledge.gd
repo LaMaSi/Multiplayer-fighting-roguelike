@@ -12,6 +12,7 @@ func check(name: String, ok: bool) -> void:
 
 
 func _ready() -> void:
+	Fighter.ledge_grab = true  # off by default while it is decided whether it stays (docs/BACKLOG.md)
 	RunState.start_run(11)
 	RunState.current = {"type": "fight", "seed": 7, "layer": 0, "idx": 0, "next": [], "done": false}
 	var lv: LevelBase = load("res://scenes/streets.tscn").instantiate()

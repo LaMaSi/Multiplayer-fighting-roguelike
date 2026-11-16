@@ -60,16 +60,16 @@ func _ready() -> void:
 	check(f2.get_run_speed() < f1.get_run_speed(), "hammer is slower than sword")
 	check(f2.max_hp > f1.max_hp, "hammer has more HP")
 	check(f1.loadout.get("B", "") != "", "training loadout has B moves")
-	check(ClassData.X_POOL.size() == 10 and ClassData.Y_POOL.size() == 11, "10 universal X and 11 adaptive Y")
+	check(ClassData.DEFAULT_POOL.size() == 15 and ClassData.ADAPT_POOL.size() == 6, "15 default (B) and 6 adaptive (Y) moves")
 	for cid in ClassData.IDS:
 		var pool: Array = ClassData.get_class_data(cid)["b_pool"]
 		check(pool.size() == 8, "%s has 8 B moves" % cid)
 		for id in pool:
 			check(MoveDB.has_move(id), "%s move %s exists" % [cid, id])
 			check(MoveDB.get_move(id).tier == "weapon" and MoveDB.get_move(id).class_id == cid, "%s is a weapon move of %s" % [id, cid])
-	for id in ClassData.X_POOL:
+	for id in ClassData.DEFAULT_POOL:
 		check(MoveDB.get_move(id).tier == "universal", "%s is universal" % id)
-	for id in ClassData.Y_POOL:
+	for id in ClassData.ADAPT_POOL:
 		check(MoveDB.get_move(id).tier == "adaptive", "%s is adaptive" % id)
 
 	print("[adaptive variants]")
@@ -81,7 +81,7 @@ func _ready() -> void:
 	check((up_s.hits[0]["box"] as Rect2).size.x > (MoveDB.get_move("uppercut").hits[0]["box"] as Rect2).size.x, "sword uppercut reaches further")
 	check(bool(up_h.hits[0].get("guard_break", false)), "hammer moves break guard")
 	check(MoveDB.get_move("uppercut").hits[0]["dmg"] == 9.0, "the base move is untouched")
-	var sw_b := MoveDB.get_move_for("sweep", "hammer")
+	var sw_b := MoveDB.get_move_for("uppercut", "hammer")
 	var dz: Rect2 = sw_b.hits[0]["box"]
 	check(dz.position.x >= 40.0, "hammer has a dead zone up close (box starts at %.0f)" % dz.position.x)
 
@@ -90,27 +90,23 @@ func _ready() -> void:
 	rng.seed = 11
 	for cid in ClassData.IDS:
 		var lo := ClassData.roll_loadout(cid, rng)
-		check(lo.size() == 5, "%s roll: 5 moves (3 B, 1 X, 1 Y)" % cid)
-		var bs := [lo["B"], lo["B_UP"], lo["B_SIDE"]]
-		check(bs[0] != bs[1] and bs[1] != bs[2] and bs[0] != bs[2], "%s roll: three different B moves" % cid)
-		var ok := true
-		for b in bs:
-			ok = ok and (b in (ClassData.get_class_data(cid)["b_pool"] as Array))
-		check(ok and lo["X"] in ClassData.X_POOL and lo["Y"] in ClassData.Y_POOL, "%s roll: tiers respected" % cid)
+		check(lo.size() == 3, "%s roll: 3 moves, one per button" % cid)
+		var ok: bool = lo["X"] in (ClassData.get_class_data(cid)["b_pool"] as Array)
+		check(ok and lo["B"] in ClassData.DEFAULT_POOL and lo["Y"] in ClassData.ADAPT_POOL, "%s roll: weapon on X, adaptive on Y, default on B" % cid)
 
 	print("[reward cards respect tiers]")
 	RunState.start_run(5)
-	check((RunState.loadouts[0] as Dictionary).has("B") and (RunState.loadouts[1] as Dictionary).has("B_UP"), "run start gives class loadouts")
+	check((RunState.loadouts[0] as Dictionary).has("B") and (RunState.loadouts[1] as Dictionary).has("X"), "run start gives class loadouts")
 	check(RunState.max_hp[1] == 120.0, "run HP follows the class (hammer %.0f)" % RunState.max_hp[1])
 	var mc := RunState.make_cards(0, "move")
 	var all_xy := true
 	for c in mc:
-		all_xy = all_xy and (int(c["row"]) in [0, 1])
-	check(mc.size() == 3 and all_xy, "shared move pick offers only X / Y moves")
+		all_xy = all_xy and (int(c["row"]) in [1, 2])
+	check(mc.size() == 3 and all_xy, "shared move pick offers only adaptive (Y) / default (B) moves")
 	var lc := RunState.make_cards(0, "level")
 	var has_b := false
 	for c in lc:
-		if c["kind"] == "move" and int(c["row"]) == 2:
+		if c["kind"] == "move" and int(c["row"]) == 0:
 			has_b = true
 	check(has_b, "personal level-up offers a new weapon move")
 	RunState.end_run()

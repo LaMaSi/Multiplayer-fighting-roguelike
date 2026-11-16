@@ -272,7 +272,7 @@ func _draw_card(i: int, r: Rect2) -> void:
 
 
 func _draw_end() -> void:
-	_txt(Vector2(0, 230), "STREETS CLEARED!", 80, Color(1.0, 0.85, 0.4), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
+	_txt(Vector2(0, 230), RunState.biome_name() + " CLEARED!", 80, Color(1.0, 0.85, 0.4), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	_txt(Vector2(0, 290), "RUN COMPLETE", 40, Color(1, 1, 1), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	_txt(Vector2(0, 360), "Levels cleared: %d     Best combo: %d" % [RunState.levels_cleared, RunState.best_combo], 26, Color(1, 1, 1, 0.9), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)
 	_txt(Vector2(0, 410), "Wasteland and Ruins are coming in later milestones.", 18, Color(1, 1, 1, 0.55), 1280.0, HORIZONTAL_ALIGNMENT_CENTER)

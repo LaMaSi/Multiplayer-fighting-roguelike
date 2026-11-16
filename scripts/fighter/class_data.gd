@@ -3,24 +3,34 @@ extends RefCounted
 ## Weapon classes (docs/CLASS_MOVES.md, ITERATION2 Phase C). Pure data: stats, the modifier table that
 ## reshapes the shared adaptive (Y) moves, the class base pose, and the move pools.
 ##
-## Move tiers:  WEAPON (B slots, 8 per class, class-locked)  /  ADAPTIVE (Y, same move for everyone but
-## reshaped by the modifier table)  /  UNIVERSAL (X, identical for everyone).
+## Move tiers and buttons:  WEAPON (X slots, 8 per class, class-locked)  /  ADAPTIVE (Y, same move for everyone but
+## reshaped by the modifier table: the weapon is the hitbox)  /  DEFAULT (B, identical for everyone: every kick, and
+## off-hand / utility moves that never touch the weapon).
 
 const IDS: Array[String] = ["brawler", "sword", "hammer", "magic"]
 
-## X: universal off-hand moves (10)
-const X_POOL: Array[String] = [
+## Which slot letter (= button) each tier lives on.
+const WEAPON_BTN := "X"
+const ADAPT_BTN := "Y"
+const DEFAULT_BTN := "B"
+
+## B: default moves, the same for every class (all kicks plus moves that do not use the weapon)
+const DEFAULT_POOL: Array[String] = [
+	"sweep", "spin_kick", "stomp", "dive_kick", "slide_strike", "bicycle_kick",
+	"spark_shot", "guard", "shockwave", "pull_hook", "grapple_dash", "heal_pulse", "rage_taunt", "boost_spark", "pocket_mine",
+]
+## Y: adaptive moves (arm strikes: the weapon becomes the hitbox)
+const ADAPT_POOL: Array[String] = [
+	"off_hand_jab", "uppercut", "cyclone", "anti_air", "pillar_smash", "flurry",
+]
+## Moves that may be rolled / offered first (the starred moves in CLASS_MOVES.md)
+const DEFAULT_STARS: Array[String] = ["sweep", "spin_kick", "slide_strike", "spark_shot", "shockwave"]
+const ADAPT_STARS: Array[String] = ["off_hand_jab", "uppercut", "flurry"]
+## The light combo starters (little knockback, no launch): the original off-hand set, whatever tier they are in now.
+const SOFT_MOVES: Array[String] = [
 	"off_hand_jab", "spark_shot", "guard", "shockwave", "pull_hook",
 	"grapple_dash", "heal_pulse", "rage_taunt", "boost_spark", "pocket_mine",
 ]
-## Y: adaptive moves (11)
-const Y_POOL: Array[String] = [
-	"uppercut", "sweep", "spin_kick", "cyclone", "stomp",
-	"dive_kick", "anti_air", "pillar_smash", "flurry", "slide_strike", "bicycle_kick",
-]
-## Moves that may be rolled / offered first (the starred moves in CLASS_MOVES.md)
-const X_STARS: Array[String] = ["off_hand_jab", "spark_shot", "shockwave"]
-const Y_STARS: Array[String] = ["uppercut", "sweep", "flurry", "slide_strike"]
 
 static var _db: Dictionary = {}
 
@@ -135,18 +145,28 @@ static func base_pose(id: String, t: float = 0.0) -> Dictionary:
 ## Which pools a slot letter draws from for a class.
 static func pool_for_slot(slot: String, class_id: String) -> Array:
 	match slot.substr(0, 1):
-		"X":
-			return X_POOL
-		"Y":
-			return Y_POOL
+		DEFAULT_BTN:
+			return DEFAULT_POOL
+		ADAPT_BTN:
+			return ADAPT_POOL
 	return get_class_data(class_id)["b_pool"]
+
+
+## The slot letter (button) a move of this tier goes on.
+static func button_of_tier(tier: String) -> String:
+	match tier:
+		"weapon":
+			return WEAPON_BTN
+		"adaptive":
+			return ADAPT_BTN
+	return DEFAULT_BTN
 
 
 ## "universal" / "adaptive" / "weapon" (and the class a weapon move belongs to)
 static func tier_of(move_id: String) -> String:
-	if move_id in X_POOL:
+	if move_id in DEFAULT_POOL:
 		return "universal"
-	if move_id in Y_POOL:
+	if move_id in ADAPT_POOL:
 		return "adaptive"
 	for id in IDS:
 		if move_id in (get_class_data(id)["b_pool"] as Array):
@@ -163,8 +183,8 @@ static func class_of_weapon_move(move_id: String) -> String:
 
 ## Fast, close-range attacks: every starting loadout needs at least one on a neutral button, so you always have a basic hit.
 const CLOSE_ATTACKS := {
-	"X": ["off_hand_jab"],
-	"Y": ["uppercut", "sweep", "spin_kick", "flurry", "slide_strike"],
+	"B": ["sweep", "spin_kick", "slide_strike", "bicycle_kick"],
+	"Y": ["off_hand_jab", "uppercut", "flurry"],
 	"brawler": ["jab", "dash_punch", "haymaker", "popup_kick"],
 	"sword": ["long_slash", "thrust_lunge", "low_cut", "rising_slash"],
 	"hammer": ["side_sweep", "overhead_smash", "sky_launcher"],
@@ -177,19 +197,19 @@ const NON_OFFENSIVE: Array[String] = [
 ]
 
 
-## A starting loadout is fine when at least one neutral button holds a close attack and at most 2 of the 5 moves are non-offensive.
+## A starting loadout is fine when at least one button holds a close attack and at most one of the 3 moves is non-offensive.
 static func loadout_ok(class_id: String, lo: Dictionary) -> bool:
 	var close := false
 	for slot in ["X", "Y", "B"]:
 		var id: String = String(lo.get(slot, ""))
-		var key: String = slot if slot != "B" else class_id
+		var key: String = slot if slot != WEAPON_BTN else class_id
 		if id in (CLOSE_ATTACKS.get(key, []) as Array):
 			close = true
 	var passive := 0
 	for id in lo.values():
 		if String(id) in NON_OFFENSIVE:
 			passive += 1
-	return close and passive <= 2
+	return close and passive <= 1
 
 
 ## Rolls a loadout (re-rolling internally until it passes loadout_ok).
@@ -202,26 +222,24 @@ static func roll_loadout(class_id: String, rng: RandomNumberGenerator) -> Dictio
 	return out
 
 
-## Run-start loadout: 3 random B moves (B, B_UP, B_SIDE), 1 random X, 1 random Y. Each player may reroll twice in the setup.
+## Run-start loadout: three moves, one on each button: a weapon move on X, an adaptive move on Y, a default move on B.
+## Each player may reroll twice in the setup.
 static func _roll_raw(class_id: String, rng: RandomNumberGenerator) -> Dictionary:
-	# Meta progression is off for now: EVERY move of the class is a candidate (no starred subset), plus any X and any Y.
-	var c := get_class_data(class_id)
-	var pool: Array = (c["b_pool"] as Array).duplicate()
-	var picks: Array = []
-	while picks.size() < 3 and not pool.is_empty():
-		picks.append(pool.pop_at(rng.randi() % pool.size()))
-	var out := {"B": picks[0], "B_UP": picks[1], "B_SIDE": picks[2]}
-	out["X"] = X_POOL[rng.randi() % X_POOL.size()]
-	out["Y"] = Y_POOL[rng.randi() % Y_POOL.size()]
-	return out
+	# Meta progression is off for now: EVERY move of the class is a candidate (no starred subset).
+	var b: Array = get_class_data(class_id)["b_pool"]
+	return {
+		WEAPON_BTN: b[rng.randi() % b.size()],
+		ADAPT_BTN: ADAPT_POOL[rng.randi() % ADAPT_POOL.size()],
+		DEFAULT_BTN: DEFAULT_POOL[rng.randi() % DEFAULT_POOL.size()],
+	}
 
 
-## Fixed loadout for the training room: 4 B moves, 4 X, 4 Y so every class can be tried straight away.
+## Fixed loadout for the training room: 4 weapon moves (X), 4 adaptive (Y), 4 default (B) so every class can be tried.
 static func training_loadout(class_id: String) -> Dictionary:
 	var c := get_class_data(class_id)
 	var b: Array = c["b_pool"]
 	return {
-		"B": b[0], "B_UP": b[2], "B_SIDE": b[1], "B_DOWN": b[3],
-		"X": "off_hand_jab", "X_UP": "spark_shot", "X_SIDE": "shockwave", "X_DOWN": "guard",
-		"Y": "uppercut", "Y_UP": "flurry", "Y_SIDE": "spin_kick", "Y_DOWN": "sweep",
+		"X": b[0], "X_UP": b[2], "X_SIDE": b[1], "X_DOWN": b[3],
+		"Y": "off_hand_jab", "Y_UP": "uppercut", "Y_SIDE": "flurry", "Y_DOWN": "anti_air",
+		"B": "spin_kick", "B_UP": "bicycle_kick", "B_SIDE": "slide_strike", "B_DOWN": "sweep",
 	}

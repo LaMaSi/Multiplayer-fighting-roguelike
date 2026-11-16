@@ -35,7 +35,8 @@ var move_input_x := 0.0
 var body_w := 34.0
 var body_h := 86.0
 var body_scale := 1.0
-var launch_resist := false
+var launch_resist := false  ## cannot be launched off the ground at all
+var stun_resist := false  ## tough: half stun build-up, short clash stagger, cannot be frozen (but can be launched and juggled)
 var no_grab := false
 var kill_y := 2200.0
 
@@ -486,7 +487,7 @@ func _gain_stun(dmg: float) -> void:
 	_stun_hold = STUN_HOLD
 	if state == "stunned":
 		return
-	stun_meter += dmg * STUN_PER_DMG * (0.5 if launch_resist else 1.0)
+	stun_meter += dmg * STUN_PER_DMG * (0.5 if (launch_resist or stun_resist) else 1.0)
 	if stun_meter >= STUN_MAX:
 		stun_meter = 0.0
 		_stun_pending = true
@@ -535,7 +536,7 @@ func clash_stagger(winner: Actor) -> void:
 		attack.interrupt()
 	armor_t = 0.0
 	state = "hurt"
-	stun_frames = 22 if launch_resist else 40
+	stun_frames = 22 if (launch_resist or stun_resist) else 40
 	var away := signf(global_position.x - winner.global_position.x)
 	velocity = Vector2((away if away != 0.0 else float(-facing)) * 150.0, 0.0)
 	freeze = 6
@@ -953,7 +954,41 @@ func _update_visuals(delta: float) -> void:
 			if state != "tossed":
 				figure.rot = lerpf(figure.rot, 0.0, 0.3)
 	squash = squash.lerp(Vector2.ONE, 1.0 - exp(-14.0 * delta))
-	figure.scale = Vector2(facing * squash.x * body_scale, squash.y * body_scale)
+	figure.scale = Vector2(_turn_scale(delta) * squash.x * body_scale, squash.y * body_scale)
+
+
+## Turning around: on foot (idle, walking, jumping) a change of facing is shown over TURN_TIME, the body narrowing through
+## a front-on moment and widening the other way, instead of snapping. Attacks, hits and throws still snap.
+const TURN_TIME := 0.1
+const TURN_STATES := ["idle", "walk", "land", "squat", "jump", "fall"]
+var _shown_facing := 0.0  ## -1..1: the facing as drawn
+var _turn_k := 0.0  ## 1 = the turn just started, 0 = done
+
+
+func _turn_scale(delta: float) -> float:
+	var f := float(facing)
+	if _shown_facing == 0.0:
+		_shown_facing = f
+	if f != signf(_shown_facing) and _turn_k <= 0.0:
+		if state in TURN_STATES:
+			_turn_k = 1.0
+		else:
+			_shown_facing = f
+	if _turn_k > 0.0:
+		_turn_k = maxf(0.0, _turn_k - delta / TURN_TIME)
+		var t := 1.0 - _turn_k
+		var e := t * t * (3.0 - 2.0 * t)
+		var sx := lerpf(-f, f, e)
+		# never fully edge-on: the narrowest moment still shows a slim body
+		if absf(sx) < 0.3:
+			sx = 0.3 * (signf(sx) if sx != 0.0 else f)
+		_shown_facing = sx if _turn_k > 0.0 else f
+		if not (state in TURN_STATES):
+			_turn_k = 0.0
+			_shown_facing = f
+	else:
+		_shown_facing = f
+	return _shown_facing
 	figure.self_modulate = Color(2.6, 2.6, 2.6) if flash_t > 0.0 else Color.WHITE
 
 
@@ -1046,7 +1081,7 @@ func _apply_frost(info: HitInfo) -> void:
 	frost_t = maxf(frost_t, info.frost)
 	frost_stacks += 1
 	_ensure_status_fx(info.color)
-	if frost_stacks >= 3 and frozen_t <= 0.0 and not launch_resist:
+	if frost_stacks >= 3 and frozen_t <= 0.0 and not launch_resist and not stun_resist:
 		frost_stacks = 0
 		frozen_t = 1.6
 		if attack.active:

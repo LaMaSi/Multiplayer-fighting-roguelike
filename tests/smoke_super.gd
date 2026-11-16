@@ -46,12 +46,12 @@ func _ready() -> void:
 		f.meter = 100.0
 		f.hp = f.max_hp
 		await frames(20)
-		await _motion(f, PlayerInput.Btn.B)
+		await _motion(f, PlayerInput.Btn.X)  # the class super is on the weapon button (X)
 		await frames(2)
 		dummy.global_position = Vector2(f.global_position.x + 70.0, 599.0)
 		dummy.invuln = 0.0
 		dummy.velocity = Vector2.ZERO
-		check("%s: motion + B starts %s" % [c, MoveDBSupers.CLASS_SUPER[c]], f.attack.active and f.attack.move != null and f.attack.move.id == MoveDBSupers.CLASS_SUPER[c])
+		check("%s: motion + X starts %s" % [c, MoveDBSupers.CLASS_SUPER[c]], f.attack.active and f.attack.move != null and f.attack.move.id == MoveDBSupers.CLASS_SUPER[c])
 		check("%s: the super cost 50%% meter (%.0f left)" % [c, f.meter], f.meter < 60.0)
 		var low := dummy.hp
 		for k in 160:
@@ -63,16 +63,16 @@ func _ready() -> void:
 	f.state = "idle"
 	f.meter = 100.0
 	await frames(30)
-	await _motion(f, PlayerInput.Btn.X)
+	await _motion(f, PlayerInput.Btn.B)  # the generic super is on the default button (B)
 	await frames(2)
-	check("motion + X starts the generic super", f.attack.active and f.attack.move != null and f.attack.move.id == "super_generic")
+	check("motion + B starts the generic super", f.attack.active and f.attack.move != null and f.attack.move.id == "super_generic")
 	check("a super is invulnerable while it winds up", f.invuln > 0.1 or f.attack.active)
 	await frames(100)
 	f.attack.interrupt()
 	f.state = "idle"
 	f.meter = 20.0
 	await frames(20)
-	await _motion(f, PlayerInput.Btn.B)
+	await _motion(f, PlayerInput.Btn.X)
 	await frames(2)
 	check("not enough meter: no super", not (f.attack.active and f.attack.move != null and f.attack.move.tier == "super"))
 	# LT empowers a move for a little meter

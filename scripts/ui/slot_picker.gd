@@ -11,7 +11,7 @@ const COLS := ["NEUTRAL", "UP", "SIDE", "DOWN"]
 var active := false
 var player := 0
 var move_id := ""
-var row_lock := -1  ## universal -> X row, adaptive -> Y row, weapon -> B row; -1 = any (legacy fighters)
+var row_lock := -1  ## weapon -> X row, adaptive -> Y row, default (universal) -> B row; -1 = any (legacy fighters)
 var slot := 0
 var on_done: Callable = Callable()
 var _last := Vector2i.ZERO
@@ -20,14 +20,10 @@ var _last := Vector2i.ZERO
 static func row_for(id: String, class_id: String) -> int:
 	if class_id == "":
 		return -1
-	match ClassData.tier_of(id):
-		"universal":
-			return 0
-		"adaptive":
-			return 1
-		"weapon":
-			return 2
-	return -1
+	var t := ClassData.tier_of(id)
+	if t == "":
+		return -1
+	return ROWS.find(ClassData.button_of_tier(t))
 
 
 func slot_name(s: int) -> String:

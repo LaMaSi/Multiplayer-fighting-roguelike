@@ -60,10 +60,11 @@ func _items() -> Array:
 		"options":
 			return OptionsList.items()
 		"testing":
-			return [["streets", "STREETS FULL TEST LEVEL", ""], ["shop", "SHOP PREVIEW", ""], ["back", "BACK", ""]]
+			return [["streets", "STREETS FULL TEST LEVEL", ""], ["skyscraper", "SKYSCRAPER TEST LEVEL", ""], ["shop", "SHOP PREVIEW", ""],
+				["ledge", "LEDGE GRAB", "ON" if Fighter.ledge_grab else "OFF"], ["back", "BACK", ""]]
 	if _page == "meta":
 		return [["back", "BACK", ""]]
-	return [["run", "NEW RUN", "STREETS"], ["solo", "SOLO RUN  (1 PAD)", "PLAYTEST"], ["training", "TRAINING ROOM", ""],
+	return [["run", "NEW RUN", "STREETS"], ["run_sky", "NEW RUN", "SKYSCRAPER"], ["solo", "SOLO RUN  (1 PAD)", RunState.biome_name()], ["training", "TRAINING ROOM", ""],
 		["options", "OPTIONS", ""], ["testing", "TESTING", ""], ["quit", "QUIT", ""]]
 
 
@@ -96,15 +97,21 @@ func _physics_process(_delta: float) -> void:
 
 ## Row of the main list that opens a sub page (so B returns to it).
 func _main_index(page: String) -> int:
-	return {"options": 3, "testing": 4}.get(page, 0)
+	return {"options": 4, "testing": 5}.get(page, 0)
 
 
 func _side(id: String, dx: int) -> void:
 	if _page == "options":
 		OptionsList.adjust(id, dx)
 		Sfx.play("ui")
+	elif id == "solo":
+		RunState.biome = "skyscraper" if RunState.biome == "streets" else "streets"  # left / right picks the level set of the solo run
+		Sfx.play("ui")
 	elif id == "magic":
 		_toggle_magic()
+	elif id == "ledge":
+		Fighter.ledge_grab = not Fighter.ledge_grab
+		Sfx.play("ui")
 
 
 func _activate(id: String, by := 0) -> void:
@@ -118,6 +125,9 @@ func _activate(id: String, by := 0) -> void:
 	match id:
 		"magic":
 			_toggle_magic()
+		"ledge":
+			Fighter.ledge_grab = not Fighter.ledge_grab
+			Sfx.play("ui")
 		"back":
 			_go_page("main", _main_index(_page))
 		"meta":
@@ -128,9 +138,11 @@ func _activate(id: String, by := 0) -> void:
 			_go_page("testing")
 		"quit":
 			get_tree().quit()
-		"run", "solo":
+		"run", "run_sky", "solo":
 			Sfx.play("pickup")
 			RunState.solo = id == "solo"  # solo: P1 only, no team combo bonus
+			if id != "solo":
+				RunState.biome = "skyscraper" if id == "run_sky" else "streets"  # (a solo run uses the set picked with left / right)
 			PlayerInput.solo_source = by  # the controller that pressed it becomes P1
 			RunSetup.mode = "run"  # weapon choice and the move reveal happen on the next screen
 			get_tree().change_scene_to_file("res://scenes/run_setup.tscn")
@@ -145,6 +157,11 @@ func _activate(id: String, by := 0) -> void:
 			RunState.end_run()
 			RunState.solo = false
 			get_tree().change_scene_to_file("res://scenes/streets.tscn")
+		"skyscraper":
+			Sfx.play("pickup")
+			RunState.end_run()
+			RunState.solo = false
+			get_tree().change_scene_to_file("res://scenes/skyscraper.tscn")
 		"shop":
 			Sfx.play("pickup")
 			RunState.start_run()
@@ -225,6 +242,6 @@ func paint(c: Control) -> void:
 		var r := Rect2(110, y0 + i * 52.0, 360, 42)
 		var id: String = items[i][0]
 		var sel := i == _sel
-		var adj := (_page == "options" and id != "back") or id == "magic"
+		var adj := (_page == "options" and id != "back") or id == "magic" or id == "solo" or id == "ledge"
 		UiKit.button(c, r, String(items[i][1]), sel, String(items[i][2]), adj)
 	UiKit.txt(c, UiKit.body(), Vector2(900, 700), "V0.1  ·  GODOT 4.5", 16, Color(0.6, 0.6, 0.8), HORIZONTAL_ALIGNMENT_RIGHT, 340.0, 3)

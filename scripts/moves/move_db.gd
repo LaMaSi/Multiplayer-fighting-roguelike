@@ -15,9 +15,9 @@ const POOL: Array[String] = [
 ## Every move a player can equip (legacy 30-move POOL plus the weapon-class moves).
 static func all_player_moves() -> Array:
 	var out: Array = []
-	for id in ClassData.X_POOL:
+	for id in ClassData.DEFAULT_POOL:
 		out.append(id)
-	for id in ClassData.Y_POOL:
+	for id in ClassData.ADAPT_POOL:
 		out.append(id)
 	for cid in ClassData.IDS:
 		for id in (ClassData.get_class_data(cid)["b_pool"] as Array):
@@ -381,8 +381,8 @@ static func _build() -> void:
 			continue
 		var head := String(id).rstrip("0123456789")
 		var t := ClassData.tier_of(head)
-		if m.tier == "" and t != "":
-			m.tier = t
+		if t != "":
+			m.tier = t  # the pools decide the tier (a move authored as off-hand may be adaptive now)
 		if m.tier == "weapon" and m.class_id == "":
 			m.class_id = ClassData.class_of_weapon_move(head)
 		if not m.hits.is_empty():
@@ -860,9 +860,10 @@ static func _lengthen_short_hits() -> void:
 			m.total = maxi(m.total, int(h["at"]) + 6 + 8)
 
 
-## X moves are combo starters: little knockback (and no launching), so the enemy stays in reach for the next move.
+## The light combo starters (the original off-hand set): little knockback (and no launching), so the enemy stays in
+## reach for the next move. The kicks that moved to the default button keep their full power.
 static func _soften_x_moves() -> void:
-	for id in ClassData.X_POOL:
+	for id in ClassData.SOFT_MOVES:
 		var m: MoveData = _db.get(id)
 		if m == null:
 			continue

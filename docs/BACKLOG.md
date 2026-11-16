@@ -2,6 +2,12 @@
 
 Ideas the owner wants, parked until the current work is done. Not scheduled. Add new items at the top.
 
+## TO DECIDE: keep or remove the ledge grab
+
+**Status (Skyscraper iteration):** the ledge grab is switched **off** by default. In the vertical Skyscraper levels, platforms near the side walls let characters get stuck in the grab animation. It can be switched back on for testing: main menu > TESTING > LEDGE GRAB (`Fighter.ledge_grab`).
+
+**Decision needed:** remove it for good (and delete `_try_ledge` / `_st_ledge` in `fighter.gd` and `ledge_points()` in the levels), or bring it back once the platform layout keeps every grabbable corner clear of the walls.
+
 ## High-impact knockdowns (Smash Bros style)
 
 **Request:** a high-impact hit makes players and enemies fall to the ground, and they have to get back up, with a short invincible window while getting up.

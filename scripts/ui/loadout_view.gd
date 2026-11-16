@@ -15,7 +15,7 @@ extends RefCounted
 const SLOTS: Array = ["X", "X_UP", "X_SIDE", "X_DOWN", "Y", "Y_UP", "Y_SIDE", "Y_DOWN", "B", "B_UP", "B_SIDE", "B_DOWN"]
 const COLS := ["NEUTRAL", "UP", "SIDE", "DOWN"]
 const ROWS := ["X", "Y", "B"]
-const TIER_LABEL := {"universal": "OFF-HAND", "adaptive": "ADAPTS", "weapon": "WEAPON"}
+const TIER_LABEL := {"universal": "DEFAULT", "adaptive": "ADAPTS", "weapon": "WEAPON"}
 const STAT_LABEL := {"dmg": "DAMAGE", "spd": "SPEED", "kb": "KNOCKBACK"}
 
 var get_loadout: Callable

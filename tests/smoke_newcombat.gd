@@ -75,7 +75,7 @@ func _run() -> void:
 	var jb := MoveDB.card_dir(MoveDB.get_move("jab"))
 	check(not bool(jb.get("sends", true)), "jab only staggers (%s)" % str(jb))
 	var bk := MoveDB.card_dir(MoveDB.get_move("bicycle_kick"))
-	check(is_equal_approx(float(bk.get("ang", 0.0)), 180.0) and "bicycle_kick" in ClassData.Y_POOL, "the overhead kick is a Y move that sends behind you (%s)" % str(bk))
+	check(is_equal_approx(float(bk.get("ang", 0.0)), 180.0) and "bicycle_kick" in ClassData.DEFAULT_POOL, "the overhead kick is a default (B) move that sends behind you (%s)" % str(bk))
 	var sent := {}
 	var staggers: Array = []
 	var spikes := 0

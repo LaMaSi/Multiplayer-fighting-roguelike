@@ -5,17 +5,25 @@ extends Actor
 ## Fighters are fast by their own numbers (run speed, acceleration, dash), not because the world is fast-forwarded:
 ## the world runs at its authored tempo (Juice.GAME_SPEED = 1). Playtest target: about 800 px per second at a run.
 const RUN_SPEED := 800.0
-const WALK_FRAC := 0.42  ## a gentle stick tilt walks at this fraction of the run speed
-const WALK_TILT := 0.65
+## Analog walk -> run: the speed grows steadily with the stick tilt, from a slow creep just past the dead zone to the full
+## run only when the stick is pushed (nearly) all the way.
+const WALK_MIN := 0.12  ## fraction of the run speed right past the dead zone
+const TILT_DEAD := 0.2
+const TILT_FULL := 0.94  ## tilt at which the full run speed is reached
+const TILT_CURVE := 1.3  ## > 1: more room for slow, precise steps
+## In the air you drift slower than you run: jumps go up more than across (vertical levels).
+const AIR_SPEED_FRAC := 0.62
+const AIR_OVERSPEED_DECEL := 1800.0  ## px/s² bleeding off speed above the air cap (after a dash)
 const ACCEL := 17000.0
 const AIR_ACCEL := 10000.0
 const FRICTION := 19000.0
 const AIR_FRICTION := 2200.0
 const FALL_MULT := 1.6
-## Jump: about 190 px high, 0.29 s up and 0.24 s down (roughly 0.55 s in the air). Lighter than
-## a fast-forwarded jump, snappier than the world gravity: the fighter has its own, enemies and props keep GRAVITY.
-const JUMP_V := -1262.0
-const JUMP_GRAVITY := 4310.0
+## Jump: about 215 px high, 0.29 s up and 0.23 s down (roughly 0.52 s in the air), and it carries less sideways speed
+## (AIR_SPEED_FRAC), so a jump goes up more than across. The fighter has its own gravity; enemies and props keep GRAVITY.
+const JUMP_V := -1483.0
+const JUMP_GRAVITY := 5113.0
+const JUMP_SQUAT := 3  ## frames crouched before leaving the ground (anticipation)
 const COYOTE := 0.09
 const JUMP_BUFFER := 0.12
 const DROP_MAX_TIME := 0.6
@@ -44,6 +52,8 @@ var _floor_collider: Object = null
 var last_safe := Vector2.ZERO  ## last solid ground (>= 60 px from a pit edge) stood on: where a fall respawns
 
 ## Ledge grab: catching the corner of a pit / platform pulls you straight up onto it (no hanging, no dropping).
+## OFF by default while it is decided whether it stays (docs/BACKLOG.md); main menu > TESTING switches it on.
+static var ledge_grab := false
 const LEDGE_CLIMB_TIME := 0.25
 const LEDGE_HANG_Y := 112.0  # feet this far below the corner: the raised hands are on it
 var _ledge := {}  # the corner being climbed ({p, dir}), empty otherwise
@@ -52,6 +62,7 @@ var _ledge_climb := 0.0
 var _ledge_from := Vector2.ZERO
 var _ledge_to := Vector2.ZERO
 var _was_on_floor := false
+var _squat := 0  ## frames left of the jump squat (crouching before take-off)
 var _land_t := 0.0
 var _turn_t := 0
 var _buf_slot := ""
@@ -156,6 +167,7 @@ func _tick_timers(delta: float) -> void:
 	super._tick_timers(delta)
 	if state in ["hurt", "launched", "attack", "dash", "downed", "tossed", "ledge", "dead", "stunned"]:
 		_sprint = 0  # a sprint never survives being hit, attacking or hanging
+		_squat = 0  # nor does a jump that was about to happen
 	_dash_cd = maxf(0.0, _dash_cd - delta)
 	_fling_grace = maxf(0.0, _fling_grace - delta)
 	_record_motion()
@@ -227,15 +239,9 @@ func _locomotion(delta: float) -> void:
 	_update_sprint(delta, sprint_floor)
 	var on_floor := is_on_floor() and _fling_grace <= 0.0  # right after a fling the stale floor flag must not cancel the launch
 	_ledge_cd = maxf(0.0, _ledge_cd - delta)
-	if not on_floor and _ledge_cd <= 0.0 and velocity.y > -120.0 and held == null and _try_ledge():
+	if ledge_grab and not on_floor and _ledge_cd <= 0.0 and velocity.y > -120.0 and held == null and _try_ledge():
 		return
-	var mx := input.dir.x
-	if absf(mx) < 0.2:
-		mx = 0.0
-	elif absf(mx) < WALK_TILT:
-		mx = signf(mx) * WALK_FRAC  # walk: a light tilt gives a clearly slower pace than a full push (run)
-	else:
-		mx = signf(mx)
+	var mx := stick_speed(input.dir)
 	# crouch: hold down (stick mostly vertical) on the ground; stationary, no crouch-walking
 	var want_crouch := on_floor and held == null and state != "attack" and input.dir.y > 0.6 and absf(input.dir.x) < 0.5
 	_crouch = move_toward(_crouch, 1.0 if want_crouch else 0.0, delta / 0.115)
@@ -252,8 +258,13 @@ func _locomotion(delta: float) -> void:
 		else:
 			_turn_t = 0
 		var a := ACCEL if on_floor else AIR_ACCEL
-		if not (_flung_t > 0.0 and signf(mx) == signf(velocity.x)):  # a fling keeps its speed unless you steer against it
-			velocity.x = move_toward(velocity.x, mx * get_run_speed(), a * delta)
+		var top := mx * (get_run_speed() if on_floor else air_speed())
+		if _flung_t > 0.0 and signf(mx) == signf(velocity.x):
+			pass  # a fling keeps its speed unless you steer against it
+		elif not on_floor and absf(velocity.x) > absf(top) and signf(velocity.x) == signf(top):
+			velocity.x = move_toward(velocity.x, top, AIR_OVERSPEED_DECEL * delta)  # faster than the air speed (a dash): bleed it off
+		else:
+			velocity.x = move_toward(velocity.x, top, a * delta)
 	else:
 		_turn_t = 0
 		if _flung_t <= 0.0:
@@ -288,13 +299,13 @@ func _locomotion(delta: float) -> void:
 		if on_floor and input.dir.y > 0.6 and _on_platform():
 			_start_drop()
 			_jump_buf = 0.0
-		elif _coyote > 0.0:
-			velocity.y = JUMP_V
-			_coyote = 0.0
+		elif on_floor and _squat <= 0:
+			_squat = JUMP_SQUAT  # crouch for a moment, then take off (below)
 			_jump_buf = 0.0
-			_jumping = true
-			squash = Vector2(0.8, 1.25)
-			Fx.dust(get_parent(), global_position, 6)
+			squash = Vector2(1.18, 0.84)
+		elif _coyote > 0.0 and not on_floor:
+			_take_off(true)  # just walked off an edge: no time to crouch
+			_jump_buf = 0.0
 		elif double_jump and _air_jump_ready and not on_floor:
 			velocity.y = JUMP_V * 0.92
 			_air_jump_ready = false
@@ -302,6 +313,10 @@ func _locomotion(delta: float) -> void:
 			_jumping = true
 			squash = Vector2(0.8, 1.25)
 			Fx.ring(get_parent(), global_position + Vector2(0, -10), figure.color, 36.0, 0.2)
+	if _squat > 0:
+		_squat -= 1
+		if _squat == 0:
+			_take_off(input.is_held(PlayerInput.Btn.JUMP))
 	if input.released(PlayerInput.Btn.JUMP) and _jumping and velocity.y < 0.0:
 		velocity.y *= 0.45
 		_jumping = false
@@ -322,7 +337,7 @@ func _locomotion(delta: float) -> void:
 			_try_pickup()
 		elif input.pressed(PlayerInput.Btn.LB):
 			_try_grab()
-		elif (input.pressed(PlayerInput.Btn.X) or input.pressed(PlayerInput.Btn.B)) and _try_super(input.pressed(PlayerInput.Btn.B)):
+		elif (input.pressed(PlayerInput.Btn.X) or input.pressed(PlayerInput.Btn.B)) and _try_super(input.pressed(PlayerInput.Btn.X)):  # the class super is on the weapon button (X)
 			pass
 		else:
 			for b in [PlayerInput.Btn.X, PlayerInput.Btn.Y, PlayerInput.Btn.B]:
@@ -341,6 +356,9 @@ func _locomotion(delta: float) -> void:
 			_floor_collider = c.get_collider()
 
 	var now_floor := is_on_floor()
+	if _squat > 0 and not now_floor:
+		_squat = 0  # walked off the edge mid-crouch: the jump happens at once
+		_take_off(input.is_held(PlayerInput.Btn.JUMP))
 	if now_floor and not _was_on_floor and vy_before > 250.0:
 		var k := clampf(vy_before / 1500.0, 0.12, 0.35)
 		squash = Vector2(1.0 + k, 1.0 - k)
@@ -349,7 +367,9 @@ func _locomotion(delta: float) -> void:
 		Sfx.play("land", 1.0, -6.0)
 	_was_on_floor = now_floor
 	_land_t = maxf(0.0, _land_t - delta)
-	if _land_t > 0.0:
+	if _squat > 0:
+		state = "squat"
+	elif _land_t > 0.0:
 		state = "land"
 	elif not now_floor:
 		state = "jump" if velocity.y < 0.0 else "fall"
@@ -363,6 +383,35 @@ func _locomotion(delta: float) -> void:
 		_walk_phase += absf(velocity.x) * TAU / cycle * delta * dir_sign
 	else:
 		state = "idle"
+
+
+## Top sideways speed in the air: a share of the normal run (a sprint does not carry into the jump).
+func air_speed() -> float:
+	return get_run_speed() / (SPRINT_MULT if _sprint != 0 else 1.0) * AIR_SPEED_FRAC
+
+
+## Leaves the ground. `full` = jump held: the full jump, otherwise a short hop. The sideways speed is capped to the air
+## speed, so a running jump goes up more than across.
+func _take_off(full: bool) -> void:
+	velocity.y = JUMP_V if full else JUMP_V * 0.62
+	var cap := air_speed()
+	if _flung_t <= 0.0:
+		velocity.x = clampf(velocity.x, -cap, cap)
+	_coyote = 0.0
+	_jumping = full
+	_squat = 0
+	squash = Vector2(0.8, 1.25)
+	Fx.dust(get_parent(), global_position, 6)
+
+
+## Signed fraction of the run speed (-1..1) for a stick position. Pushing up or down a little does not slow you;
+## a stick held mostly vertical walks slowly.
+static func stick_speed(d: Vector2) -> float:
+	if absf(d.x) < TILT_DEAD:
+		return 0.0
+	var tilt := minf(d.length(), 1.0) * minf(1.0, absf(d.x) / 0.7)
+	var t := clampf((tilt - TILT_DEAD) / (TILT_FULL - TILT_DEAD), 0.0, 1.0)
+	return signf(d.x) * lerpf(WALK_MIN, 1.0, pow(t, TILT_CURVE))
 
 
 func _on_platform() -> bool:
@@ -850,7 +899,7 @@ func _run_mix() -> float:
 func _loco_pose_base() -> Dictionary:
 	var p: Dictionary
 	match state:
-		"land":
+		"land", "squat":
 			p = PoseLib.land()
 		"jump":
 			p = PoseLib.rise(velocity.y, Time.get_ticks_msec() / 1000.0 + player_index)
@@ -1130,7 +1179,7 @@ func _try_super(class_super: bool) -> bool:
 		return false
 	meter -= MoveDBSupers.COST
 	_dir_hist.clear()
-	start_attack(m, PlayerInput.Btn.B if class_super else PlayerInput.Btn.X)
+	start_attack(m, PlayerInput.Btn.X if class_super else PlayerInput.Btn.B)
 	Fx.ring(get_parent(), global_position + Vector2(0, -50), Color(2.0, 1.7, 0.5), 140.0, 0.4)
 	Juice.zoom_punch(0.08)
 	Sfx.play("relay")

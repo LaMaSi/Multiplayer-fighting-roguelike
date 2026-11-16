@@ -27,6 +27,7 @@ var dir := -1  ## send direction in the attacker's frame (0 F, 1 UF, 2 U, 3 UB, 
 var sends := false  ## a player attack with its own send angle (MoveDB.SEND); `dir` is only used by hits without one
 var ang := 0.0  ## that angle in degrees, attacker's frame: 0 ahead .. 90 up, -90 spike, 180 behind the attacker
 var ground_fx := ""  ## down-angled spikes: "stop" (dead stop on the floor) or "bounce" (rebound for a follow-up)
+var empowered := false  ## from a move that spent meter (LT): it gives no meter back
 var stun_mult := 1.0  ## multiplier on the stun-meter gain of this hit (low pokes and staggers fill it fast)
 var meteor := false  ## set by the victim when a down-angled hit lands on an airborne target (or from the air)
 var clash := false  ## struck while the victim was mid-swing: short stagger, no launch
