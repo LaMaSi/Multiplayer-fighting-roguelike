@@ -225,7 +225,7 @@ const SEND := {
 	"jab3": 25.0, "dash_punch": 5.0, "rising_dragon": 90.0, "haymaker": 10.0, "wall_elbow": 0.0,
 	"shoulder_rush": 0.0, "popup_kick": 85.0, "back_kick": 180.0,
 	# sword
-	"long_slash": 60.0, "long_slash2": 180.0, "thrust_lunge": 0.0, "rising_slash": 80.0, "low_cut": 10.0,
+	"long_slash2": 180.0, "thrust_lunge": 0.0, "rising_slash": 65.0, "ninja_slash": 45.0,
 	# hammer
 	"overhead_smash": 60.0, "side_sweep": 10.0, "sky_launcher": 90.0, "quake_line": 80.0, "whirlwind_haul": 45.0,
 	"guard_breaker": 30.0, "home_run": 20.0,
@@ -239,9 +239,9 @@ const SEND := {
 	# supers
 	"super_generic": 55.0, "super_brawler": 50.0, "super_sword": 60.0, "super_hammer": 60.0, "super_magic": 40.0,
 }
-const STAGGER: Array[String] = ["jab", "jab2", "off_hand_jab", "off_hand_jab2", "heal_pulse"]
+const STAGGER: Array[String] = ["jab", "jab2", "off_hand_jab", "off_hand_jab2", "heal_pulse", "long_slash", "low_cut"]  # the two sword combo starters keep the target in reach
 ## Fixed send speeds (px/s) for hits that must stay catchable by the move's own follow-up.
-const SEND_SPEED := {"long_slash": 430.0}
+const SEND_SPEED := {}
 
 
 ## Gives every player hit its send angle ("ang", degrees) or marks it as a stagger. See SEND.
@@ -390,14 +390,16 @@ static func _build() -> void:
 			m.height = String(h0.get("height", "low" if bool(h0.get("low", false)) else "mid"))
 
 
-## Moves that can be charged by holding the button (up to 3 s). Each category has some: weapon (B), universal (X) and
+const CHARGE_FRAMES := 120  ## a full charge takes 2 s; the bonuses at full charge are unchanged
+
+## Moves that can be charged by holding the button (up to 2 s). Each category has some: weapon (B), universal (X) and
 ## adaptive (Y). id -> [frame to wait at (just before the first hit, shot or step), extra damage, extra knockback,
 ## extra distance, extra range]. The distance bonus scales the move's own movement (lunge, drive, jump) and the range
 ## bonus its hitbox, both at full charge. (The Off-hand Jab stays a quick weak punch.)
 const CHARGE := {
 	"spark_shot": [5, 1.5, 1.0, 0.0], "shockwave": [7, 0.8, 1.5, 0.0, 1.0],
 	"uppercut": [4, 1.0, 2.0, 0.5], "spin_kick": [5, 1.0, 0.8, 1.8],
-	"haymaker": [22, 1.2, 0.9, 0.7], "thrust_lunge": [4, 1.0, 0.9, 1.0], "overhead_smash": [23, 1.0, 0.8, 0.0],
+	"haymaker": [22, 1.2, 0.9, 0.7], "thrust_lunge": [4, 1.0, 0.9, 1.0], "ninja_slash": [4, 1.0, 0.8, 0.0], "overhead_smash": [23, 1.0, 0.8, 0.0],
 	"guard_breaker": [30, 1.2, 0.8, 0.0], "fireball": [9, 1.0, 0.8, 0.0],
 	"side_sweep": [11, 1.0, 0.9, 0.8], "sky_launcher": [26, 1.2, 0.7, 0.8],
 }
@@ -411,8 +413,8 @@ static func _apply_charge() -> void:
 		var c: Array = CHARGE[id]
 		m.hold = true
 		m.hold_frame = int(c[0])
-		m.hold_max = 180
-		m.charge_max = 180
+		m.hold_max = CHARGE_FRAMES
+		m.charge_max = CHARGE_FRAMES
 		m.charge_dmg = float(c[1])
 		m.charge_kb = float(c[2])
 		m.charge_move = float(c[3])
@@ -659,18 +661,18 @@ static func _build_player() -> void:
 	# --- 22 Flurry ------------------------------------------------------
 	var fl_hits: Array = []
 	var fl_kf: Array = [[0, {"lean": 0.5, "ua_f": 0.6, "la_f": 1.6, "ua_b": 0.6, "la_b": 1.6, "th_f": 0.7, "kn_f": 1.0, "th_b": -0.6, "kn_b": 1.0}]]
-	for i in 10:
+	for i in 3:
 		var f := 4 + i * 4
 		fl_hits.append(_hit(f, 2, Rect2(8, -82 + (i % 3) * 6, 58, 28), 2.5, 9, Vector2(25, 0), {"stop": 1, "shake": 0.05}))
 		if i % 2 == 0:
 			fl_kf.append([f, {"lean": 0.55, "ua_f": 1.55, "la_f": 0.0, "ua_b": 0.5, "la_b": 2.0, "th_f": 0.7, "kn_f": 1.0, "th_b": -0.6, "kn_b": 1.0}])
 		else:
 			fl_kf.append([f, {"lean": 0.55, "ua_b": 1.55, "la_b": 0.0, "ua_f": 0.5, "la_f": 2.0, "th_f": 0.7, "kn_f": 1.0, "th_b": -0.6, "kn_b": 1.0}])
-	fl_hits.append(_hit(46, 3, Rect2(8, -84, 64, 34), 6, 24, Vector2(420, -120), {"kind": "launch", "stop": 6}))
-	fl_kf.append([46, {"lean": 0.9, "ua_f": 1.57, "la_f": 0.0, "th_f": 1.0, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.4}])
-	fl_kf.append([62, _idle()])
-	_mk({"id": "flurry", "name": "Flurry", "short": "FLURRY", "desc": "Rapid jabs, low knockback.",
-		"total": 64, "steer": 0.2, "drive": [{"from": 4, "to": 44, "vx": 150.0}],
+	fl_hits.append(_hit(18, 3, Rect2(8, -84, 64, 34), 6, 24, Vector2(420, -120), {"kind": "launch", "stop": 6}))
+	fl_kf.append([18, {"lean": 0.9, "ua_f": 1.57, "la_f": 0.0, "th_f": 1.0, "kn_f": 0.3, "th_b": -1.0, "kn_b": 0.4}])
+	fl_kf.append([34, _idle()])
+	_mk({"id": "flurry", "name": "Flurry", "short": "FLURRY", "desc": "Three rapid jabs and a launching finisher.",
+		"total": 36, "steer": 0.2, "drive": [{"from": 4, "to": 16, "vx": 150.0}],
 		"kf": fl_kf, "hits": fl_hits})
 
 	# --- 23 Grab & throw ------------------------------------------------

@@ -28,13 +28,14 @@ var cancel_from := -1  ## frame from which a connected move may be cancelled int
 var hold := false
 var hold_frame := 0
 var hold_max := 600
-## Charging: with the button held at `hold_frame` the move waits, building charge for up to `charge_max` frames (180 = 3 s).
+## Charging: with the button held at `hold_frame` the move waits, building charge for up to `charge_max` frames (120 = 2 s).
 ## A full charge multiplies damage by (1 + charge_dmg) and knockback by (1 + charge_kb); a tap plays the move normally.
 var charge_max := 0
 var charge_dmg := 1.0
 var charge_kb := 0.8
 var charge_range := 0.0  ## extra hitbox size at full charge (a clap that reaches twice as far)
 var charge_move := 0.0  ## extra distance at full charge: lunges, drives and jumps of the move scale by (1 + this)
+var charge_steer := 0.0  ## while charging the actor can walk at this share of run speed (Ninja Slash: hidden, only the shadow shows)
 var charge_stretch := false  ## the hit window stretches with the charged movement (a lunge keeps hitting along its longer path)
 var steer := 0.0  ## fraction of run speed the player can still steer with during the move
 var enemy := false

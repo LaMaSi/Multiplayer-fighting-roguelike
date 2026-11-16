@@ -60,7 +60,7 @@ static func _build() -> void:
 		"speed": 0.95, "hp": 100.0, "jump": 1.0,
 		"ratings": {"SPEED": 4, "HEALTH": 5, "REACH": 7, "DAMAGE": 5},
 		"mods": {"reach": 1.5, "startup": 1.15, "recovery": 1.1, "dmg": 1.1, "kb": 1.0, "guard_break": false},
-		"b_pool": ["long_slash", "thrust_lunge", "rising_slash", "low_cut", "wind_slash", "parry", "deflect_stance", "riposte_step"],
+		"b_pool": ["long_slash", "thrust_lunge", "rising_slash", "low_cut", "wind_slash", "parry", "ninja_slash", "riposte_step"],
 		"b_stars": ["long_slash", "thrust_lunge", "parry"],
 		"base": {
 			"lean": 0.04, "head": -0.02,
@@ -193,7 +193,7 @@ const CLOSE_ATTACKS := {
 ## Moves that do not hurt anyone on their own (defence, support, utility).
 const NON_OFFENSIVE: Array[String] = [
 	"guard", "heal_pulse", "rage_taunt", "boost_spark", "pull_hook", "pocket_mine",
-	"parry", "deflect_stance", "riposte_step", "mirror_ward", "bulwark_plant", "gravity_well", "counter_palm",
+	"parry", "riposte_step", "mirror_ward", "bulwark_plant", "gravity_well", "counter_palm",
 ]
 
 

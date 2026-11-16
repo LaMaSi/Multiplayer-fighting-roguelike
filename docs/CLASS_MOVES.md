@@ -41,10 +41,10 @@ Identity: controls space and protects. Many parry-type moves. Rewards timing ove
 | 4 | NEW Low Cut | M | L | Low sweep that trips | wider, 2 hits | Trips enemies the partner can then smash |
 | 5 | NEW Wind Slash | M | M | Crescent projectile with short range | bigger and pierces | Hits enemies attacking the partner from a distance |
 | 6 | ✔ Parry Counter ★ | F | M | Timed parry that ripostes | wider timing window | **Cover Parry:** parry bubble also covers a partner standing close; perfect parry fills Style meter |
-| 7 | NEW Deflect Stance | M | M | Hold-stance: parries projectiles and reflects them; no counter | wider cone | Reflected projectiles hit enemies near the partner |
+| 7 | NEW Ninja Slash | M (charge) | M | **Charged**: hold to vanish (only the shadow moves, up to 2 s), release to reappear there with a slash that hits everything in between | longer walk | Cuts through a group and sends it towards the partner |
 | 8 | NEW Riposte Step | M | M | Hop backwards; if hit during the step, auto-counter | longer hop | Retreating towards the partner and counters for them |
 
-Parry-type moves: #6, #7, #8 (3 of 8).
+Parry-type moves: #6, #8 (2 of 8).
 
 **Super (weapon):** *Phantom Cuts*. Dash through enemies with many slashes. Team rider: finishes with a launch that opens a relay window for the partner.
 
@@ -195,11 +195,11 @@ Input: down, down-forward, forward, twice, then B. The generic super (1 of 8, X)
 7. Hammer and Magic Y moves (reach dead zone, marks): tune after the first playtest.
 8. Starter roll: should the first B move be guaranteed to be a ★ move? Default: all three rolled slots use ★ moves.
 
-## 11. Charging (hold the button for up to 3 seconds)
+## 11. Charging (hold the button for up to 2 seconds)
 
-Some moves can be **charged**: tap the button and the move plays normally; hold it and the figure winds up at the move's charge point, building charge for up to **3 s (180 frames)**. A full charge multiplies the hit's **damage** by `1 + charge_dmg` and its **knockback** by `1 + charge_kb` (projectiles also grow by up to 60 %); a partial charge gives a proportional bonus. Releasing plays the move out, and at full charge it releases by itself.
+Some moves can be **charged**: tap the button and the move plays normally; hold it and the figure winds up at the move's charge point, building charge for up to **2 s (120 frames)**. A full charge multiplies the hit's **damage** by `1 + charge_dmg` and its **knockback** by `1 + charge_kb` (projectiles also grow by up to 60 %); a partial charge gives a proportional bonus. Releasing plays the move out, and at full charge it releases by itself.
 
-- **Data** (`MoveData`): `charge_max` (180), `charge_dmg`, `charge_kb`, plus the existing `hold`/`hold_frame` (the frame to wait at, just before the first hit or shot). The table `MoveDB.CHARGE` lists them; the badge tag `charge` is added automatically.
+- **Data** (`MoveData`): `charge_max` (120), `charge_dmg`, `charge_kb`, plus the existing `hold`/`hold_frame` (the frame to wait at, just before the first hit or shot). The table `MoveDB.CHARGE` lists them; the badge tag `charge` is added automatically.
 - **Which moves**: every category has some. **B:** Heavy Haymaker (Brawler), Thrust Lunge (Sword), Overhead Smash, Guard Breaker, Side Sweep and Sky Launcher (Hammer), Fireball (Magic). **X:** Spark Shot and Shockwave Clap (the Off-hand Jab stays a quick, weak punch). **Y:** Uppercut and Spin Kick.
 
 | Move | Category | Full charge |
@@ -220,7 +220,7 @@ Some moves can be **charged**: tap the button and the move plays normally; hold 
 - **Co-op:** the charging player stands still and unarmoured while the ring fills, which is exactly what the partner can cover (see `DESIGN.md` charge-up elements).
 - **Feedback:** energy **orbs gather** towards the body: only a few at first (3), more as the charge builds (15 at full), turning from translucent white into the player's colour; a rising tick every half second, a spark burst and a "MAX" label at full charge (`ChargeFx`, no ring). The body glows a little more as it charges.
 - **Attack cards:** a chargeable move shows **only an icon**, a simplified hourglass (two triangles meeting at their tips) in a small gold tile (`UiKit.charge_chip`), on the reward, shop, loadout, run setup and pause screens. There is no text and no tag.
-- **Test:** `tests/charge_test.tscn` (coverage by category and class, 3 s, damage and knockback scaling, partial charge).
+- **Test:** `tests/charge_test.tscn` (coverage by category and class, 2 s, damage and knockback scaling, partial charge).
 
 **Short presses:** the charge ring, the ticks and the glow only start after the button has been held 14 frames (`AttackRunner.CHARGE_SHOW_FRAMES`), so a quick tap just plays the move.
 

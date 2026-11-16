@@ -1,5 +1,5 @@
 extends Node
-## Chargeable moves: hold the button for up to 3 s for more damage and knockback; every category has some.
+## Chargeable moves: hold the button for up to 2 s for more damage and knockback; every category has some.
 ##   Godot --path . res://tests/charge_test.tscn [-- <out_prefix>]
 
 var fails := 0
@@ -111,7 +111,7 @@ func _move_trial(lv: LevelBase, id: String, hold_frames: int) -> Dictionary:
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
-	# 1. every category has chargeable moves, all of them 3 s
+	# 1. every category has chargeable moves, all of them 2 s
 	var by_tier := {"weapon": 0, "adaptive": 0, "universal": 0}
 	var by_class := {}
 	var all_3s := true
@@ -121,11 +121,11 @@ func _ready() -> void:
 			by_tier[m.tier] = int(by_tier.get(m.tier, 0)) + 1
 			if m.tier == "weapon":
 				by_class[m.class_id] = true
-			if m.charge_max != 180:
+			if m.charge_max != 120:
 				all_3s = false
 	check(int(by_tier["weapon"]) >= 1 and int(by_tier["adaptive"]) >= 1 and int(by_tier["universal"]) >= 1, "weapon (B), adaptive (Y) and universal (X) all have chargeable moves: %s" % str(by_tier))
 	check(by_class.size() == 4, "every weapon class has a chargeable B move: %s" % str(by_class.keys()))
-	check(all_3s, "a full charge takes 3 s (180 frames) for every chargeable move")
+	check(all_3s, "a full charge takes 2 s (120 frames) for every chargeable move")
 	# 2. a tap plays the move normally; holding builds charge and hits harder and knocks back further
 	RunState.start_run(11)
 	var lv: LevelBase = load("res://scenes/training.tscn").instantiate()
@@ -140,8 +140,8 @@ func _ready() -> void:
 	check(float(full["charge"]) >= 0.99, "holding builds a full charge (%.2f)" % full["charge"])
 	check(float(full["dmg"]) > float(tap["dmg"]) * 2.0, "a full charge deals much more damage (%.1f vs %.1f)" % [full["dmg"], tap["dmg"]])
 	check(float(full["push"]) > float(tap["push"]) * 1.8, "a full charge knocks back further (%.0f vs %.0f)" % [full["push"], tap["push"]])
-	check(int(full["hit_at"]) > int(tap["hit_at"]) + 120, "the charge takes time: it hits %d frames later" % (int(full["hit_at"]) - int(tap["hit_at"])))
-	# half a second of charge gives a smaller bonus than 3 s
+	check(int(full["hit_at"]) > int(tap["hit_at"]) + 80, "the charge takes time: it hits %d frames later" % (int(full["hit_at"]) - int(tap["hit_at"])))
+	# half a second of charge gives a smaller bonus than 2 s
 	var part: Dictionary = await _trial(lv, "haymaker", 60)
 	check(float(part["dmg"]) > float(tap["dmg"]) * 1.1 and float(part["dmg"]) < float(full["dmg"]), "a partial charge lands in between (%.1f)" % part["dmg"])
 	# 2b. the charge also stretches the move's own movement: Thrust Lunge goes much further, Sky Launcher jumps higher

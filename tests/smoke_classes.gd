@@ -113,9 +113,9 @@ func _ready() -> void:
 
 	print("[every new move runs]")
 	var dist := {"off_hand_jab": 55, "ground_wave": 220, "fireball": 220, "boomerang": 220, "spread_shot": 220, "pull_hook": 250, "teleport_strike": 300, "wind_slash": 220, "quake_line": 240, "arcane_beam": 120, "gravity_well": 230, "spark_shot": 200,
-		"counter_palm": 70, "riposte_step": 70, "deflect_stance": 70, "pocket_mine": 40, "mirror_ward": 70,
+		"counter_palm": 70, "riposte_step": 70, "pocket_mine": 40, "mirror_ward": 70,
 		"bulwark_plant": 70, "slide_strike": 70, "home_run": 80, "whirlwind_haul": 80}
-	var no_damage := ["parry", "counter_palm", "riposte_step", "deflect_stance", "mirror_ward", "bulwark_plant", "gravity_well", "guard_breaker"]
+	var no_damage := ["parry", "counter_palm", "riposte_step", "mirror_ward", "bulwark_plant", "gravity_well", "guard_breaker"]
 	var ids: Array = ["off_hand_jab", "spark_shot", "slide_strike"]
 	for cid in ["brawler", "sword", "hammer", "magic"]:
 		for id in (ClassData.get_class_data(cid)["b_pool"] as Array):

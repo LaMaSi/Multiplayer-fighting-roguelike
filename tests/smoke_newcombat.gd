@@ -98,7 +98,7 @@ func _run() -> void:
 	print("  angles in use: ", sent.keys(), "  staggering moves: ", staggers)
 	check(sent.size() >= 10, "moves have their own angles (%d different ones)" % sent.size())
 	check(spikes >= 2 and backs >= 2, "a few spikes (%d) and sends behind the player (%d)" % [spikes, backs])
-	check(staggers.size() <= 3, "only a few moves stagger instead of sending: %s" % str(staggers))
+	check(staggers.size() <= 5, "only a few moves stagger instead of sending: %s" % str(staggers))
 
 	print("[meteor + ground effects]")
 	var d := level.spawn_enemy("dummy", Vector2(1500, 599))

@@ -625,8 +625,8 @@ func _physics_process(delta: float) -> void:
 
 
 ## Soft body collision: characters may overlap a little, but are eased apart so they never stand in the same spot.
-const SEP_DIST := 38.0  ## centre-to-centre distance below which bodies are pushed apart
-const SEP_SPEED := 260.0  ## px/s of push at full overlap
+const SEP_DIST := 62.0  ## centre-to-centre distance below which bodies are pushed apart
+const SEP_SPEED := 420.0  ## px/s of push at full overlap
 
 
 func _separate_from_others(delta: float) -> void:

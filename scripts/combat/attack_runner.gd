@@ -19,6 +19,7 @@ var _ev_done: Dictionary = {}
 var _kf_idx := -1
 var _hold_frames := 0
 var _charge_fx: ChargeFx = null
+var _span_from := Vector2.ZERO  ## where the move started: a "span" hit (Ninja Slash) cuts everything from here to the actor
 var _released := false
 var _whip: WhipFx = null  ## the tether of a Pull Hook
 var last_hit_dmg := 0.0  ## damage and knockback of the last hit this runner sent, before the target's own modifiers (for tests and tuning)
@@ -52,6 +53,7 @@ func start(m: MoveData, btn := -1) -> void:
 	_kf_idx = -1
 	_hold_frames = 0
 	_charge_fx = null
+	_span_from = actor.global_position
 	_released = false
 	_wait_frames = 0
 	_tilt = 0.0
@@ -124,6 +126,8 @@ func _tick_once() -> void:
 		if move.is_chargeable() and _hold_frames > 0 and not _released and frame == move.hold_frame:
 			_released = true
 			_release_fx()
+			if move.charge_steer > 0.0:
+				_span_release()
 		frame += 1
 	if frame >= move.total:
 		finish()
@@ -178,10 +182,26 @@ func _release_fx() -> void:
 	Fx.sparks(actor.get_parent(), actor.global_position + Vector2(0.0, -50.0), actor.figure.color, 6 + int(18.0 * ct))
 
 
+## Ninja Slash release: face along the path walked while hidden and draw the cut from the start to here.
+func _span_release() -> void:
+	var dx := actor.global_position.x - _span_from.x
+	if absf(dx) > 8.0:
+		actor.facing = 1 if dx > 0.0 else -1
+	Fx.beam(actor.get_parent(), _span_from + Vector2(0.0, -60.0), actor.global_position + Vector2(0.0, -60.0), Color(2.2, 2.2, 2.4), 0.3)
+
+
+## The area between where the move started and the actor now, at body height.
+func _span_rect() -> Rect2:
+	var p := actor.global_position
+	return Rect2(minf(p.x, _span_from.x), minf(p.y, _span_from.y) - 110.0, absf(p.x - _span_from.x), absf(p.y - _span_from.y) + 110.0)
+
+
 func _charge_tick() -> void:
 	if _hold_frames < CHARGE_SHOW_FRAMES:
 		return
-	if _charge_fx == null or not is_instance_valid(_charge_fx):
+	if move.charge_steer > 0.0:
+		pass  # hidden while charging: nothing may give the position away but the shadow
+	elif _charge_fx == null or not is_instance_valid(_charge_fx):
 		_charge_fx = ChargeFx.new()
 		_charge_fx.runner = self
 		_charge_fx.actor = actor
@@ -287,6 +307,11 @@ func _spin_drive() -> void:
 	for d in move.drive:
 		if frame >= int(d["from"]) and frame <= int(d["to"]):
 			actor.velocity.x = float(d["vx"]) * actor.facing * charge_move_mult() + actor.move_input_x * actor.run_speed * move.steer
+	if move.charge_steer > 0.0 and charging():
+		# walking while hidden: read the stick now (move_input_x is only refreshed outside attacks)
+		var fg := actor as Fighter
+		var mx := fg.stick_speed(fg.input.dir) if fg != null else actor.move_input_x
+		actor.velocity.x = mx * actor.run_speed * move.charge_steer
 
 
 # ------------------------------------------------------------------ events
@@ -528,6 +553,8 @@ func _hits() -> void:
 		if frame < at or frame >= at + _hit_dur(h):
 			continue
 		var rect := world_rect(_charged_box(h))
+		if bool(h.get("span", false)):
+			rect = rect.merge(_span_rect())
 		var crects: Array = _contact_rects() if not bool(h.get("radial", false)) else []
 		var all_r := rect
 		for cr: Rect2 in crects:
@@ -592,6 +619,7 @@ const KB_PLAYER := 1.9## player knockback multiplier: enemies reach the partner 
 const KB_EMPOWERED := 0.8  ## empowered moves keep the target close (personal combo starter)
 const SEND_MIN := 680.0  ## slowest a sending hit throws its target (px/s): far enough that the partner need not stand close
 const SEND_MAX := 1600.0
+const SWORD_SEND_MIN := 1150.0  ## sword sends land well beyond the sword's length (the two stagger moves aside)
 
 
 func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
@@ -658,6 +686,8 @@ func _connect(h: Dictionary, t: Node, rect: Rect2) -> void:
 		var speed := clampf(Vector2(kb.x * KB_PLAYER, kb.y).length(), SEND_MIN, SEND_MAX)
 		if h.has("speed"):
 			speed = float(h["speed"]) * a.upgrade_mult(move.id, "kb")
+		elif move.tier == "weapon" and move.class_id == "sword":
+			speed = maxf(speed, SWORD_SEND_MIN)  # past the blade's own reach, so the partner can wait there safely
 		if empowered:
 			speed *= 0.55  # an empowered move is a personal combo starter: the target stays near the attacker
 		var lift_cap := 1000.0 if move.tags.has("launcher") else 880.0  # nothing rises much past a single jump

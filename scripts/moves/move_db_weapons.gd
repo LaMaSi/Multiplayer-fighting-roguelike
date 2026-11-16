@@ -153,18 +153,15 @@ static func _sword() -> void:
 			[34, _idle()]],
 		"events": [MoveDB._proj(14, {"kind": "crescent", "pos": Vector2(60, -82), "vel": Vector2(650, 0), "dmg": 8.0, "stun": 18,
 			"kb": Vector2(200, 0), "life": 0.5, "radius": 24.0, "color": Color(1.9, 1.9, 2.2), "sfx": "whoosh"})]}, "weapon", "sword")
-	_mk({"id": "deflect_stance", "name": "Deflect Stance", "short": "DEFLCT", "desc": "Parries projectiles and sends them back. No counter.",
-		"total": 54, "tags": ["defensive"],
-		# planted wide, blade fanned left-right in front of the body like a windscreen wiper
-		"kf": [[0, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.6, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": -2.2, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
-			[6, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.9, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": -2.2, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
-			[12, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.4, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": 0.1, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
-			[18, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.9, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": -2.2, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
-			[24, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.4, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": 0.1, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
-			[30, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.9, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": -2.2, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
-			[36, _p(SWORD_READY, {"lean": 0.0, "ua_f": 1.4, "la_f": 0.3, "ua_b": -0.5, "la_b": 0.5, "wp_rot": 0.1, "th_f": 0.7, "kn_f": 0.7, "th_b": -0.7, "kn_b": 0.7})],
-			[46, _idle()]],
-		"events": [{"at": 3, "type": "reflect", "dur": 40}, {"at": 3, "type": "sfx", "name": "buff"}]}, "weapon", "sword")
+	_mk({"id": "ninja_slash", "name": "Ninja Slash", "short": "NINJA", "desc": "Hold to vanish: only your shadow moves. Release to reappear there with a slash that cuts everything in between.",
+		"total": 40, "cancel_from": 16, "charge_steer": 1.5,
+		# coiled low with the blade drawn back, then a full cut through; the figure is hidden while the charge is held
+		"kf": [[0, _p(SWORD_READY, {"lean": 0.5, "ua_f": -0.6, "la_f": 0.4, "wp_rot": 1.0, "th_f": 1.0, "kn_f": 1.4, "th_b": -0.6, "kn_b": 1.2})],
+			[6, _p(SWORD_READY, {"lean": 0.6, "ua_f": 1.9, "la_f": 0.0, "wp_rot": -0.1, "th_f": 1.1, "kn_f": 0.3, "th_b": -0.9, "kn_b": 0.3})],
+			[28, _idle()]],
+		"events": [{"at": 4, "type": "vis", "v": false}, {"at": 4, "type": "sfx", "name": "tp"},
+			{"at": 5, "type": "vis", "v": true}, {"at": 5, "type": "sfx", "name": "whoosh"}, {"at": 6, "type": "ghost"}],
+		"hits": [_hit(6, 5, Rect2(-20, -112, 150, 96), 10, 24, Vector2(360, -200), {"stop": 5, "span": true})]}, "weapon", "sword")
 	_mk({"id": "riposte_step", "name": "Riposte Step", "short": "RIPOST", "desc": "Hop back. If struck during the step, counter.",
 		"total": 44, "tags": ["defensive"],
 		# deep backward crouch: blade trails low behind you, empty hand held out as bait; afterimages mark the hop
